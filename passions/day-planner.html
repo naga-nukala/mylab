@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f10">
+<title>Day Planner</title>
+<style>
+  :root{
+    --bg:#0f0f10;
+    --card:#1a1a1c;
+    --card2:#212124;
+    --border:#2b2b2e;
+    --text:#eaeaea;
+    --sub:#9a9a9e;
+    --mint:#a7e8c5;
+    --coral:#ff8c70;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app{max-width:560px;margin:0 auto;padding:20px 16px 80px;}
+  header h1{font-size:20px;margin:0;font-weight:700;}
+  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  #exportBtn{
+    background:var(--card);border:1px solid var(--border);color:var(--mint);
+    border-radius:10px;width:36px;height:36px;font-size:15px;cursor:pointer;
+  }
+  @media (hover:hover) and (pointer:fine){
+    #exportBtn:hover{border-color:var(--mint);}
+  }
+
+  .date-nav{
+    display:flex;align-items:center;gap:8px;
+    background:var(--card);border:1px solid var(--border);
+    border-radius:14px;padding:8px;margin-bottom:16px;
+  }
+  .date-nav button{
+    background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;
+  }
+  .date-nav #dateLabel{flex:1;text-align:center;font-weight:600;font-size:14px;}
+  .date-nav #todayBtn{
+    width:auto;padding:0 12px;font-size:12px;color:var(--mint);border-color:var(--mint);
+  }
+  @media (hover:hover) and (pointer:fine){
+    .date-nav button:hover{border-color:var(--mint);}
+  }
+
+  .summary-card{
+    background:var(--card);border:1px solid var(--border);
+    border-radius:16px;padding:16px;margin-bottom:16px;
+    display:flex;align-items:center;gap:18px;
+  }
+  .summary-stat{text-align:center;min-width:44px;}
+  .summary-stat span{display:block;font-size:20px;font-weight:700;}
+  .summary-stat label{display:block;font-size:11px;color:var(--sub);margin-top:2px;}
+  .progress-wrap{flex:1;}
+  .progress-bar{
+    flex:1;height:8px;background:var(--card2);border-radius:6px;overflow:hidden;
+  }
+  #progressFill{height:100%;background:var(--mint);width:0%;transition:width .25s ease;}
+
+  #taskForm{
+    background:var(--card);border:1px solid var(--border);
+    border-radius:16px;padding:14px;margin-bottom:18px;
+  }
+  #taskForm input[type="text"]{
+    width:100%;background:var(--card2);border:1px solid var(--border);
+    color:var(--text);border-radius:10px;padding:11px 12px;font-size:15px;margin-bottom:10px;
+  }
+  .form-row{display:flex;gap:8px;margin-bottom:10px;}
+  .form-row input[type="time"],.form-row input[type="date"],.form-row select{
+    background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:9px 8px;font-size:13px;flex:1;min-width:0;
+    color-scheme:dark;
+  }
+  .remind-label{
+    display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);
+    margin-bottom:10px;cursor:pointer;
+  }
+  .remind-label input{accent-color:var(--mint);width:15px;height:15px;}
+  #taskNotes{
+    width:100%;background:var(--card2);border:1px solid var(--border);
+    color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px;
+    resize:vertical;min-height:38px;margin-bottom:10px;font-family:inherit;
+  }
+  .form-actions{display:flex;gap:8px;}
+  #submitBtn{
+    flex:1;background:var(--mint);color:#0f0f10;border:none;border-radius:10px;
+    padding:11px;font-size:14px;font-weight:700;cursor:pointer;
+  }
+  #cancelEdit{
+    background:var(--card2);color:var(--sub);border:1px solid var(--border);
+    border-radius:10px;padding:11px 14px;font-size:13px;cursor:pointer;
+  }
+  @media (hover:hover) and (pointer:fine){
+    #submitBtn:hover{opacity:.9;}
+  }
+
+  .group-label{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.06em;margin:16px 4px 8px;}
+
+  .task-row{
+    display:flex;align-items:flex-start;gap:10px;
+    background:var(--card);border:1px solid var(--border);
+    border-radius:14px;padding:12px;margin-bottom:8px;
+  }
+  .task-row.done{opacity:.5;}
+  .check{
+    flex:none;width:22px;height:22px;border-radius:50%;
+    border:2px solid var(--mint);margin-top:2px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .task-row.done .check{background:var(--mint);}
+  .check svg{width:12px;height:12px;display:none;}
+  .task-row.done .check svg{display:block;}
+  .task-body{flex:1;min-width:0;}
+  .task-title{font-size:14px;word-break:break-word;}
+  .task-row.done .task-title{text-decoration:line-through;color:var(--sub);}
+  .task-meta{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;}
+  .badge-time{font-size:11px;color:var(--sub);}
+  .badge-priority{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;}
+  .badge-priority.low{background:rgba(167,232,197,0.12);color:var(--mint);}
+  .badge-priority.medium{background:rgba(255,255,255,0.08);color:var(--sub);}
+  .badge-priority.high{background:rgba(255,140,112,0.14);color:var(--coral);}
+  .badge-remind{font-size:11px;color:var(--mint);}
+  .task-notes{font-size:12px;color:var(--sub);margin-top:4px;word-break:break-word;}
+  .task-actions{display:flex;gap:6px;flex:none;}
+  .task-actions button{
+    background:var(--card2);border:1px solid var(--border);color:var(--sub);
+    border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;
+  }
+  .task-actions button.delete-btn.confirm{color:#fff;background:var(--coral);border-color:var(--coral);}
+  @media (hover:hover) and (pointer:fine){
+    .task-actions button:hover{color:var(--text);}
+  }
+
+  #emptyState{text-align:center;color:var(--sub);font-size:13px;padding:30px 0;display:none;}
+
+  #toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--card2);border:1px solid var(--border);color:var(--text);
+    padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;
+    transition:opacity .2s ease, transform .2s ease;pointer-events:none;z-index:20;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header-row">
+    <h1>Day Planner</h1>
+    <button id="exportBtn" aria-label="Download backup">⬇</button>
+  </header>
+
+  <div class="date-nav">
+    <button id="prevDay" aria-label="Previous day">‹</button>
+    <div id="dateLabel">—</div>
+    <button id="nextDay" aria-label="Next day">›</button>
+    <button id="todayBtn">Today</button>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-stat"><span id="totalCount">0</span><label>Total</label></div>
+    <div class="summary-stat"><span id="doneCount">0</span><label>Done</label></div>
+    <div class="summary-stat"><span id="pendingCount">0</span><label>Left</label></div>
+    <div class="progress-bar"><div id="progressFill"></div></div>
+  </div>
+
+  <form id="taskForm">
+    <input type="text" id="taskTitle" placeholder="Add a task..." autocomplete="off" required>
+    <div class="form-row">
+      <input type="date" id="taskDate">
+      <input type="time" id="taskTime">
+      <select id="taskPriority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <label class="remind-label"><input type="checkbox" id="taskRemind"> 🔔 Remind me at that time</label>
+    <textarea id="taskNotes" placeholder="Notes (optional)"></textarea>
+    <div class="form-actions">
+      <button type="submit" id="submitBtn">Add task</button>
+      <button type="button" id="cancelEdit" style="display:none">Cancel</button>
+    </div>
+  </form>
+
+  <div id="groupTime"><div class="group-label" id="groupTimeLabel" style="display:none">Scheduled</div><div id="listTime"></div></div>
+  <div id="groupAny"><div class="group-label" id="groupAnyLabel" style="display:none">Anytime</div><div id="listAny"></div></div>
+
+  <div id="emptyState">No tasks yet for this day. Add one above.</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  var STORAGE_KEY = "as_dayplanner_v1";
+  var deleteArm = null; // id currently armed for delete confirm
+  var editingId = null;
+  var editingDate = null;
+  var reminderTimeouts = {};
+
+  function pad(n){ return n<10 ? "0"+n : ""+n; }
+  function dateToStr(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function todayStr(){ return dateToStr(new Date()); }
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function formatDateLabel(dateStr){
+    var parts = dateStr.split("-");
+    var y = parts[0], m = parseInt(parts[1],10)-1, d = parseInt(parts[2],10);
+    return d + "th " + MONTHS[m] + " " + y;
+  }
+  function formatTime(t){
+    if(!t) return "";
+    var p = t.split(":"); var h = parseInt(p[0],10); var min = p[1];
+    var suffix = h>=12 ? "PM" : "AM";
+    var h12 = h % 12; if(h12===0) h12=12;
+    return h12+":"+min+" "+suffix;
+  }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && parsed.days) return parsed;
+      }
+    }catch(e){}
+    return { activeDate: todayStr(), days: {} };
+  }
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn("Storage unavailable, running in-memory only.", e); }
+    scheduleReminders();
+  }
+
+  var state = loadState();
+
+  function getTasks(){
+    return state.days[state.activeDate] || [];
+  }
+  function setTasks(arr){
+    state.days[state.activeDate] = arr;
+    saveState();
+  }
+  function getTasksForDate(d){
+    return state.days[d] || [];
+  }
+  function setTasksForDate(d, arr){
+    state.days[d] = arr;
+    saveState();
+  }
+
+  function clearReminders(){
+    Object.keys(reminderTimeouts).forEach(function(id){ clearTimeout(reminderTimeouts[id]); });
+    reminderTimeouts = {};
+  }
+  function scheduleReminders(){
+    clearReminders();
+    if(!("Notification" in window) || Notification.permission !== "granted") return;
+    Object.keys(state.days).forEach(function(dateKey){
+      state.days[dateKey].forEach(function(t){
+        if(t.remind && t.time && !t.done){
+          var target = new Date(dateKey + "T" + t.time + ":00");
+          var delay = target.getTime() - Date.now();
+          if(delay > 0 && delay < 2147483000){
+            reminderTimeouts[t.id] = setTimeout(function(){
+              try{ new Notification(t.title, { body: t.notes || ("Scheduled for " + formatTime(t.time)), tag: t.id }); }
+              catch(e){}
+            }, delay);
+          }
+        }
+      });
+    });
+  }
+
+  var dateLabel = document.getElementById("dateLabel");
+  var totalCount = document.getElementById("totalCount");
+  var doneCount = document.getElementById("doneCount");
+  var pendingCount = document.getElementById("pendingCount");
+  var progressFill = document.getElementById("progressFill");
+  var listTime = document.getElementById("listTime");
+  var listAny = document.getElementById("listAny");
+  var groupTimeLabel = document.getElementById("groupTimeLabel");
+  var groupAnyLabel = document.getElementById("groupAnyLabel");
+  var emptyState = document.getElementById("emptyState");
+  var taskForm = document.getElementById("taskForm");
+  var taskTitle = document.getElementById("taskTitle");
+  var taskDate = document.getElementById("taskDate");
+  var taskTime = document.getElementById("taskTime");
+  var taskPriority = document.getElementById("taskPriority");
+  var taskRemind = document.getElementById("taskRemind");
+  var taskNotes = document.getElementById("taskNotes");
+  var submitBtn = document.getElementById("submitBtn");
+  var cancelEdit = document.getElementById("cancelEdit");
+  var toast = document.getElementById("toast");
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toast.classList.remove("show"); }, 1800);
+  }
+
+  function checkSvg(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="#0f0f10" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  }
+
+  function renderList(){
+    var tasks = getTasks().slice();
+    var withTime = tasks.filter(function(t){ return !!t.time; }).sort(function(a,b){ return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
+    var noTime = tasks.filter(function(t){ return !t.time; });
+
+    groupTimeLabel.style.display = withTime.length ? "block" : "none";
+    groupAnyLabel.style.display = noTime.length ? "block" : "none";
+    emptyState.style.display = tasks.length ? "none" : "block";
+
+    listTime.innerHTML = withTime.map(renderRow).join("");
+    listAny.innerHTML = noTime.map(renderRow).join("");
+
+    var total = tasks.length;
+    var done = tasks.filter(function(t){ return t.done; }).length;
+    totalCount.textContent = total;
+    doneCount.textContent = done;
+    pendingCount.textContent = total - done;
+    progressFill.style.width = total ? Math.round((done/total)*100)+"%" : "0%";
+  }
+
+  function esc(s){
+    return (s||"").replace(/[&<>"]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+    });
+  }
+
+  function renderRow(t){
+    var confirmClass = (deleteArm === t.id) ? " confirm" : "";
+    var deleteLabel = (deleteArm === t.id) ? "✓" : "✕";
+    return (
+      '<div class="task-row'+(t.done?' done':'')+'" data-id="'+t.id+'">'+
+        '<div class="check" data-action="toggle" data-id="'+t.id+'">'+checkSvg()+'</div>'+
+        '<div class="task-body">'+
+          '<div class="task-title">'+esc(t.title)+'</div>'+
+          '<div class="task-meta">'+
+            (t.time ? '<span class="badge-time">'+formatTime(t.time)+'</span>' : '')+
+            '<span class="badge-priority '+t.priority+'">'+t.priority+'</span>'+
+            (t.remind ? '<span class="badge-remind">🔔</span>' : '')+
+          '</div>'+
+          (t.notes ? '<div class="task-notes">'+esc(t.notes)+'</div>' : '')+
+        '</div>'+
+        '<div class="task-actions">'+
+          '<button data-action="edit" data-id="'+t.id+'">✎</button>'+
+          '<button class="delete-btn'+confirmClass+'" data-action="delete" data-id="'+t.id+'">'+deleteLabel+'</button>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+
+  function renderHeader(){
+    dateLabel.textContent = formatDateLabel(state.activeDate);
+  }
+
+  function renderAll(){
+    renderHeader();
+    renderList();
+  }
+
+  function resetForm(){
+    taskTitle.value = "";
+    taskDate.value = state.activeDate;
+    taskTime.value = "";
+    taskPriority.value = "medium";
+    taskRemind.checked = false;
+    taskNotes.value = "";
+    editingId = null;
+    editingDate = null;
+    submitBtn.textContent = "Add task";
+    cancelEdit.style.display = "none";
+  }
+
+  function shiftDate(days){
+    var parts = state.activeDate.split("-").map(Number);
+    var d = new Date(parts[0], parts[1]-1, parts[2]);
+    d.setDate(d.getDate()+days);
+    state.activeDate = dateToStr(d);
+    saveState();
+    deleteArm = null;
+    if(!editingId) taskDate.value = state.activeDate;
+    renderAll();
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", function(){
+    try{
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var d = new Date();
+      a.href = url;
+      a.download = "day-planner-backup-" + dateToStr(d) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      showToast("Backup downloaded");
+    }catch(e){
+      showToast("Download failed");
+    }
+  });
+
+  document.getElementById("prevDay").addEventListener("click", function(){ shiftDate(-1); });
+  document.getElementById("nextDay").addEventListener("click", function(){ shiftDate(1); });
+  document.getElementById("todayBtn").addEventListener("click", function(){
+    state.activeDate = todayStr();
+    saveState();
+    deleteArm = null;
+    if(!editingId) taskDate.value = state.activeDate;
+    renderAll();
+  });
+
+  taskForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    var title = taskTitle.value.trim();
+    if(!title) return;
+    var targetDate = taskDate.value || state.activeDate;
+    var remind = taskRemind.checked;
+
+    if(editingId){
+      var srcArr = getTasksForDate(editingDate);
+      var existing = srcArr.find(function(t){ return t.id === editingId; });
+      var updated = {
+        id: editingId, title:title, time:taskTime.value, priority:taskPriority.value,
+        notes:taskNotes.value.trim(), done: existing ? existing.done : false, remind:remind
+      };
+      setTasksForDate(editingDate, srcArr.filter(function(t){ return t.id !== editingId; }));
+      var destArr = getTasksForDate(targetDate).slice();
+      destArr.push(updated);
+      setTasksForDate(targetDate, destArr);
+      showToast(targetDate === editingDate ? "Task updated" : "Moved to " + formatDateLabel(targetDate));
+    } else {
+      var arr = getTasksForDate(targetDate).slice();
+      arr.push({ id: uid(), title:title, time:taskTime.value, priority:taskPriority.value, notes:taskNotes.value.trim(), done:false, remind:remind });
+      setTasksForDate(targetDate, arr);
+      showToast(targetDate === state.activeDate ? "Task added" : "Added to " + formatDateLabel(targetDate));
+    }
+    resetForm();
+    renderList();
+  });
+
+  cancelEdit.addEventListener("click", function(){ resetForm(); });
+
+  taskRemind.addEventListener("change", function(){
+    if(!taskRemind.checked) return;
+    if(!("Notification" in window)){
+      showToast("Notifications not supported here");
+      taskRemind.checked = false;
+      return;
+    }
+    if(Notification.permission === "denied"){
+      showToast("Notifications blocked in browser settings");
+      taskRemind.checked = false;
+      return;
+    }
+    if(Notification.permission === "default"){
+      Notification.requestPermission().then(function(perm){
+        if(perm !== "granted"){
+          taskRemind.checked = false;
+          showToast("Permission not granted");
+        } else {
+          scheduleReminders();
+        }
+      });
+    }
+  });
+
+  function handleAction(e){
+    var btn = e.target.closest("[data-action]");
+    if(!btn) return;
+    var action = btn.getAttribute("data-action");
+    var id = btn.getAttribute("data-id");
+    var tasks = getTasks();
+
+    if(action === "toggle"){
+      tasks = tasks.map(function(t){
+        if(t.id === id) return Object.assign({}, t, { done: !t.done });
+        return t;
+      });
+      setTasks(tasks);
+      renderList();
+    } else if(action === "edit"){
+      var t = tasks.find(function(x){ return x.id === id; });
+      if(!t) return;
+      taskTitle.value = t.title;
+      taskDate.value = state.activeDate;
+      taskTime.value = t.time || "";
+      taskPriority.value = t.priority;
+      taskRemind.checked = !!t.remind;
+      taskNotes.value = t.notes || "";
+      editingId = id;
+      editingDate = state.activeDate;
+      submitBtn.textContent = "Update task";
+      cancelEdit.style.display = "inline-block";
+      taskTitle.focus();
+    } else if(action === "delete"){
+      if(deleteArm === id){
+        tasks = tasks.filter(function(t){ return t.id !== id; });
+        setTasks(tasks);
+        deleteArm = null;
+        if(editingId === id) resetForm();
+        showToast("Task deleted");
+        renderList();
+      } else {
+        deleteArm = id;
+        renderList();
+        setTimeout(function(){
+          if(deleteArm === id){ deleteArm = null; renderList(); }
+        }, 3000);
+      }
+    }
+  }
+
+  listTime.addEventListener("click", handleAction);
+  listAny.addEventListener("click", handleAction);
+
+  scheduleReminders();
+  taskDate.value = state.activeDate;
+  renderAll();
+})();
+</script>
+</body>
+</html>

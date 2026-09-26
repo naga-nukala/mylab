@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Growth Paths</title>
+<style>
+  :root{
+    --bg:#0e1210;
+    --bg-elev:#161c1a;
+    --bg-elev2:#1d2422;
+    --mint:#7fd6d0;
+    --mint-dim:rgba(127,214,208,0.18);
+    --coral:#f0879a;
+    --coral-dim:rgba(240,135,154,0.16);
+    --text:#e9f3ee;
+    --text-dim:#93a5a0;
+    --border:rgba(255,255,255,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:100px;
+  }
+  .app{max-width:560px;margin:0 auto;padding:20px 16px 0;}
+  header{margin-bottom:18px;}
+  header h1{font-size:22px;margin:0 0 4px;letter-spacing:-0.01em;}
+  header p{margin:0;color:var(--text-dim);font-size:14px;}
+
+  .summary{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px 16px;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .summary .stat{flex:1;text-align:center;}
+  .summary .stat b{display:block;font-size:19px;color:var(--mint);}
+  .summary .stat span{display:block;font-size:11px;color:var(--text-dim);margin-top:2px;}
+  .summary .stat + .stat{border-left:1px solid var(--border);}
+
+  .empty{
+    text-align:center;
+    color:var(--text-dim);
+    padding:40px 20px;
+    font-size:14px;
+    line-height:1.5;
+  }
+
+  .card{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:14px;
+    margin-bottom:12px;
+    overflow:hidden;
+  }
+  .card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    cursor:pointer;
+    gap:10px;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .card-head:hover{background:var(--bg-elev2);}
+  }
+  .card-head-left{min-width:0;flex:1;}
+  .card-head-left h3{margin:0 0 2px;font-size:16px;font-weight:600;}
+  .heading-line{
+    font-size:12.5px;
+    color:var(--text-dim);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .heading-line b{color:var(--coral);font-weight:500;}
+  .card-head-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .pct-badge{
+    font-size:14px;
+    font-weight:700;
+    color:var(--mint);
+    min-width:38px;
+    text-align:right;
+  }
+  .chev{
+    color:var(--text-dim);
+    transition:transform .2s ease;
+    font-size:12px;
+  }
+  .card.open .chev{transform:rotate(180deg);}
+
+  .ladder-wrap{padding:0 16px 14px;}
+  .ladder{
+    display:flex;
+    align-items:flex-end;
+    gap:5px;
+    height:56px;
+    padding-top:6px;
+  }
+  .step{
+    flex:1;
+    max-width:26px;
+    border-radius:4px 4px 0 0;
+    position:relative;
+  }
+  .step.done{background:var(--mint);}
+  .step.pending{
+    background:transparent;
+    border:2px dashed var(--coral);
+    border-bottom:none;
+  }
+  .next-hint{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin-top:8px;
+  }
+  .next-hint b{color:var(--text);font-weight:500;}
+
+  .panel{
+    border-top:1px solid var(--border);
+    padding:14px 16px 16px;
+    display:none;
+  }
+  .card.open .panel{display:block;}
+
+  .milestone-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .milestone-row:last-of-type{border-bottom:none;}
+  .m-check{
+    width:20px;height:20px;flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--coral);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:12px;
+    color:var(--bg);
+  }
+  .m-check.done{background:var(--mint);border-color:var(--mint);}
+  .m-info{flex:1;min-width:0;}
+  .m-title{font-size:14px;line-height:1.3;}
+  .m-title.pending-text{color:var(--text-dim);}
+  .m-date{font-size:11.5px;color:var(--text-dim);margin-top:1px;}
+  .m-actions{display:flex;gap:6px;flex-shrink:0;}
+  .icon-btn{
+    background:none;border:none;color:var(--text-dim);
+    font-size:13px;padding:4px 6px;cursor:pointer;border-radius:6px;
+  }
+  .icon-btn.danger{color:var(--coral);}
+  .icon-btn.confirming{background:var(--coral-dim);color:var(--coral);}
+
+  .m-form{
+    margin-top:12px;
+    background:var(--bg-elev2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+  }
+  .m-form-row{display:flex;gap:8px;margin-bottom:8px;}
+  .m-form-row:last-child{margin-bottom:0;}
+  input[type=text],input[type=date]{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:8px;
+    padding:9px 10px;
+    font-size:14px;
+    font-family:inherit;
+  }
+  input[type=text]:focus,input[type=date]:focus{outline:1px solid var(--mint);border-color:var(--mint);}
+  .chk-label{
+    display:flex;align-items:center;gap:6px;
+    font-size:13px;color:var(--text-dim);
+    white-space:nowrap;
+  }
+  input[type=checkbox]{width:16px;height:16px;accent-color:var(--mint);}
+  .m-form-actions{display:flex;gap:8px;margin-top:4px;}
+  .btn{
+    border:none;border-radius:8px;
+    padding:9px 14px;font-size:13.5px;font-weight:600;
+    cursor:pointer;font-family:inherit;
+  }
+  .btn-primary{background:var(--mint);color:#08110d;}
+  .btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);}
+  .btn-block{width:100%;}
+
+  .card-foot{
+    display:flex;gap:8px;
+    padding:10px 16px 16px;
+    border-top:1px solid var(--border);
+  }
+  .card-foot button{flex:1;}
+
+  .fab{
+    position:fixed;
+    left:16px;right:16px;
+    bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    max-width:528px;
+    margin:0 auto;
+    background:var(--mint);
+    color:#08110d;
+    border:none;
+    border-radius:14px;
+    padding:15px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .sheet-backdrop{
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.5);
+    z-index:10;
+  }
+  .sheet-backdrop.show{display:block;}
+  .sheet{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    background:var(--bg-elev);
+    border-radius:18px 18px 0 0;
+    padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+    z-index:11;
+    transform:translateY(100%);
+    transition:transform .25s ease;
+    max-width:560px;
+    margin:0 auto;
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet h2{margin:0 0 14px;font-size:16px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12.5px;color:var(--text-dim);margin-bottom:5px;}
+  .sheet-actions{display:flex;gap:8px;margin-top:6px;}
+  .sheet-actions button{flex:1;}
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:calc(90px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%) translateY(20px);
+    background:var(--bg-elev2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:13.5px;
+    opacity:0;
+    transition:opacity .2s ease, transform .2s ease;
+    pointer-events:none;
+    z-index:20;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Growth Paths</h1>
+    <p>Where each interest is heading, and how far along you are</p>
+  </header>
+
+  <div class="summary" id="summary"></div>
+  <div id="list"></div>
+</div>
+
+<button class="fab" id="addInterestBtn">+ New interest</button>
+
+<div class="sheet-backdrop" id="backdrop"></div>
+<div class="sheet" id="interestSheet">
+  <h2 id="sheetTitle">New interest</h2>
+  <div class="field">
+    <label>Interest name</label>
+    <input type="text" id="f-name" placeholder="e.g. Agile">
+  </div>
+  <div class="field">
+    <label>Where you're heading (optional)</label>
+    <input type="text" id="f-heading" placeholder="e.g. Enterprise Agile Coach">
+  </div>
+  <div class="sheet-actions">
+    <button class="btn btn-ghost" id="sheetCancel">Cancel</button>
+    <button class="btn btn-primary" id="sheetSave">Save</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'as_growth_paths_v1';
+let state = load();
+let editingInterestId = null;
+const confirming = new Set();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { interests: [] };
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function formatDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()}th ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function pctOf(interest){
+  const total = interest.milestones.length;
+  if(!total) return 0;
+  const done = interest.milestones.filter(m=>m.done).length;
+  return Math.round((done/total)*100);
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function render(){
+  renderSummary();
+  renderList();
+}
+
+function renderSummary(){
+  const el = document.getElementById('summary');
+  const interests = state.interests;
+  const totalSteps = interests.reduce((s,i)=>s+i.milestones.length,0);
+  const doneSteps = interests.reduce((s,i)=>s+i.milestones.filter(m=>m.done).length,0);
+  const avg = interests.length ? Math.round(interests.reduce((s,i)=>s+pctOf(i),0)/interests.length) : 0;
+  el.innerHTML = `
+    <div class="stat"><b>${interests.length}</b><span>Paths</span></div>
+    <div class="stat"><b>${doneSteps}/${totalSteps}</b><span>Steps climbed</span></div>
+    <div class="stat"><b>${avg}%</b><span>Avg. progress</span></div>
+  `;
+}
+
+function renderList(){
+  const el = document.getElementById('list');
+  if(!state.interests.length){
+    el.innerHTML = `<div class="empty">No interests yet.<br>Tap "New interest" to start tracking a path.</div>`;
+    return;
+  }
+  el.innerHTML = state.interests.map((interest, idx) => renderCard(interest, idx)).join('');
+}
+
+function renderCard(interest, idx){
+  const pct = pctOf(interest);
+  const total = interest.milestones.length;
+  const next = interest.milestones.find(m=>!m.done);
+  const steps = interest.milestones.map((m,i)=>{
+    const h = 10 + Math.round(((i+1)/Math.max(total,1))*46);
+    return `<div class="step ${m.done?'done':'pending'}" style="height:${h}px" title="${escapeHtml(m.title)}"></div>`;
+  }).join('');
+
+  const milestoneRows = interest.milestones.map(m => `
+    <div class="milestone-row">
+      <div class="m-check ${m.done?'done':''}" data-action="toggle-done" data-interest="${interest.id}" data-milestone="${m.id}">${m.done?'✓':''}</div>
+      <div class="m-info">
+        <div class="m-title ${m.done?'':'pending-text'}">${escapeHtml(m.title)}</div>
+        ${m.date ? `<div class="m-date">${formatDate(m.date)}</div>` : ''}
+      </div>
+      <div class="m-actions">
+        <button class="icon-btn" data-action="edit-milestone" data-interest="${interest.id}" data-milestone="${m.id}">Edit</button>
+        <button class="icon-btn danger" data-action="delete-milestone" data-interest="${interest.id}" data-milestone="${m.id}">Del</button>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+  <div class="card" data-interest="${interest.id}">
+    <div class="card-head" data-action="toggle-expand" data-interest="${interest.id}">
+      <div class="card-head-left">
+        <h3>${escapeHtml(interest.name)}</h3>
+        ${interest.heading ? `<div class="heading-line">heading to <b>${escapeHtml(interest.heading)}</b></div>` : `<div class="heading-line">${total} step${total===1?'':'s'} tracked</div>`}
+      </div>
+      <div class="card-head-right">
+        <span class="pct-badge">${pct}%</span>
+        <span class="chev">▾</span>
+      </div>
+    </div>
+    <div class="ladder-wrap">
+      <div class="ladder">${steps || '<span style="font-size:12px;color:var(--text-dim);">No steps yet</span>'}</div>
+      ${next ? `<div class="next-hint">Next up: <b>${escapeHtml(next.title)}</b></div>` : (total ? `<div class="next-hint">All steps complete 🎉</div>` : '')}
+    </div>
+    <div class="panel">
+      ${milestoneRows}
+      <div class="m-form" data-interest="${interest.id}">
+        <div class="m-form-row">
+          <input type="text" placeholder="Step name, e.g. SAFe 6.0" data-role="m-title">
+        </div>
+        <div class="m-form-row">
+          <input type="date" data-role="m-date">
+          <label class="chk-label"><input type="checkbox" data-role="m-done"> Done</label>
+        </div>
+        <div class="m-form-actions">
+          <button class="btn btn-ghost" data-action="m-cancel" data-interest="${interest.id}" style="display:none">Cancel edit</button>
+          <button class="btn btn-primary btn-block" data-action="m-save" data-interest="${interest.id}">Add step</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-foot">
+      <button class="btn btn-ghost" data-action="edit-interest" data-interest="${interest.id}">Edit</button>
+      <button class="btn btn-ghost icon-btn danger" data-action="delete-interest" data-interest="${interest.id}" style="flex:1;border:1px solid var(--border);border-radius:8px;">Delete</button>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function findInterest(id){ return state.interests.find(i=>i.id===id); }
+
+// ---- Event delegation ----
+document.getElementById('list').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const action = btn.dataset.action;
+  const interestId = btn.dataset.interest;
+  const interest = findInterest(interestId);
+
+  if(action === 'toggle-expand'){
+    document.querySelectorAll('.card').forEach(c=>{
+      if(c.dataset.interest === interestId) c.classList.toggle('open');
+      else c.classList.remove('open');
+    });
+    return;
+  }
+
+  if(action === 'toggle-done'){
+    const m = interest.milestones.find(x=>x.id===btn.dataset.milestone);
+    m.done = !m.done;
+    save(); render();
+    reopen(interestId);
+    return;
+  }
+
+  if(action === 'edit-interest'){
+    openInterestSheet(interest);
+    return;
+  }
+
+  if(action === 'delete-interest'){
+    handleConfirm(btn, 'del-interest-'+interestId, ()=>{
+      state.interests = state.interests.filter(i=>i.id!==interestId);
+      save(); render();
+      showToast('Interest deleted');
+    });
+    return;
+  }
+
+  if(action === 'delete-milestone'){
+    handleConfirm(btn, 'del-m-'+btn.dataset.milestone, ()=>{
+      interest.milestones = interest.milestones.filter(m=>m.id!==btn.dataset.milestone);
+      save(); render();
+      reopen(interestId);
+      showToast('Step deleted');
+    });
+    return;
+  }
+
+  if(action === 'edit-milestone'){
+    const m = interest.milestones.find(x=>x.id===btn.dataset.milestone);
+    const form = document.querySelector(`.m-form[data-interest="${interestId}"]`);
+    form.querySelector('[data-role=m-title]').value = m.title;
+    form.querySelector('[data-role=m-date]').value = m.date || '';
+    form.querySelector('[data-role=m-done]').checked = m.done;
+    form.dataset.editing = m.id;
+    form.querySelector('[data-action=m-save]').textContent = 'Save step';
+    form.querySelector('[data-action=m-cancel]').style.display = 'block';
+    reopen(interestId);
+    form.querySelector('[data-role=m-title]').focus();
+    return;
+  }
+
+  if(action === 'm-cancel'){
+    const form = document.querySelector(`.m-form[data-interest="${interestId}"]`);
+    resetMilestoneForm(form);
+    return;
+  }
+
+  if(action === 'm-save'){
+    const form = document.querySelector(`.m-form[data-interest="${interestId}"]`);
+    const title = form.querySelector('[data-role=m-title]').value.trim();
+    if(!title){ showToast('Enter a step name'); return; }
+    const date = form.querySelector('[data-role=m-date]').value;
+    const done = form.querySelector('[data-role=m-done]').checked;
+    const editingId = form.dataset.editing;
+    if(editingId){
+      const m = interest.milestones.find(x=>x.id===editingId);
+      m.title = title; m.date = date; m.done = done;
+    } else {
+      interest.milestones.push({ id: uid(), title, date, done });
+    }
+    save(); render();
+    reopen(interestId);
+    return;
+  }
+});
+
+function reopen(interestId){
+  const card = document.querySelector(`.card[data-interest="${interestId}"]`);
+  if(card) card.classList.add('open');
+}
+
+function resetMilestoneForm(form){
+  form.querySelector('[data-role=m-title]').value = '';
+  form.querySelector('[data-role=m-date]').value = '';
+  form.querySelector('[data-role=m-done]').checked = false;
+  delete form.dataset.editing;
+  form.querySelector('[data-action=m-save]').textContent = 'Add step';
+  form.querySelector('[data-action=m-cancel]').style.display = 'none';
+}
+
+function handleConfirm(btn, key, onConfirm){
+  if(confirming.has(key)){
+    confirming.delete(key);
+    onConfirm();
+  } else {
+    confirming.add(key);
+    btn.classList.add('confirming');
+    const original = btn.textContent;
+    btn.textContent = 'Tap again';
+    setTimeout(()=>{
+      if(confirming.has(key)){
+        confirming.delete(key);
+        btn.classList.remove('confirming');
+        btn.textContent = original;
+      }
+    }, 2500);
+  }
+}
+
+// ---- Add/Edit interest sheet ----
+const backdrop = document.getElementById('backdrop');
+const sheet = document.getElementById('interestSheet');
+function openInterestSheet(interest){
+  editingInterestId = interest ? interest.id : null;
+  document.getElementById('sheetTitle').textContent = interest ? 'Edit interest' : 'New interest';
+  document.getElementById('f-name').value = interest ? interest.name : '';
+  document.getElementById('f-heading').value = interest ? (interest.heading||'') : '';
+  backdrop.classList.add('show');
+  sheet.classList.add('show');
+  setTimeout(()=>document.getElementById('f-name').focus(), 200);
+}
+function closeInterestSheet(){
+  backdrop.classList.remove('show');
+  sheet.classList.remove('show');
+  editingInterestId = null;
+}
+document.getElementById('addInterestBtn').addEventListener('click', ()=>openInterestSheet(null));
+document.getElementById('sheetCancel').addEventListener('click', closeInterestSheet);
+backdrop.addEventListener('click', closeInterestSheet);
+document.getElementById('sheetSave').addEventListener('click', ()=>{
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ showToast('Enter an interest name'); return; }
+  const heading = document.getElementById('f-heading').value.trim();
+  if(editingInterestId){
+    const interest = findInterest(editingInterestId);
+    interest.name = name; interest.heading = heading;
+  } else {
+    state.interests.push({ id: uid(), name, heading, milestones: [] });
+  }
+  save(); render();
+  closeInterestSheet();
+});
+
+render();
+</script>
+</body>
+</html>

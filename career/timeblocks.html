@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Time Blocks — Career Lab</title>
+<style>
+  :root{
+    --bg:#14171a;
+    --card:#1c2126;
+    --card-2:#20262c;
+    --border:#2a3138;
+    --text:#e8ecef;
+    --text-dim:#8f9aa3;
+    --teal:#7fd6d0;
+    --coral:#f0879a;
+    --good:#8fd19e;
+    --warn:#e8c468;
+    box-sizing:border-box;
+  }
+  *{box-sizing:inherit;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 100px;}
+
+  h1{font-size:1.3rem;font-weight:650;margin:4px 0 2px;}
+  .sub{color:var(--text-dim);font-size:0.85rem;margin:0 0 20px;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+
+  /* --- summary / chart --- */
+  .summary-top{display:flex;gap:18px;align-items:center;}
+  .donut-wrap{position:relative;flex:0 0 auto;width:120px;height:120px;}
+  .donut-wrap svg{transform:rotate(-90deg);}
+  .donut-center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;
+  }
+  .donut-center .num{font-size:1.25rem;font-weight:700;line-height:1;}
+  .donut-center .lbl{font-size:0.65rem;color:var(--text-dim);margin-top:2px;}
+  .legend{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+  .legend-row{display:flex;align-items:center;gap:8px;font-size:0.82rem;}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .legend-row .name{color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .legend-row .hrs{color:var(--text-dim);flex:0 0 auto;}
+  .empty-note{color:var(--text-dim);font-size:0.85rem;text-align:center;padding:8px 0;}
+
+  /* --- form --- */
+  .form-title{font-size:0.95rem;font-weight:600;margin:0 0 12px;}
+  label{display:block;font-size:0.72rem;color:var(--text-dim);margin:0 0 4px;}
+  .row{display:flex;gap:10px;margin-bottom:12px;}
+  .row > div{flex:1;min-width:0;}
+  input[type=time],input[type=text],select{
+    width:100%;
+    background:var(--card-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:9px;
+    padding:9px 10px;
+    font-size:0.9rem;
+    font-family:inherit;
+    appearance:none;
+    -webkit-appearance:none;
+  }
+  input:focus,select:focus{outline:2px solid var(--teal);outline-offset:1px;}
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%238f9aa3'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    padding-right:28px;
+  }
+  .field-full{margin-bottom:12px;}
+
+  .preview-line{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:0.8rem;color:var(--text-dim);
+    background:var(--card-2);border:1px solid var(--border);
+    border-radius:9px;padding:8px 10px;margin-bottom:10px;
+  }
+  .preview-line .dur{color:var(--teal);font-weight:600;}
+  .span-note{color:var(--warn);}
+
+  .tip{
+    display:flex;gap:8px;align-items:flex-start;
+    font-size:0.78rem;line-height:1.35;
+    border-radius:9px;padding:8px 10px;margin-bottom:14px;
+    border:1px solid var(--border);
+    background:var(--card-2);
+  }
+  .tip.good{border-color:rgba(143,209,158,0.35);color:var(--good);}
+  .tip.off{border-color:rgba(232,196,104,0.35);color:var(--warn);}
+  .tip .ic{flex:0 0 auto;}
+
+  .btn-row{display:flex;gap:10px;}
+  button{
+    font-family:inherit;font-size:0.9rem;font-weight:600;
+    border-radius:9px;border:none;padding:11px 14px;cursor:pointer;
+  }
+  .btn-primary{flex:1;background:var(--teal);color:#0e1a18;}
+  .btn-cancel{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
+  @media (hover:hover) and (pointer:fine){
+    .btn-primary:hover{filter:brightness(1.08);}
+    .btn-cancel:hover{border-color:var(--text-dim);color:var(--text);}
+  }
+
+  /* --- list --- */
+  .list-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:0.78rem;color:var(--text-dim);
+    padding:0 2px 6px;
+  }
+  .block-item{
+    display:flex;align-items:center;gap:10px;
+    background:var(--card);border:1px solid var(--border);
+    border-radius:12px;padding:10px 12px;margin-bottom:8px;
+  }
+  .block-time{flex:0 0 auto;font-size:0.78rem;color:var(--text-dim);width:78px;line-height:1.25;}
+  .block-time .span{display:block;color:var(--warn);font-size:0.66rem;margin-top:1px;}
+  .block-main{flex:1;min-width:0;}
+  .block-task{font-size:0.9rem;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .block-meta{display:flex;align-items:center;gap:6px;margin-top:3px;}
+  .type-pill{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:0.68rem;color:var(--text-dim);
+  }
+  .block-dur{font-size:0.72rem;color:var(--text-dim);}
+  .block-actions{display:flex;gap:6px;flex:0 0 auto;}
+  .icon-btn{
+    background:var(--card-2);border:1px solid var(--border);color:var(--text-dim);
+    width:30px;height:30px;border-radius:8px;font-size:0.85rem;
+    display:flex;align-items:center;justify-content:center;padding:0;
+  }
+  .icon-btn.danger.pending{background:rgba(240,135,154,0.15);border-color:var(--coral);color:var(--coral);}
+  @media (hover:hover) and (pointer:fine){
+    .icon-btn:hover{border-color:var(--text-dim);color:var(--text);}
+  }
+
+  .toast{
+    position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%) translateY(20px);
+    background:#262c32;border:1px solid var(--border);color:var(--text);
+    padding:10px 16px;border-radius:10px;font-size:0.85rem;
+    opacity:0;transition:opacity .2s ease, transform .2s ease;
+    pointer-events:none;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Time Blocks</h1>
+  <p class="sub">Plan your day minute to minute, see where the hours go.</p>
+
+  <div class="card" id="summaryCard">
+    <div class="summary-top">
+      <div class="donut-wrap">
+        <svg viewBox="0 0 140 140" width="120" height="120">
+          <circle cx="70" cy="70" r="58" fill="none" stroke="#2a3138" stroke-width="16"></circle>
+          <g id="donutSegments"></g>
+        </svg>
+        <div class="donut-center">
+          <div class="num" id="totalHoursNum">0h</div>
+          <div class="lbl">planned</div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="empty-note" id="emptyNote" style="display:none;">No time blocks yet — add your first one below.</div>
+  </div>
+
+  <div class="card">
+    <p class="form-title" id="formTitle">Add a block</p>
+
+    <div class="row">
+      <div>
+        <label for="blockStart">Start</label>
+        <input type="time" id="blockStart">
+      </div>
+      <div>
+        <label for="blockEnd">End</label>
+        <input type="time" id="blockEnd">
+      </div>
+    </div>
+
+    <div class="field-full">
+      <label for="blockTask">Task</label>
+      <input type="text" id="blockTask" placeholder="e.g. Draft roadmap doc" maxlength="80">
+    </div>
+
+    <div class="field-full">
+      <label for="blockType">Type</label>
+      <select id="blockType">
+        <option value="deepwork">Deep Work</option>
+        <option value="learning">Learning</option>
+        <option value="meetings">Meetings</option>
+        <option value="office">Office / Admin</option>
+        <option value="network">Network</option>
+        <option value="personal">Personal</option>
+        <option value="break">Break</option>
+      </select>
+    </div>
+
+    <div class="preview-line" id="previewLine">
+      <span id="previewSpan"></span>
+      <span class="dur" id="previewDur">0h 0m</span>
+    </div>
+
+    <div class="tip" id="tipBox" style="display:none;">
+      <span class="ic" id="tipIcon"></span>
+      <span id="tipText"></span>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-cancel" id="cancelBtn" style="display:none;">Cancel</button>
+      <button class="btn-primary" id="saveBtn">Add block</button>
+    </div>
+  </div>
+
+  <div id="listWrap"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "as_timeblocks_v1";
+
+  var TYPES = {
+    deepwork: {label:"Deep Work", color:"#8ab4f8", ideal:[6,11],
+      good:"Good call — Make Time says tackle Laser work like this first, while your mind is still fresh.",
+      off:"Deep, focused work tends to land best in the morning, before the day fills your head with noise."},
+    learning: {label:"Learning", color:"#7fd6d0", ideal:[6,11],
+      good:"Good call — learning sticks better with a fresh, uncluttered mind.",
+      off:"Learning tends to land better in the morning — worth moving earlier if you can."},
+    meetings: {label:"Meetings", color:"#f0879a", ideal:[10,14],
+      good:"Solid slot for meetings — late morning keeps your first hour free for focus.",
+      off:"Early or late meetings eat into prime focus or wind-down time — late morning to early afternoon works better."},
+    office: {label:"Office / Admin", color:"#c9a86a", ideal:[13,17],
+      good:"Good fit — the early-afternoon lull suits routine, low-focus work well.",
+      off:"This looks like prime focus time — routine admin usually fits better in the afternoon."},
+    network: {label:"Network", color:"#c792ea", ideal:[14,19],
+      good:"Good window — energy tends to be more social later in the day.",
+      off:"Networking often flows better once the day's focus work is done — try afternoon or evening."},
+    personal: {label:"Personal", color:"#f2a65a", ideal:[17,22],
+      good:"Evening suits personal time well — a good way to close out the day.",
+      off:"Personal time tends to land better in the evening, once work has wound down."},
+    break: {label:"Break", color:"#6f7b85", ideal:null,
+      good:"Breaks are good any time — go for it.", off:""}
+  };
+
+  var els = {
+    start: document.getElementById("blockStart"),
+    end: document.getElementById("blockEnd"),
+    task: document.getElementById("blockTask"),
+    type: document.getElementById("blockType"),
+    previewSpan: document.getElementById("previewSpan"),
+    previewDur: document.getElementById("previewDur"),
+    tipBox: document.getElementById("tipBox"),
+    tipIcon: document.getElementById("tipIcon"),
+    tipText: document.getElementById("tipText"),
+    saveBtn: document.getElementById("saveBtn"),
+    cancelBtn: document.getElementById("cancelBtn"),
+    formTitle: document.getElementById("formTitle"),
+    listWrap: document.getElementById("listWrap"),
+    legend: document.getElementById("legend"),
+    donutSegments: document.getElementById("donutSegments"),
+    totalHoursNum: document.getElementById("totalHoursNum"),
+    emptyNote: document.getElementById("emptyNote"),
+    toast: document.getElementById("toast")
+  };
+
+  var editId = null;
+  var pendingDeleteId = null;
+  var pendingTimer = null;
+
+  function toMinutes(hhmm){
+    var p = hhmm.split(":").map(Number);
+    return p[0]*60+p[1];
+  }
+
+  function durationHours(start, end){
+    var s = toMinutes(start), e = toMinutes(end);
+    var diff = e - s;
+    if (diff <= 0) diff += 24*60;
+    return diff/60;
+  }
+
+  function formatDur(hoursFloat){
+    var totalMin = Math.round(hoursFloat*60);
+    var h = Math.floor(totalMin/60), m = totalMin%60;
+    if (h && m) return h+"h "+m+"m";
+    if (h) return h+"h";
+    return m+"m";
+  }
+
+  function spansMidnight(start,end){
+    return toMinutes(end) <= toMinutes(start);
+  }
+
+  function load(){
+    try {
+      var raw = localStorage.getItem(KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e){ return []; }
+  }
+  function save(blocks){
+    try { localStorage.setItem(KEY, JSON.stringify(blocks)); } catch(e){}
+  }
+
+  var blocks = load();
+
+  function uid(){
+    return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  }
+
+  // ---- form preview + tip ----
+  function updatePreview(){
+    var start = els.start.value, end = els.end.value;
+    if (!start || !end){
+      els.previewSpan.textContent = "Pick start and end time";
+      els.previewDur.textContent = "—";
+      return;
+    }
+    var dur = durationHours(start,end);
+    els.previewDur.textContent = formatDur(dur);
+    if (spansMidnight(start,end)){
+      els.previewSpan.innerHTML = '<span class="span-note">Runs past midnight, into the next day</span>';
+    } else {
+      els.previewSpan.textContent = "Duration";
+    }
+  }
+
+  function updateTip(){
+    var type = els.type.value;
+    var start = els.start.value;
+    var meta = TYPES[type];
+    if (!meta || !start){ els.tipBox.style.display = "none"; return; }
+    if (!meta.ideal){
+      els.tipBox.style.display = "flex";
+      els.tipBox.className = "tip good";
+      els.tipIcon.textContent = "✓";
+      els.tipText.textContent = meta.good;
+      return;
+    }
+    var hour = toMinutes(start)/60;
+    var ok = hour >= meta.ideal[0] && hour < meta.ideal[1];
+    els.tipBox.style.display = "flex";
+    els.tipBox.className = ok ? "tip good" : "tip off";
+    els.tipIcon.textContent = ok ? "✓" : "💡";
+    els.tipText.textContent = ok ? meta.good : meta.off;
+  }
+
+  els.start.addEventListener("input", function(){ updatePreview(); updateTip(); });
+  els.end.addEventListener("input", updatePreview);
+  els.type.addEventListener("change", updateTip);
+
+  // ---- chart + legend ----
+  function renderSummary(){
+    var totals = {};
+    var grand = 0;
+    blocks.forEach(function(b){
+      var h = durationHours(b.start,b.end);
+      totals[b.type] = (totals[b.type]||0)+h;
+      grand += h;
+    });
+
+    els.totalHoursNum.textContent = grand ? formatDur(grand) : "0h";
+    els.emptyNote.style.display = blocks.length ? "none" : "block";
+
+    var r = 58, c = 2*Math.PI*r;
+    var segHtml = "";
+    var offset = 0;
+    Object.keys(TYPES).forEach(function(key){
+      var hrs = totals[key];
+      if (!hrs) return;
+      var frac = hrs/grand;
+      var dash = frac*c;
+      segHtml += '<circle cx="70" cy="70" r="'+r+'" fill="none" stroke="'+TYPES[key].color+'" ' +
+        'stroke-width="16" stroke-dasharray="'+dash.toFixed(2)+' '+(c-dash).toFixed(2)+'" ' +
+        'stroke-dashoffset="'+(-offset).toFixed(2)+'"></circle>';
+      offset += dash;
+    });
+    els.donutSegments.innerHTML = segHtml;
+
+    var legendHtml = "";
+    Object.keys(TYPES).forEach(function(key){
+      var hrs = totals[key];
+      if (!hrs) return;
+      var pct = grand ? Math.round((hrs/grand)*100) : 0;
+      legendHtml += '<div class="legend-row">' +
+        '<span class="dot" style="background:'+TYPES[key].color+'"></span>' +
+        '<span class="name">'+TYPES[key].label+'</span>' +
+        '<span class="hrs">'+formatDur(hrs)+' · '+pct+'%</span>' +
+        '</div>';
+    });
+    els.legend.innerHTML = legendHtml;
+  }
+
+  // ---- list ----
+  function renderList(){
+    var sorted = blocks.slice().sort(function(a,b){
+      return toMinutes(a.start) - toMinutes(b.start);
+    });
+
+    if (!sorted.length){
+      els.listWrap.innerHTML = "";
+      return;
+    }
+
+    var html = '<div class="list-head"><span>Today\'s blocks</span></div>';
+    sorted.forEach(function(b){
+      var meta = TYPES[b.type] || TYPES.office;
+      var dur = durationHours(b.start,b.end);
+      var span = spansMidnight(b.start,b.end);
+      var isPending = pendingDeleteId === b.id;
+      html += '<div class="block-item">' +
+        '<div class="block-time">'+b.start+'–'+b.end+(span?'<span class="span">next day</span>':'')+'</div>' +
+        '<div class="block-main">' +
+          '<div class="block-task">'+escapeHtml(b.task)+'</div>' +
+          '<div class="block-meta">' +
+            '<span class="type-pill"><span class="dot" style="background:'+meta.color+'"></span>'+meta.label+'</span>' +
+            '<span class="block-dur">· '+formatDur(dur)+'</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="block-actions">' +
+          '<button class="icon-btn" data-action="edit" data-id="'+b.id+'" aria-label="Edit">✎</button>' +
+          '<button class="icon-btn danger'+(isPending?' pending':'')+'" data-action="delete" data-id="'+b.id+'" aria-label="Delete">'+(isPending?'?':'✕')+'</button>' +
+        '</div>' +
+      '</div>';
+    });
+
+    els.listWrap.innerHTML = html;
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderAll(){
+    renderSummary();
+    renderList();
+  }
+
+  // ---- form lifecycle ----
+  function resetFormForNext(lastBlock){
+    editId = null;
+    els.formTitle.textContent = "Add a block";
+    els.saveBtn.textContent = "Add block";
+    els.cancelBtn.style.display = "none";
+    els.task.value = "";
+    if (lastBlock){
+      els.start.value = lastBlock.end;
+      els.end.value = "";
+    } else {
+      els.start.value = "";
+    }
+    updatePreview();
+    updateTip();
+  }
+
+  function loadIntoForm(b){
+    editId = b.id;
+    els.formTitle.textContent = "Edit block";
+    els.saveBtn.textContent = "Update block";
+    els.cancelBtn.style.display = "block";
+    els.start.value = b.start;
+    els.end.value = b.end;
+    els.task.value = b.task;
+    els.type.value = b.type;
+    updatePreview();
+    updateTip();
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  els.saveBtn.addEventListener("click", function(){
+    var start = els.start.value, end = els.end.value;
+    var task = els.task.value.trim(), type = els.type.value;
+    if (!start || !end || !task){
+      showToast("Fill in times and task");
+      return;
+    }
+    if (start === end){
+      showToast("Start and end can't be the same");
+      return;
+    }
+    var block = {id: editId || uid(), start:start, end:end, task:task, type:type};
+    if (editId){
+      blocks = blocks.map(function(b){ return b.id === editId ? block : b; });
+    } else {
+      blocks.push(block);
+    }
+    save(blocks);
+    renderAll();
+    resetFormForNext(block);
+    showToast(editId ? "Block updated" : "Block added");
+  });
+
+  els.cancelBtn.addEventListener("click", function(){
+    resetFormForNext(null);
+  });
+
+  els.listWrap.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    var id = btn.getAttribute("data-id");
+    var action = btn.getAttribute("data-action");
+    var b = blocks.find(function(x){ return x.id === id; });
+    if (!b) return;
+
+    if (action === "edit"){
+      pendingDeleteId = null;
+      loadIntoForm(b);
+      return;
+    }
+    if (action === "delete"){
+      if (pendingDeleteId === id){
+        clearTimeout(pendingTimer);
+        blocks = blocks.filter(function(x){ return x.id !== id; });
+        save(blocks);
+        pendingDeleteId = null;
+        renderAll();
+        showToast("Block deleted");
+      } else {
+        pendingDeleteId = id;
+        renderList();
+        pendingTimer = setTimeout(function(){
+          pendingDeleteId = null;
+          renderList();
+        }, 3000);
+      }
+    }
+  });
+
+  function showToast(msg){
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){
+      els.toast.classList.remove("show");
+    }, 2000);
+  }
+
+  // ---- init ----
+  var last = blocks.slice().sort(function(a,b){
+    return toMinutes(a.start) - toMinutes(b.start);
+  }).pop();
+  resetFormForNext(last || null);
+  renderAll();
+})();
+</script>
+</body>
+</html>

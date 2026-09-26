@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Surplus Allocator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:16px 16px 80px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  h1{font-size:18px;margin:0 0 2px;}
+  p.sub{color:var(--sub);font-size:12px;margin:0 0 12px;}
+  .card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input[type=text],input[type=number],select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus,select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:120px;}
+  button{font:inherit;cursor:pointer;}
+  button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;margin-top:4px;}
+  button.ghost{width:100%;padding:10px;border:1px solid #475569;border-radius:10px;background:transparent;color:var(--txt);font-size:13px;margin-top:8px;}
+
+  .summary{text-align:center;}
+  .summary-num{font-size:28px;font-weight:800;color:var(--acc);}
+  .summary-label{color:var(--sub);font-size:11px;}
+  .bar{height:8px;border-radius:6px;background:#334155;overflow:hidden;margin-top:8px;}
+  .bar-fill{height:100%;background:var(--acc);transition:width .3s;}
+  .stat-row{display:flex;gap:8px;margin-top:10px;}
+  .stat{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:8px 4px;}
+  .stat .n{font-size:14px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:1px;}
+  .verdict{font-size:12px;margin-top:10px;line-height:1.5;color:var(--sub);}
+  .verdict.warn{color:var(--warn);}
+  .toggle{display:flex;align-items:flex-start;gap:8px;margin-top:8px;font-size:12px;color:var(--sub);}
+  .toggle input{margin-top:2px;}
+  .toggle label{margin:0;font-size:12px;}
+
+  details.form summary{font-weight:700;font-size:14px;cursor:pointer;}
+  details.form[open] summary{margin-bottom:10px;}
+  .err{color:var(--bad);font-size:12px;margin:2px 0 6px;}
+
+  .list-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 2px 8px;}
+  .list-head h2{font-size:14px;margin:0;}
+  .list-head small{display:block;font-size:10px;color:var(--sub);font-weight:400;margin-top:1px;}
+  ul#goals{list-style:none;margin:0;padding:0;}
+  .goal{display:flex;flex-wrap:wrap;align-items:center;gap:4px;background:var(--card);border-radius:10px;padding:4px 6px;margin-bottom:6px;border-left:4px solid var(--acc);}
+  .goal.pending{border-left-color:var(--warn);}
+  .goal.dragging{box-shadow:0 10px 24px rgba(0,0,0,.5);outline:2px solid var(--acc);position:relative;z-index:5;}
+  .handle{flex:0 0 auto;width:28px;height:36px;border:none;border-radius:6px;background:transparent;color:var(--sub);font-size:18px;line-height:1;cursor:grab;touch-action:none;}
+  .main{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px;border:none;background:none;color:var(--txt);text-align:left;font-size:14px;}
+  .gname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gamt{font-weight:700;white-space:nowrap;}
+  .st{flex:0 0 auto;width:20px;text-align:center;font-size:13px;}
+  .st.ok{color:var(--acc);}
+  .st.wait{color:var(--warn);}
+  .ib{flex:0 0 auto;width:32px;height:32px;border:1px solid #334155;border-radius:8px;background:#0f172a;font-size:13px;color:var(--txt);padding:0;}
+  .ib.edit{color:var(--acc);}
+  .ib.del{color:var(--bad);}
+  .ib.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .det{display:none;flex:0 0 100%;padding:2px 4px 8px 34px;font-size:11px;line-height:1.6;color:var(--sub);white-space:pre-line;}
+  .goal.open .det{display:block;}
+  .goal.pending .det{color:var(--warn);}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:24px;}
+  .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:12px;}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 16px;border-radius:16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none;z-index:50;max-width:90vw;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎯 Surplus Allocator</h1>
+  <p class="sub">Your monthly surplus funds goals from the top down. What doesn't fit waits as pending.</p>
+
+  <div class="card summary">
+    <div class="summary-num" id="leftNum">₹0</div>
+    <div class="summary-label">Left after funded goals (per month)</div>
+    <div class="bar"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="fundedNum">₹0</div><div class="l">Funded</div></div>
+      <div class="stat"><div class="n" id="pendNum" style="color:var(--warn)">₹0</div><div class="l" id="pendLabel">Pending</div></div>
+      <div class="stat"><div class="n" id="extraNum">₹0</div><div class="l">Extra needed</div></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div class="card">
+    <label for="surplus">Monthly surplus available (₹)</label>
+    <input type="number" id="surplus" inputmode="decimal" min="0" placeholder="e.g. 20000">
+    <div class="toggle">
+      <input type="checkbox" id="strict">
+      <label for="strict">Strict order: once a goal doesn't fit, everything below it waits too</label>
+    </div>
+  </div>
+
+  <details class="card form" id="formBox">
+    <summary id="formSum">+ Add goal</summary>
+    <div class="row">
+      <div class="field" style="flex:2"><input type="text" id="gName" placeholder="Goal, e.g. Kids maturity" maxlength="40" aria-label="Goal name"></div>
+      <div class="field"><input type="number" id="gAmt" inputmode="decimal" min="0" placeholder="₹ per month" aria-label="Monthly amount"></div>
+    </div>
+    <div class="row">
+      <div class="field"><input type="number" id="gTarget" inputmode="decimal" min="0" placeholder="Target ₹ (optional)" aria-label="Target amount"></div>
+    </div>
+    <div class="err" id="formErr" role="alert"></div>
+    <button class="add" id="saveBtn" type="button">Save goal</button>
+    <button class="ghost" id="cancelBtn" type="button">Cancel</button>
+  </details>
+
+  <div class="list-head">
+    <h2>Goals<small>Funded top to bottom · tap a goal for details</small></h2>
+  </div>
+  <ul id="goals"></ul>
+  <div class="foot" id="saved"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const KEY = 'surplus_allocator_v1';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $ = id => document.getElementById(id);
+const list = $('goals');
+
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function fmtDate(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const n = d.getDate(), m = n % 100;
+  const suffix = (m >= 11 && m <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th');
+  return n + suffix + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.goals)) return s;
+  }catch(e){}
+  return null;
+}
+let state = load() || {
+  surplus: 20000, strict: false, updated: null,
+  goals: [
+    {id: uid(), name: 'Kids maturity', amt: 5000},
+    {id: uid(), name: 'Parents co-pay', amt: 5000},
+    {id: uid(), name: 'Emergency fund', amt: 5000},
+    {id: uid(), name: 'PPF step-up', amt: 5000}
+  ]
+};
+let editingId = null;
+const open = new Set();
+
+function save(){
+  state.updated = new Date().toISOString();
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  $('saved').textContent = 'Saved on ' + fmtDate(state.updated);
+}
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+function dur(m){ return m >= 12 ? Math.floor(m/12) + 'y' + (m % 12 ? ' ' + (m % 12) + 'm' : '') : m + 'm'; }
+function etaText(g, funded){
+  const t = g.target || 0;
+  if(t <= 0) return 'No target set';
+  const months = Math.ceil(t / Math.max(1, g.amt));
+  let txt = 'Target ' + fmt(t) + ' · ' + months + (months === 1 ? ' month' : ' months') + ' (' + dur(months) + ')';
+  if(funded){
+    const d = new Date(); d.setMonth(d.getMonth() + months);
+    txt += '\nReached by ' + fmtDate(d.toISOString());
+  } else txt += ' once funded';
+  return txt;
+}
+function allocate(){
+  let rem = Math.max(0, state.surplus || 0), stopped = false;
+  return state.goals.map(g => {
+    const need = Math.max(0, g.amt || 0);
+    if(!stopped && need <= rem){ rem -= need; return {g, funded:true, short:0}; }
+    const short = need - rem;
+    if(state.strict) stopped = true;
+    return {g, funded:false, short};
+  });
+}
+
+// Structural rebuild: add / remove / move / sort / drop
+function render(){
+  if(state.goals.length === 0){
+    list.innerHTML = '<li class="empty">No goals yet. Open "+ Add goal" above.</li>';
+  } else {
+    list.innerHTML = state.goals.map(g => `
+      <li class="goal" data-id="${g.id}">
+        <button class="handle" type="button" data-role="handle" title="Drag, or press ↑ ↓ to reorder" aria-label="Reorder ${esc(g.name)}">⠿</button>
+        <button class="main" type="button" data-act="toggle" aria-expanded="false"><span class="gname">${esc(g.name)}</span><span class="gamt">${fmt(g.amt)}</span></button>
+        <span class="st" data-role="st"></span>
+        <button class="ib edit" type="button" data-act="edit" aria-label="Edit ${esc(g.name)}">✎</button>
+        <button class="ib del" type="button" data-act="del" aria-label="Delete ${esc(g.name)}">✕</button>
+        <div class="det" data-role="det"></div>
+      </li>`).join('');
+  }
+  update();
+}
+
+// In-place patch: statuses, details, totals
+function update(){
+  const res = allocate();
+  res.forEach(r => {
+    const li = list.querySelector(`[data-id="${r.g.id}"]`); if(!li) return;
+    li.classList.toggle('pending', !r.funded);
+    const isOpen = open.has(r.g.id);
+    li.classList.toggle('open', isOpen);
+    li.querySelector('[data-act="toggle"]').setAttribute('aria-expanded', isOpen);
+    const st = li.querySelector('[data-role="st"]');
+    st.className = 'st ' + (r.funded ? 'ok' : 'wait');
+    st.textContent = r.funded ? '✓' : '⏳';
+    st.title = r.funded ? 'Funded' : 'Pending';
+    st.setAttribute('aria-label', r.funded ? 'Funded' : 'Pending');
+    li.querySelector('[data-role="det"]').textContent =
+      (r.funded ? '' : 'Pending: short by ' + fmt(r.short) + ' per month\n') + etaText(r.g, r.funded);
+  });
+  const surplus = Math.max(0, state.surplus || 0);
+  const funded = res.filter(r => r.funded).reduce((s,r) => s + r.g.amt, 0);
+  const pend = res.filter(r => !r.funded);
+  const pendTotal = pend.reduce((s,r) => s + r.g.amt, 0);
+  const left = Math.max(0, surplus - funded);
+  const extra = Math.max(0, pendTotal - left);
+
+  $('leftNum').textContent = fmt(left);
+  $('fundedNum').textContent = fmt(funded);
+  $('pendNum').textContent = fmt(pendTotal);
+  $('pendLabel').textContent = 'Pending (' + pend.length + ')';
+  const ex = $('extraNum'); ex.textContent = fmt(extra); ex.style.color = extra > 0 ? 'var(--bad)' : 'var(--acc)';
+  $('barFill').style.width = (surplus > 0 ? Math.min(100, funded / surplus * 100) : 0) + '%';
+
+  const v = $('verdict');
+  if(state.goals.length === 0){ v.textContent = ''; v.className = 'verdict'; }
+  else if(pend.length === 0){ v.textContent = '✅ Every goal is funded' + (left > 0 ? ' with ' + fmt(left) + ' to spare.' : '.'); v.className = 'verdict'; }
+  else {
+    v.className = 'verdict warn';
+    v.textContent = 'Pending goals need ' + fmt(pendTotal) + ' per month. You have ' + fmt(left) + ' free, so find ' + fmt(extra) + ' more per month or trim a goal above.';
+  }
+}
+
+// Form
+function resetForm(){
+  editingId = null;
+  $('gName').value = ''; $('gAmt').value = ''; $('gTarget').value = ''; $('formErr').textContent = '';
+  $('formSum').textContent = '+ Add goal'; $('formBox').open = false;
+}
+$('saveBtn').addEventListener('click', () => {
+  const name = $('gName').value.trim();
+  const amt = parseFloat($('gAmt').value);
+  const tRaw = $('gTarget').value.trim();
+  const target = tRaw === '' ? 0 : parseFloat(tRaw);
+  const err = $('formErr');
+  if(!name){ err.textContent = 'Enter a goal name.'; $('gName').focus(); return; }
+  if(!Number.isFinite(amt) || amt <= 0){ err.textContent = 'Enter a monthly amount above ₹0.'; $('gAmt').focus(); return; }
+  if(!Number.isFinite(target) || target < 0){ err.textContent = 'Target must be ₹0 or more (leave blank for none).'; $('gTarget').focus(); return; }
+  err.textContent = '';
+  if(editingId){
+    const g = state.goals.find(x => x.id === editingId);
+    if(g){ g.name = name; g.amt = amt; g.target = target; }
+    toast('Goal updated');
+  } else {
+    state.goals.push({id: uid(), name, amt, target});
+    toast('Goal added at the bottom');
+  }
+  save(); resetForm(); render();
+});
+$('cancelBtn').addEventListener('click', resetForm);
+['gName','gAmt','gTarget'].forEach(id => $(id).addEventListener('keydown', e => { if(e.key === 'Enter') $('saveBtn').click(); }));
+
+// Surplus + strict toggle
+$('surplus').value = state.surplus || '';
+$('strict').checked = !!state.strict;
+$('surplus').addEventListener('input', e => { state.surplus = parseFloat(e.target.value) || 0; save(); update(); });
+$('strict').addEventListener('change', e => { state.strict = e.target.checked; save(); update(); });
+
+// Row actions (event delegation)
+const pendingDel = {};
+list.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]'); if(!btn) return;
+  const li = btn.closest('.goal'); const id = li.dataset.id;
+  const i = state.goals.findIndex(g => g.id === id); if(i < 0) return;
+  const act = btn.dataset.act;
+  if(act === 'toggle'){ open.has(id) ? open.delete(id) : open.add(id); update(); }
+  else if(act === 'edit'){
+    const g = state.goals[i];
+    $('gName').value = g.name; $('gAmt').value = g.amt; $('gTarget').value = g.target || ''; editingId = id;
+    $('formSum').textContent = '✎ Edit goal'; $('formBox').open = true;
+    window.scrollTo({top:0, behavior:'smooth'});
+    setTimeout(() => $('gName').focus({preventScroll:true}), 300);
+  }
+  else if(act === 'del'){
+    if(pendingDel[id]){
+      clearTimeout(pendingDel[id]); delete pendingDel[id];
+      state.goals.splice(i,1); open.delete(id); if(editingId === id) resetForm();
+      save(); render(); toast('Goal deleted');
+    } else {
+      btn.textContent = '✔'; btn.classList.add('confirming'); toast('Tap ✔ again to delete');
+      pendingDel[id] = setTimeout(() => { delete pendingDel[id]; btn.textContent = '✕'; btn.classList.remove('confirming'); }, 2500);
+    }
+  }
+});
+
+// Keyboard reorder on the handle
+list.addEventListener('keydown', e => {
+  const h = e.target.closest('[data-role="handle"]');
+  if(!h || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+  e.preventDefault();
+  const id = h.closest('.goal').dataset.id;
+  const i = state.goals.findIndex(g => g.id === id);
+  const j = i + (e.key === 'ArrowUp' ? -1 : 1);
+  if(i < 0 || j < 0 || j >= state.goals.length) return;
+  [state.goals[i], state.goals[j]] = [state.goals[j], state.goals[i]];
+  save(); render();
+  const again = list.querySelector(`[data-id="${id}"] [data-role="handle"]`); if(again) again.focus();
+});
+
+// Drag to reorder (pointer events: mouse and touch)
+let drag = null;
+list.addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-role="handle"]'); if(!h) return;
+  e.preventDefault();
+  const li = h.closest('.goal');
+  list.setPointerCapture(e.pointerId);
+  li.classList.add('dragging');
+  drag = {li};
+});
+list.addEventListener('pointermove', e => {
+  if(!drag) return;
+  const y = e.clientY;
+  const next = [...list.children].filter(c => c !== drag.li).find(c => {
+    const r = c.getBoundingClientRect(); return y < r.top + r.height / 2;
+  });
+  if(next) list.insertBefore(drag.li, next); else list.appendChild(drag.li);
+  state.goals = [...list.children].map(c => state.goals.find(g => g.id === c.dataset.id)).filter(Boolean);
+  update();
+  if(y < 80) window.scrollBy(0,-14); else if(y > window.innerHeight - 80) window.scrollBy(0,14);
+});
+function endDrag(){
+  if(!drag) return;
+  drag.li.classList.remove('dragging'); drag = null;
+  save(); render();
+}
+list.addEventListener('pointerup', endDrag);
+list.addEventListener('pointercancel', endDrag);
+
+if(state.updated) $('saved').textContent = 'Saved on ' + fmtDate(state.updated);
+render();
+</script>
+</body>
+</html>

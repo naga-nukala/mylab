@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Even Swap</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b21; --card2:#1f232b; --border:#2a2f3a;
+    --text:#e8eaed; --text-dim:#9aa1ac; --mint:#7fd6d0; --coral:#f0879a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:16px 12px 80px; max-width:760px; margin-inline:auto;
+  }
+  h1{font-size:1.4rem; margin:4px 0 2px;}
+  .sub{color:var(--text-dim); font-size:0.85rem; margin:0 0 14px;}
+  details{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:16px; font-size:0.85rem; color:var(--text-dim);}
+  summary{cursor:pointer; color:var(--mint); font-weight:600;}
+  details ol{margin:8px 0 0; padding-left:18px;}
+  section{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;}
+  section h2{font-size:0.95rem; margin:0 0 10px; color:var(--mint);}
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  input[type=text], input[type=number], select, textarea{
+    background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:8px 10px; font-size:0.9rem; width:100%;
+  }
+  textarea{resize:vertical; min-height:50px;}
+  button{
+    background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:8px 12px; font-size:0.85rem; cursor:pointer;
+  }
+  button.primary{background:var(--mint); color:#0f1115; border:none; font-weight:600;}
+  button.danger-arm{background:var(--coral); color:#0f1115; border:none;}
+  @media (hover:hover) and (pointer:fine){
+    button:hover{filter:brightness(1.15);}
+  }
+  .chip{display:flex; align-items:center; gap:6px; background:var(--card2); border:1px solid var(--border); border-radius:20px; padding:4px 6px 4px 12px;}
+  .chip input{background:transparent; border:none; width:auto; min-width:70px; padding:2px 0;}
+  .chip button{padding:2px 8px; border-radius:50%; font-size:0.75rem;}
+  .addRow{margin-top:8px;}
+  .addRow input{flex:1; min-width:120px;}
+  table{width:100%; border-collapse:collapse; margin-top:4px;}
+  th, td{border:1px solid var(--border); padding:6px; vertical-align:top; font-size:0.85rem;}
+  th{background:var(--card2); font-weight:600; text-align:left;}
+  .altHead{min-width:110px;}
+  .badge{display:inline-block; font-size:0.65rem; padding:2px 6px; border-radius:10px; margin-top:4px;}
+  .badge.dominated{background:var(--coral); color:#0f1115;}
+  .objName{font-weight:600; margin-bottom:4px;}
+  .objControls{display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;}
+  .objControls button, .objControls select{font-size:0.7rem; padding:4px 6px;}
+  tr.neutralized .objName{text-decoration:line-through; color:var(--text-dim);}
+  tr.neutralized{opacity:0.55;}
+  .winner{background:var(--mint); color:#0f1115; border-radius:10px; padding:12px; margin-bottom:16px; font-weight:600; text-align:center;}
+  .logItem{background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:0.85rem;}
+  .logItem .meta{color:var(--text-dim); font-size:0.7rem; margin-top:4px;}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--mint); color:#0f1115; padding:10px 18px; border-radius:20px;
+    font-size:0.85rem; font-weight:600; opacity:0; pointer-events:none; transition:opacity .25s;
+    z-index:50;
+  }
+  .toast.show{opacity:1;}
+  .empty{color:var(--text-dim); font-size:0.85rem; font-style:italic;}
+</style>
+</head>
+<body>
+
+<h1>Even Swap</h1>
+<p class="sub">Compare alternatives across objectives, then trade off one objective for another until a clear winner emerges.</p>
+
+<details>
+  <summary>How this works</summary>
+  <ol>
+    <li>List your alternatives (e.g. job offers) and the objectives you care about (salary, growth, culture...).</li>
+    <li>Fill in the table with how each alternative does on each objective.</li>
+    <li>Look for a dominated alternative (worse on everything) — remove it.</li>
+    <li>Pick an objective. Adjust its values so all alternatives are equal on it, compensating by adjusting another objective. Then hit "Neutralize" on that objective — it no longer affects the decision.</li>
+    <li>Log each swap so you remember your reasoning. Repeat until one alternative wins or objectives run out.</li>
+  </ol>
+</details>
+
+<div id="winnerBanner"></div>
+
+<section>
+  <h2>Alternatives</h2>
+  <div class="row" id="altChips"></div>
+  <div class="row addRow">
+    <input type="text" id="newAltName" placeholder="e.g. Offer at Acme Co.">
+    <button class="primary" id="addAltBtn">+ Add</button>
+  </div>
+</section>
+
+<section>
+  <h2>Objectives &amp; Consequences</h2>
+  <div style="overflow-x:auto;">
+    <table id="matrixTable"></table>
+  </div>
+  <div class="row addRow">
+    <input type="text" id="newObjName" placeholder="e.g. Salary">
+    <button class="primary" id="addObjBtn">+ Add objective</button>
+  </div>
+</section>
+
+<section>
+  <h2>Swap Log</h2>
+  <div id="swapLogList"></div>
+  <div class="addRow">
+    <textarea id="newSwapNote" placeholder="e.g. Gave up $5k salary at Offer B in exchange for one extra remote day — now salary is a wash, neutralizing it."></textarea>
+    <div class="row" style="margin-top:6px;">
+      <button class="primary" id="addSwapBtn">Log swap</button>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'as_evenswap_v1';
+let state = load();
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { alternatives:[], objectives:[], values:{}, swapLog:[] };
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+}
+
+function fmtDate(ts){
+  const d = new Date(ts);
+  const day = d.getDate();
+  const suf = (day%10===1&&day!==11)?'st':(day%10===2&&day!==12)?'nd':(day%10===3&&day!==13)?'rd':'th';
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${day}${suf} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+function fmtNum(v, type){
+  if(v===''||v===undefined||v===null||isNaN(v)) return '';
+  const n = Number(v);
+  return type==='currency' ? '₹' + n.toLocaleString('en-IN') : n.toLocaleString('en-IN');
+}
+
+let toastTimer=null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// tap-twice delete tracking
+let armedDelete = null; // {type, id}
+function armOrDelete(type, id, btn, doDelete){
+  const key = type+':'+id;
+  if(armedDelete === key){
+    armedDelete = null;
+    doDelete();
+  } else {
+    armedDelete = key;
+    btn.classList.add('danger-arm');
+    btn.textContent = 'Confirm?';
+    showToast('Tap again to delete');
+    setTimeout(()=>{
+      if(armedDelete === key){
+        armedDelete = null;
+        btn.classList.remove('danger-arm');
+        btn.textContent = '×';
+      }
+    }, 2500);
+  }
+}
+
+function getVal(objId, altId){
+  return (state.values[objId] || {})[altId];
+}
+function setVal(objId, altId, v){
+  if(!state.values[objId]) state.values[objId] = {};
+  state.values[objId][altId] = v;
+}
+
+function computeDominance(){
+  const activeObjs = state.objectives.filter(o=>!o.neutralized && o.type!=='text');
+  const dominated = {};
+  state.alternatives.forEach(a=> dominated[a.id]=false);
+  for(const a of state.alternatives){
+    for(const b of state.alternatives){
+      if(a.id===b.id) continue;
+      if(activeObjs.length===0) continue;
+      let atLeastAsGoodAll = true, strictlyBetterOne = false;
+      for(const o of activeObjs){
+        const va = Number(getVal(o.id, a.id));
+        const vb = Number(getVal(o.id, b.id));
+        if(isNaN(va) || isNaN(vb)){ atLeastAsGoodAll = false; break; }
+        const better = o.direction==='high' ? (vb>va) : (vb<va);
+        const equal = vb===va;
+        if(!(better || equal)){ atLeastAsGoodAll = false; break; }
+        if(better) strictlyBetterOne = true;
+      }
+      if(atLeastAsGoodAll && strictlyBetterOne){ dominated[a.id] = true; }
+    }
+  }
+  return dominated;
+}
+
+function renderWinner(dominated){
+  const banner = document.getElementById('winnerBanner');
+  const alts = state.alternatives;
+  const activeObjs = state.objectives.filter(o=>!o.neutralized);
+  if(alts.length>1 && activeObjs.length>0){
+    const nonDominated = alts.filter(a=>!dominated[a.id]);
+    if(nonDominated.length===1){
+      banner.innerHTML = `<div class="winner">🏆 ${escapeHtml(nonDominated[0].name)} dominates on all remaining objectives</div>`;
+      return;
+    }
+  }
+  banner.innerHTML = '';
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderAltChips(){
+  const wrap = document.getElementById('altChips');
+  wrap.innerHTML = '';
+  if(state.alternatives.length===0){
+    wrap.innerHTML = '<span class="empty">No alternatives yet</span>';
+  }
+  state.alternatives.forEach(a=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    const input = document.createElement('input');
+    input.type='text'; input.value=a.name;
+    input.addEventListener('input', ()=>{ a.name=input.value; save(); renderTable(); });
+    const del = document.createElement('button');
+    del.textContent='×';
+    del.addEventListener('click', ()=>{
+      armOrDelete('alt', a.id, del, ()=>{
+        state.alternatives = state.alternatives.filter(x=>x.id!==a.id);
+        Object.values(state.values).forEach(v=>{ delete v[a.id]; });
+        save(); renderAll();
+        showToast('Alternative deleted');
+      });
+    });
+    chip.appendChild(input); chip.appendChild(del);
+    wrap.appendChild(chip);
+  });
+}
+
+function renderTable(){
+  const table = document.getElementById('matrixTable');
+  table.innerHTML = '';
+  if(state.objectives.length===0 || state.alternatives.length===0){
+    table.innerHTML = '<tr><td class="empty">Add at least one alternative and one objective to build the table.</td></tr>';
+    return;
+  }
+  const dominated = computeDominance();
+  renderWinner(dominated);
+
+  const thead = document.createElement('tr');
+  thead.appendChild(document.createElement('th'));
+  state.alternatives.forEach(a=>{
+    const th = document.createElement('th');
+    th.className = 'altHead';
+    th.textContent = a.name;
+    if(dominated[a.id]){
+      const b = document.createElement('div');
+      b.className='badge dominated';
+      b.textContent='Dominated';
+      th.appendChild(b);
+    }
+    thead.appendChild(th);
+  });
+  table.appendChild(thead);
+
+  state.objectives.forEach(o=>{
+    const tr = document.createElement('tr');
+    if(o.neutralized) tr.className='neutralized';
+
+    const th = document.createElement('th');
+    const nameDiv = document.createElement('div');
+    nameDiv.className='objName';
+    nameDiv.textContent = o.name;
+    th.appendChild(nameDiv);
+
+    const controls = document.createElement('div');
+    controls.className='objControls';
+
+    const dirBtn = document.createElement('button');
+    dirBtn.textContent = o.direction==='high' ? '↑ Higher better' : '↓ Lower better';
+    dirBtn.addEventListener('click', ()=>{
+      o.direction = o.direction==='high' ? 'low' : 'high';
+      save(); renderTable();
+    });
+    controls.appendChild(dirBtn);
+
+    const typeSel = document.createElement('select');
+    ['currency','number','text'].forEach(t=>{
+      const opt = document.createElement('option');
+      opt.value=t; opt.textContent = t==='currency'?'₹ Currency':t==='number'?'Number':'Text';
+      if(o.type===t) opt.selected=true;
+      typeSel.appendChild(opt);
+    });
+    typeSel.addEventListener('change', ()=>{
+      o.type = typeSel.value;
+      save(); renderTable();
+    });
+    controls.appendChild(typeSel);
+
+    const neutBtn = document.createElement('button');
+    neutBtn.textContent = o.neutralized ? 'Un-neutralize' : 'Neutralize';
+    neutBtn.addEventListener('click', ()=>{
+      o.neutralized = !o.neutralized;
+      save(); renderTable();
+    });
+    controls.appendChild(neutBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent='×';
+    delBtn.addEventListener('click', ()=>{
+      armOrDelete('obj', o.id, delBtn, ()=>{
+        state.objectives = state.objectives.filter(x=>x.id!==o.id);
+        delete state.values[o.id];
+        save(); renderAll();
+        showToast('Objective deleted');
+      });
+    });
+    controls.appendChild(delBtn);
+
+    th.appendChild(controls);
+    tr.appendChild(th);
+
+    state.alternatives.forEach(a=>{
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = o.type==='text' ? 'text' : 'number';
+      const raw = getVal(o.id, a.id);
+      input.value = raw===undefined ? '' : raw;
+      input.addEventListener('input', ()=>{
+        setVal(o.id, a.id, input.value);
+        save();
+        const dom = computeDominance();
+        renderWinner(dom);
+        updateDominanceBadges(dom);
+      });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    table.appendChild(tr);
+  });
+}
+
+function updateDominanceBadges(dominated){
+  const ths = document.querySelectorAll('#matrixTable tr:first-child th.altHead');
+  ths.forEach((th, i)=>{
+    const a = state.alternatives[i];
+    let badge = th.querySelector('.badge');
+    if(dominated[a.id]){
+      if(!badge){
+        badge = document.createElement('div');
+        badge.className='badge dominated';
+        badge.textContent='Dominated';
+        th.appendChild(badge);
+      }
+    } else if(badge){
+      badge.remove();
+    }
+  });
+}
+
+function renderSwapLog(){
+  const wrap = document.getElementById('swapLogList');
+  wrap.innerHTML = '';
+  if(state.swapLog.length===0){
+    wrap.innerHTML = '<span class="empty">No swaps logged yet</span>';
+    return;
+  }
+  [...state.swapLog].reverse().forEach(entry=>{
+    const div = document.createElement('div');
+    div.className='logItem';
+    const p = document.createElement('div');
+    p.textContent = entry.note;
+    const meta = document.createElement('div');
+    meta.className='meta row';
+    const dateSpan = document.createElement('span');
+    dateSpan.textContent = fmtDate(entry.ts);
+    dateSpan.style.marginRight='auto';
+    const del = document.createElement('button');
+    del.textContent='Delete';
+    del.style.fontSize='0.7rem';
+    del.addEventListener('click', ()=>{
+      armOrDelete('swap', entry.id, del, ()=>{
+        state.swapLog = state.swapLog.filter(x=>x.id!==entry.id);
+        save(); renderSwapLog();
+        showToast('Swap entry deleted');
+      });
+    });
+    meta.appendChild(dateSpan);
+    meta.appendChild(del);
+    div.appendChild(p); div.appendChild(meta);
+    wrap.appendChild(div);
+  });
+}
+
+function renderAll(){
+  renderAltChips();
+  renderTable();
+  renderSwapLog();
+}
+
+document.getElementById('addAltBtn').addEventListener('click', ()=>{
+  const inp = document.getElementById('newAltName');
+  const name = inp.value.trim();
+  if(!name) return;
+  state.alternatives.push({id:uid(), name});
+  inp.value='';
+  save(); renderAll();
+});
+document.getElementById('newAltName').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addAltBtn').click();
+});
+
+document.getElementById('addObjBtn').addEventListener('click', ()=>{
+  const inp = document.getElementById('newObjName');
+  const name = inp.value.trim();
+  if(!name) return;
+  state.objectives.push({id:uid(), name, direction:'high', type:'number', neutralized:false});
+  inp.value='';
+  save(); renderAll();
+});
+document.getElementById('newObjName').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addObjBtn').click();
+});
+
+document.getElementById('addSwapBtn').addEventListener('click', ()=>{
+  const ta = document.getElementById('newSwapNote');
+  const note = ta.value.trim();
+  if(!note) return;
+  state.swapLog.push({id:uid(), note, ts:Date.now()});
+  ta.value='';
+  save(); renderSwapLog();
+});
+
+renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Reading Catalogue</title>
+<style>
+  :root{
+    --bg:#0f0f10;
+    --bg-elev:#1a1a1c;
+    --bg-elev2:#222224;
+    --border:#2c2c2e;
+    --text:#f0f0ef;
+    --text-dim:#9a9a9d;
+    --mint:#a7e8c5;
+    --mint-dim:#5a7d6b;
+    --coral:#ff8c70;
+    --coral-dim:#8c5142;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-bottom:60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 40px;}
+  h1{font-size:22px;margin:4px 0 18px;letter-spacing:-0.3px;display:flex;align-items:center;gap:8px;}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);margin:26px 0 10px;font-weight:600;}
+
+  /* Summary */
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .stat{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:12px 8px;text-align:center;}
+  .stat .num{font-size:20px;font-weight:700;color:var(--mint);}
+  .stat .lbl{font-size:10.5px;color:var(--text-dim);margin-top:2px;}
+
+  /* Chart */
+  .chart-card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:14px 14px 8px;}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .chart-head select{
+    background:var(--bg-elev2);color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:6px 10px;font-size:13px;
+  }
+  svg.bars text{fill:var(--text-dim);font-size:9px;}
+  .bar{fill:var(--mint-dim);}
+  .bar.cur{fill:var(--coral);}
+  .bar-count{fill:var(--text);font-size:10px;font-weight:600;}
+
+  /* Form */
+  .card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+  label{display:block;font-size:12px;color:var(--text-dim);margin:12px 0 5px;}
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=date],textarea{
+    width:100%;background:var(--bg-elev2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit;
+  }
+  textarea{resize:vertical;min-height:56px;}
+  input:focus,textarea:focus{outline:none;border-color:var(--mint-dim);}
+
+  .tagrow{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{
+    padding:7px 13px;border-radius:20px;font-size:13px;border:1px solid var(--border);
+    background:var(--bg-elev2);color:var(--text-dim);cursor:pointer;user-select:none;
+  }
+  .chip.on{background:rgba(167,232,197,0.15);border-color:var(--mint);color:var(--mint);}
+
+  .stars{display:flex;gap:4px;font-size:24px;}
+  .star{cursor:pointer;color:var(--border);line-height:1;}
+  .star.on{color:var(--coral);}
+
+  .formrow{display:flex;gap:10px;}
+  .formrow>div{flex:1;}
+
+  .btnrow{display:flex;gap:10px;margin-top:16px;}
+  button{
+    font-family:inherit;font-size:14px;font-weight:600;border:none;border-radius:10px;
+    padding:12px 16px;cursor:pointer;
+  }
+  .btn-primary{flex:1;background:var(--mint);color:#0f0f10;}
+  .btn-cancel{background:var(--bg-elev2);color:var(--text-dim);border:1px solid var(--border);}
+
+  /* Filters */
+  .filters{display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap;}
+  .filters input[type=text]{flex:1;min-width:140px;}
+  .sortsel{background:var(--bg-elev2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 10px;font-size:13px;}
+
+  /* List */
+  .month-head{font-size:13px;color:var(--text-dim);margin:20px 0 8px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .month-head::after{content:"";flex:1;height:1px;background:var(--border);}
+  .book{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;margin-bottom:9px;}
+  .book-top{display:flex;justify-content:space-between;gap:10px;}
+  .book-title{font-size:15.5px;font-weight:600;}
+  .book-author{font-size:12.5px;color:var(--text-dim);margin-top:1px;}
+  .book-date{font-size:11px;color:var(--text-dim);white-space:nowrap;}
+  .book-stars{color:var(--coral);font-size:12px;margin-top:5px;letter-spacing:1px;}
+  .book-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+  .pill{font-size:10.5px;padding:3px 9px;border-radius:12px;background:rgba(167,232,197,0.12);color:var(--mint);}
+  .book-notes{font-size:12.5px;color:var(--text-dim);margin-top:7px;line-height:1.4;}
+  .book-actions{display:flex;gap:8px;margin-top:10px;}
+  .act{font-size:12px;padding:6px 12px;border-radius:8px;background:var(--bg-elev2);color:var(--text-dim);border:1px solid var(--border);}
+  .act.del{color:var(--coral);}
+  .act.del.confirm{background:var(--coral);color:#0f0f10;border-color:var(--coral);}
+
+  .empty{text-align:center;color:var(--text-dim);font-size:13px;padding:40px 10px;}
+
+  .fab{
+    position:fixed;bottom:20px;right:20px;width:54px;height:54px;border-radius:50%;
+    background:var(--mint);color:#0f0f10;font-size:26px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 14px rgba(0,0,0,0.4);border:none;cursor:pointer;z-index:20;
+  }
+  #formCard{display:none;}
+  #formCard.open{display:block;}
+
+  .toast{
+    position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(10px);
+    background:var(--bg-elev2);border:1px solid var(--border);color:var(--text);
+    padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;
+    transition:opacity .2s, transform .2s; z-index:30;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (hover:hover) and (pointer:fine){
+    .chip:hover{border-color:var(--mint-dim);}
+    .act:hover{background:var(--border);}
+    .fab:hover{filter:brightness(1.08);}
+    button:hover{filter:brightness(1.05);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📚 Reading Catalogue</h1>
+
+  <div class="summary" id="summary"></div>
+
+  <h2>This Year</h2>
+  <div class="chart-card">
+    <div class="chart-head">
+      <span style="font-size:12px;color:var(--text-dim)">Books per month</span>
+      <select id="yearSel"></select>
+    </div>
+    <svg id="chart" class="bars" viewBox="0 0 340 120" width="100%" height="120"></svg>
+  </div>
+
+  <h2>Log a Book</h2>
+  <div class="card" id="formCard">
+    <label>Title *</label>
+    <input type="text" id="fTitle" placeholder="Atomic Habits">
+    <div class="formrow">
+      <div>
+        <label>Author</label>
+        <input type="text" id="fAuthor" placeholder="James Clear">
+      </div>
+      <div>
+        <label>Date finished</label>
+        <input type="date" id="fDate">
+      </div>
+    </div>
+    <label>Rating</label>
+    <div class="stars" id="fStars">
+      <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span>
+    </div>
+    <label>Tags</label>
+    <div class="tagrow" id="fTags"></div>
+    <label>Notes</label>
+    <textarea id="fNotes" placeholder="Key takeaway..."></textarea>
+    <div class="btnrow">
+      <button class="btn-primary" id="fSubmit">Add Book</button>
+      <button class="btn-cancel" id="fCancel" style="display:none">Cancel</button>
+    </div>
+  </div>
+
+  <h2>Library</h2>
+  <div class="filters">
+    <input type="text" id="search" placeholder="Search title or author">
+    <select class="sortsel" id="sortSel">
+      <option value="new">Newest</option>
+      <option value="old">Oldest</option>
+      <option value="title">Title A–Z</option>
+      <option value="rating">Top rated</option>
+    </select>
+  </div>
+  <div class="tagrow" id="tagFilters" style="margin-bottom:6px;"></div>
+
+  <div id="list"></div>
+</div>
+
+<button class="fab" id="fabAdd">+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+const TAGS = ["Money","Health","Productivity","Career","Psychology","Presentation"];
+const KEY = "as_books_v1";
+let state = load();
+let editingId = null;
+let pendingDelete = null;
+let activeTagFilters = new Set();
+let rating = 0;
+let formTags = new Set();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return {books:[]};
+    const p = JSON.parse(raw);
+    if(!p.books) p.books = [];
+    return p;
+  }catch(e){ return {books:[]}; }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+function ordinal(n){
+  const s=["th","st","nd","rd"], v=n%100;
+  return n+(s[(v-20)%10]||s[v]||s[0]);
+}
+function formatDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso+"T00:00:00");
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+function monthYearLabel(iso){
+  const d = new Date(iso+"T00:00:00");
+  const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+/* ---------- Form ---------- */
+function renderTagChips(){
+  const el = document.getElementById("fTags");
+  el.innerHTML = TAGS.map(t=>`<span class="chip ${formTags.has(t)?'on':''}" data-tag="${t}">${t}</span>`).join("");
+}
+function renderStars(){
+  document.querySelectorAll("#fStars .star").forEach(s=>{
+    s.classList.toggle("on", Number(s.dataset.v) <= rating);
+  });
+}
+document.getElementById("fTags").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip");
+  if(!chip) return;
+  const t = chip.dataset.tag;
+  if(formTags.has(t)) formTags.delete(t); else formTags.add(t);
+  renderTagChips();
+});
+document.getElementById("fStars").addEventListener("click", e=>{
+  const s = e.target.closest(".star");
+  if(!s) return;
+  const v = Number(s.dataset.v);
+  rating = (rating===v) ? 0 : v;
+  renderStars();
+});
+
+function openForm(){
+  document.getElementById("formCard").classList.add("open");
+  document.getElementById("formCard").scrollIntoView({behavior:"smooth", block:"start"});
+}
+function resetForm(){
+  editingId = null;
+  document.getElementById("fTitle").value = "";
+  document.getElementById("fAuthor").value = "";
+  document.getElementById("fDate").value = todayISO();
+  document.getElementById("fNotes").value = "";
+  rating = 0; formTags = new Set();
+  renderStars(); renderTagChips();
+  document.getElementById("fSubmit").textContent = "Add Book";
+  document.getElementById("fCancel").style.display = "none";
+}
+document.getElementById("fabAdd").addEventListener("click", ()=>{ resetForm(); openForm(); });
+document.getElementById("fCancel").addEventListener("click", ()=>{
+  resetForm();
+  document.getElementById("formCard").classList.remove("open");
+});
+document.getElementById("fSubmit").addEventListener("click", ()=>{
+  const title = document.getElementById("fTitle").value.trim();
+  if(!title){ toast("Title is required"); return; }
+  const author = document.getElementById("fAuthor").value.trim();
+  const date = document.getElementById("fDate").value || todayISO();
+  const notes = document.getElementById("fNotes").value.trim();
+
+  if(editingId){
+    const b = state.books.find(x=>x.id===editingId);
+    Object.assign(b, {title, author, date, notes, rating, tags:[...formTags]});
+    toast("Book updated");
+  } else {
+    state.books.push({id:uid(), title, author, date, notes, rating, tags:[...formTags], createdAt: Date.now()});
+    toast("Book added");
+  }
+  save();
+  resetForm();
+  document.getElementById("formCard").classList.remove("open");
+  renderAll();
+});
+
+/* ---------- Filters ---------- */
+function renderTagFilters(){
+  const el = document.getElementById("tagFilters");
+  el.innerHTML = TAGS.map(t=>`<span class="chip ${activeTagFilters.has(t)?'on':''}" data-tag="${t}">${t}</span>`).join("");
+}
+document.getElementById("tagFilters").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip");
+  if(!chip) return;
+  const t = chip.dataset.tag;
+  if(activeTagFilters.has(t)) activeTagFilters.delete(t); else activeTagFilters.add(t);
+  renderTagFilters();
+  renderList();
+});
+document.getElementById("search").addEventListener("input", renderList);
+document.getElementById("sortSel").addEventListener("change", renderList);
+
+/* ---------- List ---------- */
+function getFiltered(){
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const sort = document.getElementById("sortSel").value;
+  let books = state.books.filter(b=>{
+    if(q && !(b.title.toLowerCase().includes(q) || (b.author||"").toLowerCase().includes(q))) return false;
+    if(activeTagFilters.size && ![...activeTagFilters].every(t=>b.tags.includes(t))) return false;
+    return true;
+  });
+  books.sort((a,b)=>{
+    if(sort==="new") return b.date.localeCompare(a.date) || b.createdAt-a.createdAt;
+    if(sort==="old") return a.date.localeCompare(b.date) || a.createdAt-b.createdAt;
+    if(sort==="title") return a.title.localeCompare(b.title);
+    if(sort==="rating") return (b.rating||0)-(a.rating||0);
+    return 0;
+  });
+  return books;
+}
+
+function renderList(){
+  const el = document.getElementById("list");
+  const books = getFiltered();
+  if(!books.length){
+    el.innerHTML = `<div class="empty">No books yet. Tap + to log your first read.</div>`;
+    return;
+  }
+  const sort = document.getElementById("sortSel").value;
+  let html = "";
+  let lastGroup = null;
+  books.forEach(b=>{
+    const group = (sort==="new"||sort==="old") ? monthYearLabel(b.date) : null;
+    if(group !== null && group !== lastGroup){
+      html += `<div class="month-head">${group}</div>`;
+      lastGroup = group;
+    }
+    const stars = b.rating ? "★".repeat(b.rating)+"☆".repeat(5-b.rating) : "";
+    const delBtnClass = pendingDelete===b.id ? "act del confirm" : "act del";
+    const delBtnLabel = pendingDelete===b.id ? "Tap again to delete" : "Delete";
+    html += `
+      <div class="book" data-id="${b.id}">
+        <div class="book-top">
+          <div>
+            <div class="book-title">${escapeHtml(b.title)}</div>
+            ${b.author?`<div class="book-author">${escapeHtml(b.author)}</div>`:""}
+          </div>
+          <div class="book-date">${formatDate(b.date)}</div>
+        </div>
+        ${stars?`<div class="book-stars">${stars}</div>`:""}
+        ${b.tags.length?`<div class="book-tags">${b.tags.map(t=>`<span class="pill">${t}</span>`).join("")}</div>`:""}
+        ${b.notes?`<div class="book-notes">${escapeHtml(b.notes)}</div>`:""}
+        <div class="book-actions">
+          <span class="act" data-act="edit">Edit</span>
+          <span class="${delBtnClass}" data-act="del">${delBtnLabel}</span>
+        </div>
+      </div>`;
+  });
+  el.innerHTML = html;
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+document.getElementById("list").addEventListener("click", e=>{
+  const actEl = e.target.closest("[data-act]");
+  if(!actEl) return;
+  const id = actEl.closest(".book").dataset.id;
+  const act = actEl.dataset.act;
+  if(act==="edit"){
+    const b = state.books.find(x=>x.id===id);
+    if(!b) return;
+    editingId = id;
+    document.getElementById("fTitle").value = b.title;
+    document.getElementById("fAuthor").value = b.author||"";
+    document.getElementById("fDate").value = b.date;
+    document.getElementById("fNotes").value = b.notes||"";
+    rating = b.rating||0;
+    formTags = new Set(b.tags||[]);
+    renderStars(); renderTagChips();
+    document.getElementById("fSubmit").textContent = "Update Book";
+    document.getElementById("fCancel").style.display = "block";
+    pendingDelete = null;
+    openForm();
+  } else if(act==="del"){
+    if(pendingDelete===id){
+      state.books = state.books.filter(x=>x.id!==id);
+      save();
+      pendingDelete = null;
+      toast("Book deleted");
+      renderAll();
+    } else {
+      pendingDelete = id;
+      renderList();
+      setTimeout(()=>{ if(pendingDelete===id){ pendingDelete=null; renderList(); } }, 3000);
+    }
+  }
+});
+
+/* ---------- Summary ---------- */
+function renderSummary(){
+  const el = document.getElementById("summary");
+  const now = new Date();
+  const yr = now.getFullYear();
+  const total = state.books.length;
+  const thisYear = state.books.filter(b=>new Date(b.date+"T00:00:00").getFullYear()===yr).length;
+  const thisMonth = state.books.filter(b=>{
+    const d = new Date(b.date+"T00:00:00");
+    return d.getFullYear()===yr && d.getMonth()===now.getMonth();
+  }).length;
+  const monthsElapsed = now.getMonth()+1;
+  const avg = thisYear ? (thisYear/monthsElapsed).toFixed(1) : "0";
+  el.innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="lbl">All Time</div></div>
+    <div class="stat"><div class="num">${thisYear}</div><div class="lbl">This Year</div></div>
+    <div class="stat"><div class="num">${thisMonth}</div><div class="lbl">This Month</div></div>
+    <div class="stat"><div class="num">${avg}</div><div class="lbl">Avg / Month</div></div>
+  `;
+}
+
+/* ---------- Chart ---------- */
+function renderYearSelect(){
+  const sel = document.getElementById("yearSel");
+  const years = new Set(state.books.map(b=>new Date(b.date+"T00:00:00").getFullYear()));
+  years.add(new Date().getFullYear());
+  const sorted = [...years].sort((a,b)=>b-a);
+  const cur = sel.value || String(new Date().getFullYear());
+  sel.innerHTML = sorted.map(y=>`<option value="${y}">${y}</option>`).join("");
+  sel.value = sorted.includes(Number(cur)) ? cur : String(sorted[0]);
+}
+document.getElementById("yearSel").addEventListener("change", renderChart);
+
+function renderChart(){
+  const year = Number(document.getElementById("yearSel").value);
+  const counts = new Array(12).fill(0);
+  state.books.forEach(b=>{
+    const d = new Date(b.date+"T00:00:00");
+    if(d.getFullYear()===year) counts[d.getMonth()]++;
+  });
+  const max = Math.max(1, ...counts);
+  const mLabels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+  const now = new Date();
+  const curMonth = (year===now.getFullYear()) ? now.getMonth() : -1;
+  const w=340,h=120,pad=8,barW=20,gap=(w-pad*2-barW*12)/11;
+  let svg = "";
+  counts.forEach((c,i)=>{
+    const x = pad + i*(barW+gap);
+    const barH = c ? (c/max)*70 : 2;
+    const y = 92 - barH;
+    svg += `<rect class="bar ${i===curMonth?'cur':''}" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3"></rect>`;
+    if(c>0) svg += `<text class="bar-count" x="${x+barW/2}" y="${y-4}" text-anchor="middle">${c}</text>`;
+    svg += `<text x="${x+barW/2}" y="108" text-anchor="middle">${mLabels[i]}</text>`;
+  });
+  document.getElementById("chart").innerHTML = svg;
+}
+
+/* ---------- Init ---------- */
+function renderAll(){
+  renderSummary();
+  renderYearSelect();
+  renderChart();
+  renderTagFilters();
+  renderList();
+}
+document.getElementById("fDate").value = todayISO();
+renderTagChips();
+renderStars();
+renderAll();
+</script>
+</body>
+</html>

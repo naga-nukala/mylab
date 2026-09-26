@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#0f1115">
+<title>Places Visited</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa0ab; --mint:#a7e8c5; --coral:#ff8c70;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding-bottom:40px;}
+  header{padding:18px 16px 8px;}
+  header h1{margin:0;font-size:20px;font-weight:700;}
+  header h1 span{color:var(--mint);}
+  .wrap{padding:0 16px;max-width:720px;margin:0 auto;}
+
+  .stats{display:flex;gap:10px;margin:14px 0;}
+  .stat{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;}
+  .stat b{display:block;font-size:20px;color:var(--mint);}
+  .stat span{font-size:11px;color:var(--muted);}
+
+  .btn{border:none;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn-add{background:var(--mint);color:#0f1115;width:100%;margin-bottom:12px;}
+  .btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--border);}
+  .btn-coral{background:var(--coral);color:#0f1115;}
+  .btn-sm{padding:6px 10px;font-size:12px;border-radius:8px;}
+
+  #map{width:100%;height:320px;border-radius:14px;border:1px solid var(--border);margin-bottom:12px;background:#1e222b;overflow:hidden;}
+  .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.9);}
+  .leaflet-marker-pane, .leaflet-popup-pane{filter:none;}
+  .leaflet-popup-content-wrapper{background:var(--card);color:var(--text);border-radius:10px;}
+  .leaflet-popup-tip{background:var(--card);}
+
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;display:none;}
+  .panel.open{display:block;}
+  .panel h3{margin:0 0 10px;font-size:15px;}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .field input, .field select, .field textarea{
+    width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit;
+  }
+  .field textarea{resize:vertical;min-height:50px;}
+  .row2{display:flex;gap:10px;}
+  .row2 .field{flex:1;}
+
+  .searchrow{display:flex;gap:8px;}
+  .searchrow input{flex:1;}
+  .results{margin-top:6px;border-radius:8px;overflow:hidden;}
+  .result-item{padding:8px 10px;background:var(--card2);border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;}
+  .result-item:hover{background:#262b36;}
+  .loc-preview{font-size:12px;color:var(--mint);margin-top:6px;}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  .formactions{display:flex;gap:10px;margin-top:12px;}
+  .formactions .btn{flex:1;}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .chip{padding:6px 12px;border-radius:999px;background:var(--card2);border:1px solid var(--border);font-size:12px;color:var(--muted);cursor:pointer;}
+  .chip.active{background:var(--mint);color:#0f1115;border-color:var(--mint);font-weight:600;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .card-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .card-year{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .badge{display:inline-block;font-size:11px;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;margin-top:6px;}
+  .card-notes{font-size:13px;color:var(--muted);margin-top:6px;}
+  .card-actions{display:flex;gap:8px;margin-top:10px;}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:30px 0;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--card2);border:1px solid var(--border);color:var(--text);padding:10px 18px;
+    border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:999;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (hover:hover) and (pointer:fine){
+    .btn:hover{filter:brightness(1.08);}
+    .card:hover{border-color:var(--mint);}
+  }
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>📍 Places <span>Visited</span></h1></div></header>
+
+<div class="wrap">
+  <div class="stats">
+    <div class="stat"><b id="statTotal">0</b><span>Places</span></div>
+    <div class="stat"><b id="statTypes">0</b><span>Types</span></div>
+    <div class="stat"><b id="statYears">–</b><span>Years</span></div>
+  </div>
+
+  <button class="btn btn-add" id="openAddBtn">+ Add Place</button>
+
+  <div class="panel" id="panel">
+    <h3 id="panelTitle">Add Place</h3>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="fName" placeholder="e.g. Gokarna Beach">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Year</label>
+        <input type="number" id="fYear" placeholder="2024" min="1900" max="2100">
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <select id="fType">
+          <option>City</option><option>Country</option><option>Beach</option>
+          <option>Mountain</option><option>Landmark</option><option>Museum</option>
+          <option>Historical Site</option><option>Park</option><option>Island</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="fNotes" placeholder="Anything worth remembering..."></textarea>
+    </div>
+    <div class="field">
+      <label>Location</label>
+      <div class="searchrow">
+        <input type="text" id="fSearch" placeholder="Search place name...">
+        <button class="btn btn-ghost btn-sm" id="searchBtn">Find</button>
+      </div>
+      <div class="results" id="searchResults"></div>
+      <div class="hint">...or tap directly on the map to drop a pin</div>
+      <div class="loc-preview" id="locPreview">No location set</div>
+    </div>
+    <div class="formactions">
+      <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
+      <button class="btn btn-add" id="saveBtn" style="margin-bottom:0;">Save</button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="chips" id="chips"></div>
+
+  <div id="list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const KEY = 'as_placesvisited_v1';
+const TYPE_COLORS = {
+  City:'#a7e8c5', Country:'#ff8c70', Beach:'#7ec8e3', Mountain:'#c9a7e8',
+  Landmark:'#e8d37a', Museum:'#e89ab0', 'Historical Site':'#f0a860',
+  Park:'#8ce89a', Island:'#7ea7e8', Other:'#b0b0b0'
+};
+
+let places = JSON.parse(localStorage.getItem(KEY) || '[]');
+let editId = null;
+let pending = null; // {lat,lng}
+let activeFilter = 'All';
+let searchTimer = null;
+
+const map = L.map('map', { attributionControl: true }).setView([20, 10], 2);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles © Esri — Source: Esri, DeLorme, NAVTEQ',
+  maxZoom: 18
+}).addTo(map);
+
+const markersLayer = L.layerGroup().addTo(map);
+let tempMarker = null;
+
+function icon(color, big){
+  return L.divIcon({
+    className:'',
+    html:`<div style="background:${color};width:${big?18:14}px;height:${big?18:14}px;border-radius:50%;border:2px solid #0f1115;box-shadow:0 0 0 2px ${color}66;"></div>`,
+    iconSize:[big?18:14, big?18:14], iconAnchor:[big?9:7, big?9:7]
+  });
+}
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(places)); }
+
+function ordinal(n){
+  const s=['th','st','nd','rd'], v=n%100;
+  return n+(s[(v-20)%10]||s[v]||s[0]);
+}
+
+function renderStats(){
+  document.getElementById('statTotal').textContent = places.length;
+  const types = new Set(places.map(p=>p.type));
+  document.getElementById('statTypes').textContent = types.size;
+  if(places.length){
+    const years = places.map(p=>p.year);
+    const mn = Math.min(...years), mx = Math.max(...years);
+    document.getElementById('statYears').textContent = mn===mx ? mn : `${mn}–${mx}`;
+  } else {
+    document.getElementById('statYears').textContent = '–';
+  }
+}
+
+function renderChips(){
+  const types = ['All', ...new Set(places.map(p=>p.type))];
+  const chips = document.getElementById('chips');
+  chips.innerHTML = '';
+  types.forEach(t=>{
+    const c = document.createElement('div');
+    c.className = 'chip' + (t===activeFilter ? ' active' : '');
+    c.textContent = t;
+    c.dataset.type = t;
+    chips.appendChild(c);
+  });
+}
+
+function filteredPlaces(){
+  return activeFilter==='All' ? places : places.filter(p=>p.type===activeFilter);
+}
+
+function renderMarkers(){
+  markersLayer.clearLayers();
+  filteredPlaces().forEach(p=>{
+    const m = L.marker([p.lat,p.lng], {icon: icon(TYPE_COLORS[p.type]||'#a7e8c5')});
+    m.bindPopup(`<b>${escapeHtml(p.name)}</b><br>${p.type} · ${p.year}${p.notes?'<br>'+escapeHtml(p.notes):''}`);
+    m.dataId = p.id;
+    markersLayer.addLayer(m);
+  });
+}
+
+function renderList(){
+  const list = document.getElementById('list');
+  const data = filteredPlaces().slice().sort((a,b)=> b.year - a.year || a.name.localeCompare(b.name));
+  if(!data.length){
+    list.innerHTML = '<div class="empty">No places yet. Add your first one above.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  data.forEach(p=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = p.id;
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-title"><span class="dot" style="background:${TYPE_COLORS[p.type]||'#a7e8c5'}"></span>${escapeHtml(p.name)}</div>
+        <div class="card-year">${p.year}</div>
+      </div>
+      <div class="badge">${p.type}</div>
+      ${p.notes ? `<div class="card-notes">${escapeHtml(p.notes)}</div>` : ''}
+      <div class="card-actions">
+        <button class="btn btn-ghost btn-sm" data-role="edit" data-id="${p.id}">Edit</button>
+        <button class="btn btn-ghost btn-sm" data-role="delete" data-id="${p.id}">Delete</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function renderAll(){ renderStats(); renderChips(); renderMarkers(); renderList(); }
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function openPanel(editing){
+  document.getElementById('panel').classList.add('open');
+  document.getElementById('panelTitle').textContent = editing ? 'Edit Place' : 'Add Place';
+  document.getElementById('openAddBtn').style.display = 'none';
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('openAddBtn').style.display = 'block';
+  document.getElementById('fName').value = '';
+  document.getElementById('fYear').value = '';
+  document.getElementById('fType').value = 'City';
+  document.getElementById('fNotes').value = '';
+  document.getElementById('fSearch').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  editId = null; pending = null;
+  updateLocPreview();
+  if(tempMarker){ map.removeLayer(tempMarker); tempMarker = null; }
+}
+
+function updateLocPreview(){
+  const el = document.getElementById('locPreview');
+  el.textContent = pending ? `Pinned: ${pending.lat.toFixed(4)}, ${pending.lng.toFixed(4)}` : 'No location set';
+}
+
+function setTemp(lat, lng, pan){
+  pending = {lat, lng};
+  if(tempMarker) map.removeLayer(tempMarker);
+  tempMarker = L.marker([lat,lng], {icon: icon('#ff8c70', true), draggable:true}).addTo(map);
+  tempMarker.on('dragend', e=>{
+    const ll = e.target.getLatLng();
+    pending = {lat: ll.lat, lng: ll.lng};
+    updateLocPreview();
+  });
+  updateLocPreview();
+  if(pan) map.setView([lat,lng], Math.max(map.getZoom(), 6));
+}
+
+document.getElementById('openAddBtn').addEventListener('click', ()=> openPanel(false));
+document.getElementById('cancelBtn').addEventListener('click', closePanel);
+
+document.getElementById('map').addEventListener('click', ()=>{}); // keep leaflet click below
+map.on('click', e=>{
+  if(document.getElementById('panel').classList.contains('open')){
+    setTemp(e.latlng.lat, e.latlng.lng, false);
+  }
+});
+
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('fSearch').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); doSearch(); }
+});
+
+function doSearch(){
+  const q = document.getElementById('fSearch').value.trim();
+  const box = document.getElementById('searchResults');
+  if(!q){ box.innerHTML=''; return; }
+  box.innerHTML = '<div class="result-item">Searching...</div>';
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`)
+    .then(r=>r.json())
+    .then(results=>{
+      if(!results.length){ box.innerHTML = '<div class="result-item">No results</div>'; return; }
+      box.innerHTML = '';
+      results.forEach(r=>{
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        item.textContent = r.display_name;
+        item.addEventListener('click', ()=>{
+          setTemp(parseFloat(r.lat), parseFloat(r.lon), true);
+          box.innerHTML = '';
+          document.getElementById('fSearch').value = r.display_name.split(',')[0];
+          if(!document.getElementById('fName').value) document.getElementById('fName').value = r.display_name.split(',')[0];
+        });
+        box.appendChild(item);
+      });
+    })
+    .catch(()=>{ box.innerHTML = '<div class="result-item">Search failed — check connection</div>'; });
+}
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('fName').value.trim();
+  const year = parseInt(document.getElementById('fYear').value, 10);
+  const type = document.getElementById('fType').value;
+  const notes = document.getElementById('fNotes').value.trim();
+  if(!name){ showToast('Enter a name'); return; }
+  if(!year){ showToast('Enter a year'); return; }
+  if(!pending){ showToast('Set a location on the map'); return; }
+
+  if(editId){
+    const p = places.find(x=>x.id===editId);
+    Object.assign(p, {name, year, type, notes, lat:pending.lat, lng:pending.lng});
+    showToast('Place updated');
+  } else {
+    places.push({id: 'p'+Date.now()+Math.random().toString(36).slice(2,6), name, year, type, notes, lat:pending.lat, lng:pending.lng});
+    showToast('Place added');
+  }
+  save();
+  closePanel();
+  renderAll();
+});
+
+document.getElementById('chips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  activeFilter = chip.dataset.type;
+  renderChips(); renderMarkers(); renderList();
+});
+
+document.getElementById('list').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-role]');
+  if(btn){
+    const id = btn.dataset.id;
+    if(btn.dataset.role === 'edit'){
+      const p = places.find(x=>x.id===id);
+      editId = id;
+      document.getElementById('fName').value = p.name;
+      document.getElementById('fYear').value = p.year;
+      document.getElementById('fType').value = p.type;
+      document.getElementById('fNotes').value = p.notes || '';
+      openPanel(true);
+      setTemp(p.lat, p.lng, true);
+    } else if(btn.dataset.role === 'delete'){
+      if(btn.dataset.confirm === '1'){
+        places = places.filter(x=>x.id!==id);
+        save();
+        showToast('Place deleted');
+        renderAll();
+      } else {
+        btn.dataset.confirm = '1';
+        btn.textContent = 'Confirm?';
+        btn.classList.add('btn-coral');
+        setTimeout(()=>{ btn.dataset.confirm=''; btn.textContent='Delete'; btn.classList.remove('btn-coral'); }, 3000);
+      }
+    }
+    return;
+  }
+  const card = e.target.closest('.card');
+  if(card){
+    const p = places.find(x=>x.id===card.dataset.id);
+    if(p){
+      map.setView([p.lat,p.lng], 8);
+      markersLayer.eachLayer(m=>{ if(m.dataId===p.id) m.openPopup(); });
+    }
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>
