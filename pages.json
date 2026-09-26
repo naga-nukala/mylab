@@ -13,7 +13,7 @@
   ],
   "career": [
   { "name": "Time Blocks", "file": "timeblocks.html" },
-  { "name": "Career Path", "file": " growth-paths.html" }
+  { "name": "Career Path", "file": "growth-paths.html" }
   ],
   "passions": [
   { "name": "Day Planner", "file": "day-planner.html" },
