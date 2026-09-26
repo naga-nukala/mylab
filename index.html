@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<title>My Lab</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--coral:#ff8c70;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:16px 16px 80px;}
+  .wrap{max-width:720px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 2px;}
+  p.sub{color:var(--sub);font-size:12px;margin:0 0 16px;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(min-width:520px){.grid{grid-template-columns:repeat(4,1fr);}}
+
+  .flip{perspective:1200px;height:210px;}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d;}
+  .flip.open .flip-inner{transform:rotateY(180deg);}
+  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;display:flex;flex-direction:column;}
+
+  .front{background:var(--card);align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid var(--line);padding:12px;}
+  @media (hover:hover) and (pointer:fine){.front:hover{border-color:var(--mint);}}
+  .front .ic{font-size:30px;margin-bottom:6px;}
+  .front .nm{font-weight:700;font-size:15px;}
+  .front .ct{color:var(--sub);font-size:11px;margin-top:2px;}
+
+  .back{background:var(--card);transform:rotateY(180deg);border:1px solid var(--mint);padding:10px;}
+  .back-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex:0 0 auto;}
+  .back-head b{font-size:13px;}
+  .closeb{background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;}
+  .closeb:focus-visible{outline:2px solid var(--mint);}
+
+  .plist{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0;}
+  .plist li{display:flex;align-items:center;gap:2px;padding:4px 2px;border-bottom:1px solid var(--line);}
+  .plist li.empty{border:none;color:var(--sub);font-size:11px;justify-content:center;padding:10px 0;}
+  .plist a{flex:1;min-width:0;color:var(--txt);text-decoration:none;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .plist a:active{color:var(--mint);}
+  .ib{flex:0 0 auto;width:20px;height:20px;border:none;background:none;color:var(--sub);font-size:12px;padding:0;cursor:pointer;}
+  .ib:focus-visible{outline:2px solid var(--mint);}
+  .ib.del{color:var(--coral);}
+  .ib.del.confirming{background:var(--coral);color:#2b0d05;border-radius:4px;}
+
+  details.addbox{flex:0 0 auto;margin-top:6px;}
+  details.addbox summary{color:var(--mint);font-size:11px;cursor:pointer;list-style:none;}
+  details.addbox summary::-webkit-details-marker{display:none;}
+  .af-row{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+  .af-row input{width:100%;padding:6px 7px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:12px;}
+  .af-row input:focus{outline:2px solid var(--mint);}
+  .af-err{color:var(--coral);font-size:10px;min-height:12px;margin-top:3px;}
+  .af-btns{display:flex;gap:6px;}
+  .af-save,.af-cancel{flex:1;padding:6px;border-radius:7px;font-size:11px;cursor:pointer;}
+  .af-save{border:none;background:var(--mint);color:#052e16;font-weight:700;}
+  .af-cancel{border:1px solid var(--line);background:transparent;color:var(--txt);}
+
+  .tools{display:flex;gap:8px;margin-top:22px;}
+  button.ghost{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--txt);font-size:12px;cursor:pointer;}
+  button.ghost:focus-visible{outline:2px solid var(--mint);}
+  button.ghost.confirming{border-color:var(--coral);color:var(--coral);}
+  .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:10px;}
+
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 16px;border-radius:16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none;z-index:50;max-width:90vw;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧪 My Lab</h1>
+  <p class="sub">Tap a category to open it. Add or remove pages from inside each card.</p>
+
+  <div class="grid" id="grid">
+    <div class="flip" data-cat="money" id="card-money">
+      <div class="flip-inner">
+        <div class="face front" data-role="front"><div class="ic">💰</div><div class="nm">Money</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face back">
+          <div class="back-head"><b>💰 Money</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
+          <ul class="plist" data-role="list"></ul>
+          <details class="addbox">
+            <summary>+ Add page</summary>
+            <div class="af-row">
+              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
+              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
+            </div>
+            <div class="af-err"></div>
+            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="flip" data-cat="health" id="card-health">
+      <div class="flip-inner">
+        <div class="face front" data-role="front"><div class="ic">🩺</div><div class="nm">Health</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face back">
+          <div class="back-head"><b>🩺 Health</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
+          <ul class="plist" data-role="list"></ul>
+          <details class="addbox">
+            <summary>+ Add page</summary>
+            <div class="af-row">
+              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
+              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
+            </div>
+            <div class="af-err"></div>
+            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="flip" data-cat="career" id="card-career">
+      <div class="flip-inner">
+        <div class="face front" data-role="front"><div class="ic">💼</div><div class="nm">Career</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face back">
+          <div class="back-head"><b>💼 Career</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
+          <ul class="plist" data-role="list"></ul>
+          <details class="addbox">
+            <summary>+ Add page</summary>
+            <div class="af-row">
+              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
+              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
+            </div>
+            <div class="af-err"></div>
+            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="flip" data-cat="passions" id="card-passions">
+      <div class="flip-inner">
+        <div class="face front" data-role="front"><div class="ic">🎨</div><div class="nm">Passions</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face back">
+          <div class="back-head"><b>🎨 Passions</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
+          <ul class="plist" data-role="list"></ul>
+          <details class="addbox">
+            <summary>+ Add page</summary>
+            <div class="af-row">
+              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
+              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
+            </div>
+            <div class="af-err"></div>
+            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button class="ghost" id="syncBtn" type="button">↻ Reload from pages.json</button>
+    <button class="ghost" id="exportBtn" type="button">⬇ Export pages.json</button>
+  </div>
+  <div class="foot" id="savedFoot"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const KEY = 'mylab_index_v1';
+const CATS = ['money','health','career','passions'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const grid = document.getElementById('grid');
+
+function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function titleCase(file){
+  return file.replace(/\.html?$/i,'').replace(/[-_]+/g,' ').trim().replace(/\b\w/g, c => c.toUpperCase()) || file;
+}
+function fmtDate(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const n = d.getDate(), m = n % 100;
+  const suffix = (m >= 11 && m <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th');
+  return n + suffix + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2200);
+}
+
+function seedDefault(){
+  const c = {}; CATS.forEach(k => c[k] = []);
+  return { updated: null, categories: c };
+}
+function loadLocal(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && s.categories) return s;
+  }catch(e){}
+  return null;
+}
+function normalizeManifest(raw){
+  const c = {}; CATS.forEach(k => c[k] = []);
+  if(raw){
+    CATS.forEach(k => {
+      const arr = raw[k];
+      if(Array.isArray(arr)){
+        c[k] = arr.map(p => {
+          if(typeof p === 'string') return { id: uid(), name: titleCase(p), file: p };
+          return { id: p.id || uid(), name: p.name || titleCase(p.file), file: p.file };
+        }).filter(p => p.file);
+      }
+    });
+  }
+  return c;
+}
+async function fetchManifest(){
+  try{
+    const res = await fetch('./pages.json', { cache: 'no-store' });
+    if(res.ok) return await res.json();
+  }catch(e){}
+  return null;
+}
+
+let state = loadLocal();
+
+function save(){
+  state.updated = new Date().toISOString();
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
+}
+
+function renderList(cat){
+  const arr = state.categories[cat];
+  const card = document.getElementById('card-' + cat);
+  card.querySelector('[data-role="count"]').textContent = arr.length + (arr.length === 1 ? ' tool' : ' tools');
+  const ul = card.querySelector('[data-role="list"]');
+  if(!arr.length){ ul.innerHTML = '<li class="empty">No pages yet</li>'; return; }
+  ul.innerHTML = arr.map(p => `
+    <li data-id="${p.id}">
+      <a href="${cat}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
+      <button class="ib edit" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
+      <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
+    </li>`).join('');
+}
+function renderAll(){ CATS.forEach(renderList); }
+
+// Flip open/close + row actions (event delegation)
+const editing = {}; // cat -> id being edited, or null
+const pendingDel = {}; // "cat:id" -> timer
+
+grid.addEventListener('click', e => {
+  const front = e.target.closest('[data-role="front"]');
+  if(front){ front.closest('.flip').classList.add('open'); return; }
+
+  const close = e.target.closest('[data-role="close"]');
+  if(close){ close.closest('.flip').classList.remove('open'); return; }
+
+  const btn = e.target.closest('[data-act]');
+  if(btn){
+    const flip = btn.closest('.flip'); const cat = flip.dataset.cat;
+    const li = btn.closest('li'); const id = li.dataset.id;
+    const arr = state.categories[cat];
+    const i = arr.findIndex(p => p.id === id); if(i < 0) return;
+    const key = cat + ':' + id;
+    if(btn.dataset.act === 'edit'){
+      const p = arr[i];
+      const box = flip.querySelector('details.addbox');
+      box.querySelector('.af-file').value = p.file;
+      box.querySelector('.af-name').value = p.name;
+      box.querySelector('.af-err').textContent = '';
+      box.open = true;
+      editing[cat] = id;
+      box.querySelector('.af-file').focus();
+    } else if(btn.dataset.act === 'del'){
+      if(pendingDel[key]){
+        clearTimeout(pendingDel[key]); delete pendingDel[key];
+        arr.splice(i, 1); save(); renderList(cat); toast('Page removed');
+      } else {
+        btn.textContent = '✔'; btn.classList.add('confirming'); toast('Tap ✔ again to delete');
+        pendingDel[key] = setTimeout(() => { delete pendingDel[key]; btn.textContent = '✕'; btn.classList.remove('confirming'); }, 2500);
+      }
+    }
+    return;
+  }
+
+  const cancel = e.target.closest('.af-cancel');
+  if(cancel){
+    const flip = cancel.closest('.flip'); const cat = flip.dataset.cat;
+    const box = cancel.closest('details.addbox');
+    box.querySelector('.af-file').value = ''; box.querySelector('.af-name').value = '';
+    box.querySelector('.af-err').textContent = ''; box.open = false;
+    editing[cat] = null;
+    return;
+  }
+
+  const saveBtn = e.target.closest('.af-save');
+  if(saveBtn){
+    const flip = saveBtn.closest('.flip'); const cat = flip.dataset.cat;
+    const box = saveBtn.closest('details.addbox');
+    const fileIn = box.querySelector('.af-file'); const nameIn = box.querySelector('.af-name');
+    const errBox = box.querySelector('.af-err');
+    let file = fileIn.value.trim();
+    if(!file){ errBox.textContent = 'Enter a filename.'; fileIn.focus(); return; }
+    if(!/\.html?$/i.test(file)) file += '.html';
+    const name = nameIn.value.trim() || titleCase(file);
+    const arr = state.categories[cat];
+    const dupCheck = arr.find(p => p.file.toLowerCase() === file.toLowerCase() && p.id !== editing[cat]);
+    if(dupCheck){ errBox.textContent = 'That file is already listed.'; fileIn.focus(); return; }
+    errBox.textContent = '';
+    if(editing[cat]){
+      const p = arr.find(x => x.id === editing[cat]);
+      if(p){ p.file = file; p.name = name; }
+      toast('Page updated');
+    } else {
+      arr.push({ id: uid(), name, file });
+      toast('Page added');
+    }
+    editing[cat] = null;
+    fileIn.value = ''; nameIn.value = ''; box.open = false;
+    save(); renderList(cat);
+  }
+});
+
+// Sync from pages.json (tap-twice, destructive)
+let syncPending = null;
+document.getElementById('syncBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('syncBtn');
+  if(syncPending){
+    clearTimeout(syncPending); syncPending = null;
+    btn.textContent = '↻ Reload from pages.json'; btn.classList.remove('confirming');
+    const raw = await fetchManifest();
+    if(!raw){ toast('Could not load pages.json'); return; }
+    state.categories = normalizeManifest(raw);
+    save(); renderAll(); toast('Reloaded from pages.json');
+  } else {
+    btn.textContent = 'Tap again to overwrite local edits'; btn.classList.add('confirming');
+    syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Reload from pages.json'; btn.classList.remove('confirming'); }, 2500);
+  }
+});
+
+// Export current state as pages.json
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const out = {};
+  CATS.forEach(k => { out[k] = state.categories[k].map(p => ({ name: p.name, file: p.file })); });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'pages.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Downloaded — commit it to replace pages.json in the repo');
+});
+
+(async function init(){
+  if(!state){
+    const raw = await fetchManifest();
+    state = seedDefault();
+    if(raw) state.categories = normalizeManifest(raw);
+    save();
+  }
+  if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
+  renderAll();
+})();
+</script>
+</body>
+</html>
