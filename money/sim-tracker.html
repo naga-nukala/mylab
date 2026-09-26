@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>SIM Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:620px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:100px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+
+  .summary{display:flex;gap:10px;}
+  .summary .box{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:14px;}
+  .summary .n{font-size:20px;font-weight:800;}
+  .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
+
+  .sim-item{border-bottom:1px solid #334155;padding:12px 0;}
+  .sim-item:last-child{border-bottom:none;}
+  .sim-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .sim-name{font-weight:700;font-size:14px;}
+  .del{background:none;border:none;color:var(--bad);cursor:pointer;font-size:13px;}
+  .sim-meta{font-size:12px;color:var(--sub);margin-bottom:4px;}
+  .status-badge{font-size:10px;padding:2px 10px;border-radius:10px;font-weight:700;}
+  .active-b{background:rgba(34,197,94,.15);color:var(--acc);}
+  .due-b{background:rgba(245,158,11,.15);color:var(--warn);}
+  .idle-b{background:rgba(239,68,68,.15);color:var(--bad);}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📶 Multi-SIM Tracker</h1>
+  <p class="sub">Track every SIM across the family — carrier, cost, renewal due, and flag idle ones to cancel.</p>
+
+  <div class="card">
+    <div class="summary">
+      <div class="box"><div class="n" id="totalSims">0</div><div class="l">Total SIMs</div></div>
+      <div class="box"><div class="n" id="totalMonthly">₹0</div><div class="l">Monthly Spend</div></div>
+      <div class="box"><div class="n" id="dueSoon" style="color:var(--warn);">0</div><div class="l">Due in 7 Days</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Member</label><input type="text" id="member" placeholder="e.g. Myself"></div>
+      <div class="field"><label>Carrier</label><input type="text" id="carrier" placeholder="e.g. Jio, Airtel"></div>
+      <div class="field"><label>Number (last 4 digits)</label><input type="text" id="numLast4" placeholder="e.g. 1234" maxlength="4"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Purpose</label>
+        <select id="purpose">
+          <option value="Primary">Primary</option>
+          <option value="Backup">Backup</option>
+          <option value="Data-only">Data-only</option>
+          <option value="Work">Work</option>
+        </select>
+      </div>
+      <div class="field"><label>RC Amount (₹)</label><input type="number" id="rcAmount" placeholder="e.g. 199"></div>
+      <div class="field"><label>Validity (days)</label><input type="number" id="validityDays" placeholder="e.g. 28"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Last Recharge Date</label><input type="date" id="lastRecharge" max=""></div>
+    </div>
+    <button class="add" id="addBtn" onclick="addSim()">+ Add SIM</button>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Your SIMs</label>
+    <div id="simsList"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'sim_tracker_entries';
+let sims = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let editingId = null;
+
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(sims)); }
+
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+
+document.getElementById('lastRecharge').max = todayStr();
+
+function addSim(){
+  const member = document.getElementById('member').value.trim();
+  const carrier = document.getElementById('carrier').value.trim();
+  const numLast4 = document.getElementById('numLast4').value.trim();
+  const purpose = document.getElementById('purpose').value;
+  const rcAmount = parseFloat(document.getElementById('rcAmount').value) || 0;
+  const validityDays = parseFloat(document.getElementById('validityDays').value) || 28;
+  const lastRecharge = document.getElementById('lastRecharge').value || todayStr();
+
+  if(!member || !carrier) return;
+  if(lastRecharge > todayStr()){ alert('Last Recharge Date cannot be in the future.'); return; }
+
+  if(editingId !== null){
+    const idx = sims.findIndex(s=>s.id===editingId);
+    if(idx > -1){
+      sims[idx] = { ...sims[idx], member, carrier, numLast4, purpose, rcAmount, validityDays, lastRecharge };
+    }
+    editingId = null;
+    document.getElementById('addBtn').textContent = '+ Add SIM';
+  } else {
+    sims.push({ id: Date.now(), member, carrier, numLast4, purpose, rcAmount, validityDays, lastRecharge });
+  }
+  save();
+
+  document.getElementById('member').value='';
+  document.getElementById('carrier').value='';
+  document.getElementById('numLast4').value='';
+  document.getElementById('rcAmount').value='';
+  document.getElementById('validityDays').value='';
+  document.getElementById('lastRecharge').value='';
+
+  render();
+}
+
+function editSim(id){
+  const s = sims.find(s=>s.id===id);
+  if(!s) return;
+  document.getElementById('member').value = s.member;
+  document.getElementById('carrier').value = s.carrier;
+  document.getElementById('numLast4').value = s.numLast4;
+  document.getElementById('purpose').value = s.purpose;
+  document.getElementById('rcAmount').value = s.rcAmount;
+  document.getElementById('validityDays').value = s.validityDays;
+  document.getElementById('lastRecharge').value = s.lastRecharge;
+  editingId = id;
+  document.getElementById('addBtn').textContent = '✓ Update SIM';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function removeSim(id){
+  sims = sims.filter(s=>s.id!==id);
+  save();
+  render();
+}
+
+function daysBetween(dateStr){
+  const then = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now - then) / (1000*60*60*24));
+}
+
+function render(){
+  const container = document.getElementById('simsList');
+
+  if(sims.length===0){
+    container.innerHTML = '<div class="empty">No SIMs added yet.</div>';
+    document.getElementById('totalSims').textContent = '0';
+    document.getElementById('totalMonthly').textContent = '₹0';
+    document.getElementById('dueSoon').textContent = '0';
+    return;
+  }
+
+  let totalMonthly = 0, dueSoonCount = 0;
+
+  container.innerHTML = sims.map(s=>{
+    const daysSince = daysBetween(s.lastRecharge);
+    const daysLeft = s.validityDays - daysSince;
+    const monthlyEquiv = s.validityDays>0 ? (s.rcAmount / s.validityDays) * 30 : 0;
+    totalMonthly += monthlyEquiv;
+
+    let statusClass, statusLabel;
+    if(daysLeft < 0){ statusClass='idle-b'; statusLabel='Expired/Idle'; }
+    else if(daysLeft <= 7){ statusClass='due-b'; statusLabel=`Due in ${daysLeft}d`; dueSoonCount++; }
+    else { statusClass='active-b'; statusLabel='Active'; }
+
+    return `
+      <div class="sim-item">
+        <div class="sim-head">
+          <span class="sim-name">${s.member} — ${s.carrier}${s.numLast4?` (•${s.numLast4})`:''}</span>
+          <span>
+            <button class="del" style="color:var(--acc);" onclick="editSim(${s.id})">Edit</button>
+            <button class="del" onclick="removeSim(${s.id})">✕</button>
+          </span>
+        </div>
+        <div class="sim-meta">${s.purpose} • ₹${s.rcAmount}/${s.validityDays}d (~₹${monthlyEquiv.toFixed(0)}/mo) • last recharged ${s.lastRecharge}</div>
+        <span class="status-badge ${statusClass}">${statusLabel}</span>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('totalSims').textContent = sims.length;
+  document.getElementById('totalMonthly').textContent = '₹' + totalMonthly.toFixed(0);
+  document.getElementById('dueSoon').textContent = dueSoonCount;
+}
+
+render();
+</script>
+</body>
+</html>

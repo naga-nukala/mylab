@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Debt Dashboard</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--blue:#3b82f6;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:620px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:110px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+  button.link{background:none;border:none;color:var(--acc);font-size:12px;cursor:pointer;padding:4px 8px;}
+  button.link.warn{color:var(--warn);}
+  button.link.bad{color:var(--bad);}
+
+  .dash-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .dash-stat{background:#0f172a;border-radius:10px;padding:12px;text-align:center;}
+  .dash-stat .n{font-size:18px;font-weight:800;}
+  .dash-stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
+
+  .type-grid{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .type-btn{flex:1;min-width:70px;padding:10px 6px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--sub);font-size:11px;cursor:pointer;text-align:center;}
+  .type-btn.active{border-color:var(--acc);color:var(--acc);background:rgba(34,197,94,.08);}
+  .type-btn .ic{font-size:18px;display:block;margin-bottom:2px;}
+
+  .loan-card{border-bottom:1px solid #334155;padding:14px 0;}
+  .loan-card:last-child{border-bottom:none;}
+  .loan-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .loan-title{font-weight:700;font-size:15px;}
+  .loan-sub{font-size:11px;color:var(--sub);}
+  .kind-tag{font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(59,130,246,.15);color:#60a5fa;font-weight:700;margin-left:6px;}
+
+  .bar{height:8px;border-radius:4px;background:#334155;overflow:hidden;margin:8px 0 4px;}
+  .bar-fill{height:100%;background:var(--acc);}
+  .bar-text{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);}
+
+  .loan-meta{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6;}
+  .loan-actions{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;}
+  .loan-actions button{flex:1;min-width:70px;padding:6px;font-size:11px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:var(--txt);cursor:pointer;}
+  .loan-actions button.primary{border-color:var(--acc);color:var(--acc);}
+
+  .whatif-panel{background:#0f172a;border-radius:10px;padding:14px;margin-top:10px;border:1px solid #334155;}
+  .whatif-title{font-size:13px;font-weight:700;margin-bottom:10px;}
+  .whatif-result{background:var(--card);border-radius:8px;padding:12px;margin-top:10px;font-size:13px;}
+  .whatif-result div{display:flex;justify-content:space-between;padding:3px 0;}
+  .whatif-result .good{color:var(--acc);font-weight:700;}
+
+  .lump-line{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #334155;}
+  .lump-line:last-child{border-bottom:none;}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💳 Debt Dashboard</h1>
+  <p class="sub">Every loan tracked separately, with a live progress bar and the real outstanding balance — not what you remember, what the math says.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Your Current Age (optional, for Debt-Freedom Age)</label><input type="number" id="userAge" oninput="renderDashboard()"></div>
+    </div>
+    <div class="dash-summary">
+      <div class="dash-stat"><div class="n" id="dTotalOutstanding">₹0</div><div class="l">Total Outstanding</div></div>
+      <div class="dash-stat"><div class="n" id="dTotalEMI">₹0</div><div class="l">Monthly Payment Total</div></div>
+      <div class="dash-stat"><div class="n" id="dInterestDay">₹0/day</div><div class="l">🔥 Interest Burning</div></div>
+      <div class="dash-stat"><div class="n" id="dFreedom">--</div><div class="l">Debt-Free By</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label style="color:var(--txt);font-weight:700;">Add a Loan</label>
+    <div class="type-grid" id="typeGrid"></div>
+
+    <div class="row">
+      <div class="field"><label>Lender Name</label><input type="text" id="lender" placeholder="e.g. SBI, HDFC"></div>
+      <div class="field" id="loanKindField" style="display:none;">
+        <label>Loan Behavior</label>
+        <select id="loanKindOverride">
+          <option value="emi">EMI (amortizing)</option>
+          <option value="bullet">Bullet/Interest-only</option>
+          <option value="revolving">Revolving credit</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Original Loan Amount (₹)</label><input type="number" id="originalAmount" placeholder="e.g. 2500000" oninput="updateEmiPreview()"></div>
+      <div class="field"><label>Interest Rate (% p.a.)</label><input type="number" id="rate" placeholder="e.g. 8.5" oninput="updateEmiPreview()"></div>
+    </div>
+    <div class="row" id="emiTenureRow">
+      <div class="field"><label>Loan Start Date</label><input type="date" id="startDate"></div>
+      <div class="field"><label>Tenure (months)</label><input type="number" id="tenureMonths" placeholder="e.g. 240" oninput="updateEmiPreview()"></div>
+    </div>
+    <div class="row" id="emiAmountRow">
+      <div class="field" style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="useCustomEmi" style="width:auto;" onchange="updateEmiPreview()">
+        <label style="margin:0;">Bank quoted a different EMI (override auto-calc)</label>
+      </div>
+    </div>
+    <div class="row" id="customEmiRow" style="display:none;">
+      <div class="field"><label>Custom EMI Amount (₹)</label><input type="number" id="emiAmount" placeholder="e.g. 22000"></div>
+    </div>
+    <div id="emiPreview" style="font-size:11px;color:var(--acc);margin-bottom:8px;"></div>
+
+    <div class="row" id="emiOverrideRow" style="display:none;">
+      <div class="field" style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="useManualOutstandingEmi" style="width:auto;" onchange="toggleManualOutstandingEmi()">
+        <label style="margin:0;">Rate changed over time? Enter actual outstanding from statement instead</label>
+      </div>
+    </div>
+    <div class="row" id="manualOutstandingRow" style="display:none;">
+      <div class="field"><label>Current Outstanding Balance (₹)</label><input type="number" id="manualOutstanding" placeholder="e.g. 30000"></div>
+    </div>
+    <div class="row" id="minPctRow" style="display:none;">
+      <div class="field"><label>Min Payment (% of balance)</label><input type="number" id="minPct" value="5"></div>
+    </div>
+
+    <button class="add" id="loanAddBtn" onclick="saveLoan()">+ Add Loan</button>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Your Loans</label>
+    <div id="loansList"></div>
+  </div>
+
+  <div class="card">
+    <label style="color:var(--txt);font-weight:700;">💰 Got a Lump Sum? See Where It Helps Most</label>
+    <div class="row">
+      <div class="field"><input type="number" id="lumpSumInput" placeholder="e.g. 100000" oninput="renderLumpSum()"></div>
+    </div>
+    <div id="lumpSumResult"></div>
+  </div>
+</div>
+
+<script>
+const TYPE_META = {
+  home:      {icon:'🏠', label:'Home',   kind:'emi'},
+  car:       {icon:'🚗', label:'Car',    kind:'emi'},
+  personal:  {icon:'💼', label:'Personal', kind:'emi'},
+  creditcard:{icon:'💳', label:'Credit Card', kind:'revolving'},
+  gold:      {icon:'🪙', label:'Gold/Bullet', kind:'bullet'},
+  other:     {icon:'📄', label:'Other', kind:'emi'}
+};
+
+const STORAGE_KEY = 'debt_dashboard_loans_v3';
+let loans = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let selectedType = 'home';
+let editingId = null;
+let openWhatIfId = null;
+
+function saveLoans(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(loans)); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+
+function monthsBetween(d1, d2){
+  const a = new Date(d1), b = new Date(d2);
+  return Math.max(0, (b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth()));
+}
+function addMonths(dateStr, n){
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth()+n);
+  return d;
+}
+function fmtMonthYear(date){
+  return date.toLocaleDateString('en-IN',{month:'short', year:'numeric'});
+}
+
+function calcEMI(principal, annualRate, months){
+  const r = annualRate/12/100;
+  if(!months || months<=0) return 0;
+  if(r===0) return principal/months;
+  const emi = principal * r * Math.pow(1+r, months) / (Math.pow(1+r, months)-1);
+  return isFinite(emi) ? emi : 0;
+}
+
+function getEMI(loan){
+  if(loan.customEmi && loan.customEmi>0) return loan.customEmi;
+  return calcEMI(loan.originalAmount, loan.rate, loan.tenureMonths);
+}
+
+// ---------- Type Grid ----------
+function renderTypeGrid(){
+  const grid = document.getElementById('typeGrid');
+  grid.innerHTML = Object.keys(TYPE_META).map(key=>`
+    <div class="type-btn ${key===selectedType?'active':''}" onclick="selectType('${key}')">
+      <span class="ic">${TYPE_META[key].icon}</span>${TYPE_META[key].label}
+    </div>
+  `).join('');
+  document.getElementById('loanKindField').style.display = selectedType==='other' ? 'block' : 'none';
+  const kind = getSelectedKind();
+  document.getElementById('emiTenureRow').style.display = kind==='revolving' ? 'none' : 'flex';
+  document.getElementById('emiAmountRow').style.display = kind==='emi' ? 'flex' : 'none';
+  document.getElementById('emiOverrideRow').style.display = kind==='emi' ? 'flex' : 'none';
+  document.getElementById('manualOutstandingRow').style.display = (kind!=='emi' || document.getElementById('useManualOutstandingEmi').checked) ? 'flex' : 'none';
+  document.getElementById('minPctRow').style.display = kind==='revolving' ? 'flex' : 'none';
+}
+function toggleManualOutstandingEmi(){
+  const checked = document.getElementById('useManualOutstandingEmi').checked;
+  document.getElementById('manualOutstandingRow').style.display = checked ? 'flex' : 'none';
+}
+function selectType(key){
+  selectedType = key;
+  renderTypeGrid();
+}
+function getSelectedKind(){
+  if(selectedType==='other') return document.getElementById('loanKindOverride').value;
+  return TYPE_META[selectedType].kind;
+}
+document.addEventListener('change', (e)=>{ if(e.target.id==='loanKindOverride') renderTypeGrid(); });
+
+function updateEmiPreview(){
+  const kind = getSelectedKind();
+  const preview = document.getElementById('emiPreview');
+  const useCustom = document.getElementById('useCustomEmi').checked;
+  document.getElementById('customEmiRow').style.display = (kind==='emi' && useCustom) ? 'flex' : 'none';
+  if(kind!=='emi'){ preview.textContent=''; return; }
+  const amt = parseFloat(document.getElementById('originalAmount').value) || 0;
+  const rate = parseFloat(document.getElementById('rate').value) || 0;
+  const tenure = parseFloat(document.getElementById('tenureMonths').value) || 0;
+  if(amt>0 && rate>0 && tenure>0){
+    const emi = calcEMI(amt, rate, tenure);
+    preview.textContent = `Auto-calculated EMI: ₹${emi.toFixed(0)}/mo (recalculates automatically as you change amount/rate/tenure)`;
+  } else {
+    preview.textContent = '';
+  }
+}
+
+// ---------- Save / Edit Loan ----------
+function saveLoan(){
+  const kind = getSelectedKind();
+  const lender = document.getElementById('lender').value.trim();
+  const originalAmount = parseFloat(document.getElementById('originalAmount').value) || 0;
+  const rate = parseFloat(document.getElementById('rate').value) || 0;
+  const startDate = document.getElementById('startDate').value || todayStr();
+  const tenureMonths = parseFloat(document.getElementById('tenureMonths').value) || 0;
+  const emiAmountInput = document.getElementById('useCustomEmi').checked ? (parseFloat(document.getElementById('emiAmount').value) || 0) : 0;
+  const manualOverride = kind==='emi' ? document.getElementById('useManualOutstandingEmi').checked : true;
+  const manualOutstanding = parseFloat(document.getElementById('manualOutstanding').value) || 0;
+  const minPct = parseFloat(document.getElementById('minPct').value) || 5;
+
+  if(!lender || originalAmount<=0 || rate<=0) return;
+  if(kind==='emi' && tenureMonths<=0) return;
+  if(kind!=='emi' && manualOutstanding<=0) return;
+  if(kind==='emi' && manualOverride && manualOutstanding<=0) return;
+
+  const loanData = { type:selectedType, kind, lender, originalAmount, rate, startDate, tenureMonths, customEmi:emiAmountInput, manualOutstanding, manualOverride, minPct };
+
+  if(editingId!==null){
+    const idx = loans.findIndex(l=>l.id===editingId);
+    if(idx>-1) loans[idx] = { ...loans[idx], ...loanData };
+    editingId = null;
+    document.getElementById('loanAddBtn').textContent = '+ Add Loan';
+  } else {
+    loans.push({ id: Date.now(), ...loanData });
+  }
+  saveLoans();
+
+  ['lender','originalAmount','rate','startDate','tenureMonths','emiAmount','manualOutstanding'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('emiPreview').textContent = '';
+
+  renderAll();
+}
+
+function editLoan(id){
+  const l = loans.find(l=>l.id===id);
+  if(!l) return;
+  selectedType = l.type;
+  renderTypeGrid();
+  if(l.type==='other') document.getElementById('loanKindOverride').value = l.kind;
+  document.getElementById('lender').value = l.lender;
+  document.getElementById('originalAmount').value = l.originalAmount;
+  document.getElementById('rate').value = l.rate;
+  document.getElementById('startDate').value = l.startDate;
+  document.getElementById('tenureMonths').value = l.tenureMonths;
+  document.getElementById('useCustomEmi').checked = !!(l.customEmi && l.customEmi>0);
+  document.getElementById('emiAmount').value = l.customEmi || '';
+  document.getElementById('useManualOutstandingEmi').checked = !!(l.kind==='emi' && l.manualOverride);
+  document.getElementById('manualOutstanding').value = l.manualOutstanding || '';
+  document.getElementById('minPct').value = l.minPct;
+  editingId = id;
+  document.getElementById('loanAddBtn').textContent = '✓ Update Loan';
+  updateEmiPreview();
+  toggleManualOutstandingEmi();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function deleteLoan(id){
+  loans = loans.filter(l=>l.id!==id);
+  saveLoans();
+  renderAll();
+}
+
+// ---------- Computation ----------
+function getOutstanding(loan){
+  if(loan.kind==='emi' && loan.manualOverride && loan.manualOutstanding>0) return loan.manualOutstanding;
+  if(loan.kind!=='emi') return loan.manualOutstanding;
+  const elapsed = monthsBetween(loan.startDate, todayStr());
+  let balance = loan.originalAmount;
+  for(let m=0; m<elapsed && balance>0.5; m++){
+    const interest = balance * (loan.rate/100/12);
+    balance = balance + interest - getEMI(loan);
+  }
+  return Math.max(0, balance);
+}
+
+function getNextDueDate(loan){
+  const elapsed = monthsBetween(loan.startDate, todayStr());
+  return addMonths(loan.startDate, elapsed+1);
+}
+
+function getProgressPct(loan, outstanding){
+  if(loan.kind==='emi'){
+    return loan.originalAmount>0 ? Math.min(100, ((loan.originalAmount-outstanding)/loan.originalAmount)*100) : 0;
+  }
+  if(loan.kind==='bullet'){
+    const elapsed = monthsBetween(loan.startDate, todayStr());
+    return loan.tenureMonths>0 ? Math.min(100, (elapsed/loan.tenureMonths)*100) : 0;
+  }
+  return 0;
+}
+
+// simulate a single loan forward from now, with optional one-time lump sum and monthly extra and rate override
+function simulateSingleLoan(loan, outstanding, opts){
+  opts = opts || {};
+  const lumpSum = opts.lumpSum || 0;
+  const extraMonthly = opts.extraMonthly || 0;
+  const newRate = opts.newRate || loan.rate;
+  let balance = Math.max(0, outstanding - lumpSum);
+  const payment = loan.kind==='emi' ? getEMI(loan) + extraMonthly : 0;
+  let months=0, totalInterest=0;
+  const maxM = 600;
+
+  while(balance>0.5 && months<maxM){
+    months++;
+    const interest = balance*(newRate/100/12);
+    balance += interest;
+    totalInterest += interest;
+
+    let pay;
+    if(loan.kind==='emi'){ pay = Math.min(payment, balance); }
+    else if(loan.kind==='bullet'){
+      pay = months >= loan.tenureMonths ? balance : Math.min(balance*(newRate/100/12) + extraMonthly, balance);
+    } else { pay = Math.min(balance*(loan.minPct/100) + extraMonthly, balance); }
+
+    balance -= pay;
+  }
+  return { months, totalInterest, cleared: balance<=0.5 };
+}
+
+// ---------- Dashboard rendering ----------
+function renderDashboard(){
+  let totalOutstanding=0, totalMonthly=0, totalDailyInterest=0;
+  loans.forEach(l=>{
+    const out = getOutstanding(l);
+    totalOutstanding += out;
+    totalDailyInterest += out*(l.rate/100/365);
+    if(l.kind==='emi') totalMonthly += getEMI(l);
+    else if(l.kind==='bullet') totalMonthly += out*(l.rate/100/12);
+    else totalMonthly += out*(l.minPct/100);
+  });
+
+  document.getElementById('dTotalOutstanding').textContent = '₹'+totalOutstanding.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('dTotalEMI').textContent = '₹'+totalMonthly.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('dInterestDay').textContent = '₹'+totalDailyInterest.toFixed(0)+'/day';
+
+  // portfolio freedom simulation (no extra, avalanche order doesn't matter since no extra)
+  let maxMonths=0;
+  loans.forEach(l=>{
+    const out = getOutstanding(l);
+    const r = simulateSingleLoan(l, out, {});
+    if(r.cleared) maxMonths = Math.max(maxMonths, r.months);
+    else maxMonths = Math.max(maxMonths, 600);
+  });
+  const freedomEl = document.getElementById('dFreedom');
+  if(loans.length===0){ freedomEl.textContent='--'; }
+  else {
+    const freeDate = addMonths(todayStr(), maxMonths);
+    const age = parseFloat(document.getElementById('userAge').value) || 0;
+    freedomEl.textContent = age>0 ? `${(age + maxMonths/12).toFixed(0)}y old` : fmtMonthYear(freeDate);
+  }
+}
+
+function renderLoans(){
+  const container = document.getElementById('loansList');
+  if(loans.length===0){
+    container.innerHTML = '<div class="empty">No loans added yet.</div>';
+    return;
+  }
+
+  container.innerHTML = loans.map(l=>{
+    const out = getOutstanding(l);
+    const progress = getProgressPct(l, out);
+    const nextDue = l.kind==='emi' ? fmtMonthYear(getNextDueDate(l)) : '—';
+    const meta = TYPE_META[l.type];
+    const monthlyAmt = l.kind==='emi' ? getEMI(l) : l.kind==='bullet' ? out*(l.rate/100/12) : out*(l.minPct/100);
+
+    let whatifHtml = '';
+    if(openWhatIfId === l.id){
+      whatifHtml = `
+        <div class="whatif-panel">
+          <div class="whatif-title">⚡ What If — ${l.lender} (${meta.label} Loan)</div>
+          <div class="row">
+            <div class="field"><label>Extra ₹/month</label><input type="number" id="wi-extra-${l.id}" value="0" oninput="renderWhatIf(${l.id})"></div>
+            <div class="field"><label>Lump sum now (₹)</label><input type="number" id="wi-lump-${l.id}" value="0" oninput="renderWhatIf(${l.id})"></div>
+            <div class="field"><label>Refinance rate (%)</label><input type="number" id="wi-rate-${l.id}" value="${l.rate}" oninput="renderWhatIf(${l.id})"></div>
+          </div>
+          <div id="wi-result-${l.id}"></div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="loan-card">
+        <div class="loan-head">
+          <span class="loan-title">${meta.icon} ${l.lender} <span class="loan-sub" style="font-weight:400;">— ${meta.label} Loan</span><span class="kind-tag">${l.kind.toUpperCase()}</span></span>
+          <span>
+            <button class="link" onclick="editLoan(${l.id})">Edit</button>
+            <button class="link bad" onclick="deleteLoan(${l.id})">✕</button>
+          </span>
+        </div>
+        <div class="loan-sub">${l.rate}% p.a. • Started ₹${l.originalAmount.toLocaleString('en-IN')}</div>
+        <div class="bar"><div class="bar-fill" style="width:${progress.toFixed(1)}%;"></div></div>
+        <div class="bar-text"><span>${progress.toFixed(0)}% ${l.kind==='bullet'?'of tenure elapsed':'paid off'}</span><span>Outstanding ₹${out.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        <div class="loan-meta">
+          Monthly: ₹${monthlyAmt.toFixed(0)}${nextDue!=='—'?` • Next: ${nextDue}`:''}
+        </div>
+        <div class="loan-actions">
+          <button class="primary" onclick="toggleWhatIf(${l.id})">⚡ What If</button>
+        </div>
+        ${whatifHtml}
+      </div>
+    `;
+  }).join('');
+
+  if(openWhatIfId!==null) renderWhatIf(openWhatIfId);
+}
+
+function toggleWhatIf(id){
+  openWhatIfId = openWhatIfId===id ? null : id;
+  renderLoans();
+}
+
+function renderWhatIf(id){
+  const l = loans.find(l=>l.id===id);
+  if(!l) return;
+  const out = getOutstanding(l);
+  const extra = parseFloat(document.getElementById(`wi-extra-${id}`)?.value) || 0;
+  const lump = parseFloat(document.getElementById(`wi-lump-${id}`)?.value) || 0;
+  const newRate = parseFloat(document.getElementById(`wi-rate-${id}`)?.value) || l.rate;
+
+  const baseline = simulateSingleLoan(l, out, {});
+  const scenario = simulateSingleLoan(l, out, { extraMonthly:extra, lumpSum:lump, newRate });
+
+  const interestSaved = baseline.totalInterest - scenario.totalInterest;
+  const monthsSaved = baseline.months - scenario.months;
+  const newFreeDate = fmtMonthYear(addMonths(todayStr(), scenario.months));
+
+  const resultEl = document.getElementById(`wi-result-${id}`);
+  if(resultEl){
+    resultEl.innerHTML = `
+      <div class="whatif-result">
+        <div><span>Interest Saved</span><span class="good">₹${Math.max(0,interestSaved).toFixed(0)}</span></div>
+        <div><span>Time Saved</span><span class="good">${Math.max(0,monthsSaved)} months</span></div>
+        <div><span>New Debt-Free Date</span><span>${newFreeDate}</span></div>
+      </div>
+    `;
+  }
+}
+
+// ---------- Lump Sum Allocator ----------
+function renderLumpSum(){
+  const amount = parseFloat(document.getElementById('lumpSumInput').value) || 0;
+  const resultEl = document.getElementById('lumpSumResult');
+  if(amount<=0 || loans.length===0){
+    resultEl.innerHTML = loans.length===0 ? '<div class="empty">Add loans first.</div>' : '';
+    return;
+  }
+
+  // avalanche: highest rate first
+  const sorted = [...loans].sort((a,b)=>b.rate-a.rate);
+  let remaining = amount;
+  const allocations = [];
+
+  sorted.forEach(l=>{
+    if(remaining<=0) return;
+    const out = getOutstanding(l);
+    const applied = Math.min(remaining, out);
+    if(applied>0){
+      const baseline = simulateSingleLoan(l, out, {});
+      const withLump = simulateSingleLoan(l, out, { lumpSum: applied });
+      const interestSaved = baseline.totalInterest - withLump.totalInterest;
+      allocations.push({ lender:l.lender, typeLabel: TYPE_META[l.type].label, applied, interestSaved, monthsSaved: baseline.months-withLump.months });
+      remaining -= applied;
+    }
+  });
+
+  resultEl.innerHTML = allocations.map(a=>`
+    <div class="lump-line"><span>${a.lender} (${a.typeLabel}) ← ₹${a.applied.toFixed(0)}</span><span style="color:var(--acc);">saves ₹${a.interestSaved.toFixed(0)}, ${a.monthsSaved}mo</span></div>
+  `).join('') + (remaining>0 ? `<div class="lump-line"><span>Leftover after clearing all debt</span><span>₹${remaining.toFixed(0)} — redirect to investing</span></div>` : '');
+}
+
+function renderAll(){
+  renderDashboard();
+  renderLoans();
+  renderLumpSum();
+}
+
+renderTypeGrid();
+document.getElementById('startDate').max = todayStr();
+renderAll();
+</script>
+</body>
+</html>

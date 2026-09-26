@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Goal-Based Savings Planner</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1e2229;--border:#2a2f3a;--text:#e8eaed;--muted:#9aa3af;--accent:#4ade80;--accent2:#22c55e;--danger:#f87171;}
+  *{box-sizing:border-box} body{margin:0;padding:16px 16px 80px;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:600px;margin:auto} h1{font-size:19px;margin:0 0 4px}.sub{font-size:13px;color:var(--muted);margin:0 0 16px}
+  .summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.summary-box,.form-card,.goal-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .summary-box{background:linear-gradient(135deg,#1a2e22,#132018);border-color:#2d5a3d;text-align:center}.label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.value{font-size:19px;font-weight:700;color:var(--accent);margin-top:4px}
+  .row{display:flex;gap:8px;margin-bottom:9px}.field{flex:1;min-width:0}label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}input,select{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);color:var(--text);font-size:14px}input:focus,select:focus{outline:none;border-color:var(--accent)}
+  button{cursor:pointer;font:inherit}.primary{width:100%;border:0;border-radius:8px;padding:12px;background:var(--accent2);color:#08170e;font-weight:700;margin-top:2px}.preview{display:none;margin:3px 0 10px;padding:10px 12px;border:1px dashed var(--border);border-radius:8px;background:var(--card2)}.preview-row,.goal-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:12px;color:var(--muted)}.preview-row strong,.goal-row strong{color:var(--text)}.preview-row.highlight strong{color:var(--accent);font-size:14px}
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin:18px 0 9px}.section-head h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0}.goal-card{margin-bottom:9px}.goal-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}.goal-name{font-weight:700}.goal-type{font-size:11px;color:var(--accent);margin-top:2px}.actions{display:flex;gap:5px}.icon{border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px}.icon.delete{color:var(--danger)}.goal-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.stat{background:var(--card2);border-radius:8px;padding:8px 10px}.stat .label{font-size:9px}.stat .value{font-size:14px;color:var(--text)}.stat.highlight .value{color:var(--accent)}.empty{text-align:center;color:var(--muted);padding:25px 10px;font-size:13px}.note{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;margin-top:14px}
+  @media(max-width:420px){.row{gap:6px}input,select{padding:9px 8px}.summary-box{padding:11px 8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎯 Goal-Based Savings Planner</h1>
+  <p class="sub">Plan travel, education, a vehicle, or any personal goal with inflation and investment growth included.</p>
+
+  <div class="summary">
+    <div class="summary-box"><div class="label">Total Future Cost</div><div class="value" id="totalFuture">₹0</div></div>
+    <div class="summary-box"><div class="label">Total Monthly Saving</div><div class="value" id="totalMonthly">₹0</div></div>
+  </div>
+
+  <div class="form-card">
+    <div class="row">
+      <div class="field"><label>Goal Name</label><input id="name" placeholder="e.g. Japan trip" oninput="preview()"></div>
+      <div class="field"><label>Category</label><select id="category" onchange="preview()"><option>Travel</option><option>Education</option><option>Vehicle</option><option>Home</option><option>Other</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Needed In (years)</label><input type="number" id="years" placeholder="3" min="0.1" step="0.1" oninput="preview()"></div>
+      <div class="field"><label>Cost Today (₹)</label><input type="number" id="cost" placeholder="300000" min="1" oninput="preview()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Already Saved (₹)</label><input type="number" id="saved" value="0" min="0" oninput="preview()"></div>
+      <div class="field"><label>Inflation %/yr</label><input type="number" id="inflation" value="6" step="0.1" oninput="preview()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Expected Return %/yr</label><input type="number" id="returnRate" value="8" step="0.1" oninput="preview()"></div>
+    </div>
+    <div class="preview" id="previewBox">
+      <div class="preview-row"><span>Inflated future cost</span><strong id="futureCost">-</strong></div>
+      <div class="preview-row"><span>Existing savings may grow to</span><strong id="grownSavings">-</strong></div>
+      <div class="preview-row"><span>Amount still needed</span><strong id="gap">-</strong></div>
+      <div class="preview-row highlight"><span>Monthly contribution</span><strong id="monthly">-</strong></div>
+    </div>
+    <button class="primary" id="saveButton" onclick="saveGoal()">+ Add Goal</button>
+  </div>
+
+  <div class="section-head"><h2>Saved Goals</h2></div>
+  <div id="goals"></div>
+  <div class="note">Estimates assume monthly contributions at the end of each month. Returns and inflation will vary.</div>
+</div>
+<script>
+const STORAGE_KEY = 'goalSavingsPlanner_v1';
+let goals = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let editingId = null;
+function fmt(value){ return '₹' + Math.round(value).toLocaleString('en-IN'); }
+function readForm(){ return {name:document.getElementById('name').value.trim(),category:document.getElementById('category').value,years:parseFloat(document.getElementById('years').value),cost:parseFloat(document.getElementById('cost').value),saved:parseFloat(document.getElementById('saved').value)||0,inflation:parseFloat(document.getElementById('inflation').value),returnRate:parseFloat(document.getElementById('returnRate').value)}; }
+function valid(goal){ return goal.name && goal.years > 0 && goal.cost > 0 && goal.inflation >= 0 && goal.returnRate >= 0 && [goal.years,goal.cost,goal.inflation,goal.returnRate].every(Number.isFinite); }
+function calculate(goal){ const months=Math.max(Math.round(goal.years*12),1); const futureCost=goal.cost*Math.pow(1+goal.inflation/100,goal.years); const grownSavings=goal.saved*Math.pow(1+goal.returnRate/100,goal.years); const gap=Math.max(futureCost-grownSavings,0); const rate=goal.returnRate/1200; const monthly=rate ? gap*rate/((Math.pow(1+rate,months)-1)*(1+rate)) : gap/months; return {futureCost,grownSavings,gap,monthly}; }
+function preview(){ const goal=readForm(); const box=document.getElementById('previewBox'); if(!valid(goal)){box.style.display='none';return} const result=calculate(goal); box.style.display='block'; document.getElementById('futureCost').textContent=fmt(result.futureCost); document.getElementById('grownSavings').textContent=fmt(result.grownSavings); document.getElementById('gap').textContent=fmt(result.gap); document.getElementById('monthly').textContent=fmt(result.monthly)+'/mo'; }
+function saveGoal(){ const goal=readForm(); if(!valid(goal)){alert('Enter a name, a positive cost, and a valid timeline.');return} if(editingId){const index=goals.findIndex(item=>item.id===editingId);goals[index]={...goals[index],...goal};editingId=null;document.getElementById('saveButton').textContent='+ Add Goal';}else{goals.push({id:Date.now().toString(36),...goal});} localStorage.setItem(STORAGE_KEY,JSON.stringify(goals));clearForm();render(); }
+function clearForm(){['name','years','cost','saved'].forEach(id=>document.getElementById(id).value=id==='saved'?'0':'');document.getElementById('inflation').value='6';document.getElementById('returnRate').value='8';document.getElementById('previewBox').style.display='none';}
+function editGoal(id){const goal=goals.find(item=>item.id===id);if(!goal)return;Object.keys(goal).forEach(key=>{const element=document.getElementById(key);if(element)element.value=goal[key];});editingId=id;document.getElementById('saveButton').textContent='✓ Update Goal';preview();window.scrollTo({top:0,behavior:'smooth'});}
+function deleteGoal(id){goals=goals.filter(goal=>goal.id!==id);localStorage.setItem(STORAGE_KEY,JSON.stringify(goals));render();}
+function render(){let totalFuture=0,totalMonthly=0;const container=document.getElementById('goals');if(!goals.length){container.innerHTML='<div class="empty">Add your first goal above to see its funding plan.</div>';}else{container.innerHTML=goals.map(goal=>{const result=calculate(goal);totalFuture+=result.futureCost;totalMonthly+=result.monthly;return `<div class="goal-card"><div class="goal-head"><div><div class="goal-name">${escapeHtml(goal.name)}</div><div class="goal-type">${escapeHtml(goal.category)} · ${goal.years} years</div></div><div class="actions"><button class="icon" onclick="editGoal('${goal.id}')">Edit</button><button class="icon delete" onclick="deleteGoal('${goal.id}')">Delete</button></div></div><div class="goal-row"><span>Future cost</span><strong>${fmt(result.futureCost)}</strong></div><div class="goal-row"><span>Already saved grows to</span><strong>${fmt(result.grownSavings)}</strong></div><div class="goal-stats"><div class="stat"><div class="label">Amount needed</div><div class="value">${fmt(result.gap)}</div></div><div class="stat highlight"><div class="label">Save monthly</div><div class="value">${fmt(result.monthly)}</div></div></div></div>`;}).join('');} document.getElementById('totalFuture').textContent=fmt(totalFuture);document.getElementById('totalMonthly').textContent=fmt(totalMonthly);}
+function escapeHtml(value){const element=document.createElement('div');element.textContent=value;return element.innerHTML;}
+render();
+</script>
+</body>
+</html>

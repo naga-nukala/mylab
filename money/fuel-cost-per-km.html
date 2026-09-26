@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuel Cost per KM</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --edit:#60a5fa;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:60px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#2a2f3a;
+    color:var(--text); padding:10px 18px; border-radius:20px; font-size:13px; border:1px solid var(--border);
+    box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:100; white-space:nowrap; display:none;}
+  .global-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input, select{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;}
+  input:focus, select:focus{outline:none; border-color:var(--accent);}
+  .btn{width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; margin-top:4px;}
+  .btn-primary{background:var(--accent2); color:#08170e;}
+  .unit-hint{font-size:10px; color:var(--muted); margin-top:-4px; margin-bottom:8px;}
+  .list-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .list-header h2{font-size:14px; margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .veh-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px;}
+  .veh-card.cheapest{border-color:var(--accent); background:linear-gradient(135deg,#132018,#0f1115);}
+  .veh-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;}
+  .veh-name{font-size:15px; font-weight:700;}
+  .veh-tag{display:inline-block; font-size:11px; padding:2px 8px; border-radius:6px; margin-left:6px; font-weight:600;
+    background:#1f2937; color:var(--edit);}
+  .badge{display:inline-block; background:var(--accent); color:#08170e; font-size:10px; padding:2px 6px;
+    border-radius:5px; margin-left:6px; font-weight:700;}
+  .veh-meta{font-size:12px; color:var(--muted); margin-top:2px;}
+  .veh-actions{display:flex; gap:6px; flex-shrink:0;}
+  .icon-btn{background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 9px; font-size:13px; cursor:pointer;}
+  .icon-btn.del{color:var(--danger);}
+  .icon-btn.edit{color:var(--edit);}
+  .icon-btn.del.confirming{background:var(--danger); color:#fff; border-color:var(--danger);}
+  .veh-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .stat{background:var(--card2); border-radius:8px; padding:8px 10px;}
+  .stat .slbl{font-size:10px; color:var(--muted); text-transform:uppercase;}
+  .stat .sval{font-size:14px; font-weight:700; margin-top:2px;}
+  .stat.hilite .sval{color:var(--accent);}
+  .empty{color:var(--muted); text-align:center; padding:30px 10px; font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<h1>⛽ Fuel Cost per KM</h1>
+<div class="sub">Compare petrol, diesel, CNG, and EV running costs on the same footing.</div>
+
+<div class="global-card">
+  <div class="row">
+    <div>
+      <label>Your Monthly Driving (km)</label>
+      <input type="number" id="monthlyKm" placeholder="1000" value="1000" oninput="renderAll()">
+    </div>
+  </div>
+</div>
+
+<div class="global-card">
+  <div class="row">
+    <div>
+      <label>Vehicle Name</label>
+      <input type="text" id="vehName" placeholder="e.g. Activa, City, Nexon EV">
+    </div>
+    <div>
+      <label>Fuel Type</label>
+      <select id="fuelType" onchange="updateUnitHint()">
+        <option value="Petrol">Petrol (₹/litre)</option>
+        <option value="Diesel">Diesel (₹/litre)</option>
+        <option value="CNG">CNG (₹/kg)</option>
+        <option value="Electric">Electric (₹/kWh)</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label id="priceLabel">Fuel Price (₹/litre)</label>
+      <input type="number" id="fuelPrice" placeholder="100" step="0.01">
+    </div>
+    <div>
+      <label id="mileageLabel">Mileage (km/litre)</label>
+      <input type="number" id="mileage" placeholder="18" step="0.1">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Maintenance Cost (₹/km, optional)</label>
+      <input type="number" id="maintCost" placeholder="0" step="0.01">
+    </div>
+  </div>
+  <button class="btn btn-primary" id="saveBtn" onclick="saveVehicle()">+ Add Vehicle</button>
+</div>
+
+<div class="list-header"><h2>Vehicles</h2></div>
+<div id="vehList"></div>
+
+<script>
+const KEY = 'fuelCostPerKm_v1';
+let vehicles = JSON.parse(localStorage.getItem(KEY) || '[]');
+let editingId = null;
+let pendingDeletes = {};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return '₹' + n.toLocaleString('en-IN', {maximumFractionDigits:2}); }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(vehicles)); }
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  t.textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2000);
+}
+
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key]);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  if(btn){ btn.textContent = '✔'; btn.classList.add('confirming'); }
+  showToast('Tap ✕ again to confirm delete');
+  pendingDeletes[key] = setTimeout(() => {
+    delete pendingDeletes[key];
+    if(btn){ btn.textContent = '✕'; btn.classList.remove('confirming'); }
+  }, 2500);
+}
+
+const UNIT_LABELS = {
+  Petrol: {price: 'Fuel Price (₹/litre)', mileage: 'Mileage (km/litre)', unit: 'litre'},
+  Diesel: {price: 'Fuel Price (₹/litre)', mileage: 'Mileage (km/litre)', unit: 'litre'},
+  CNG: {price: 'Fuel Price (₹/kg)', mileage: 'Mileage (km/kg)', unit: 'kg'},
+  Electric: {price: 'Fuel Price (₹/kWh)', mileage: 'Mileage (km/kWh)', unit: 'kWh'}
+};
+
+function updateUnitHint(){
+  const type = document.getElementById('fuelType').value;
+  const u = UNIT_LABELS[type];
+  document.getElementById('priceLabel').textContent = u.price;
+  document.getElementById('mileageLabel').textContent = u.mileage;
+}
+
+function computeCostPerKm(v){
+  const fuelCostPerKm = v.fuelPrice / v.mileage;
+  return fuelCostPerKm + (v.maintCost || 0);
+}
+
+function saveVehicle(){
+  const name = document.getElementById('vehName').value.trim();
+  const fuelType = document.getElementById('fuelType').value;
+  const fuelPrice = parseFloat(document.getElementById('fuelPrice').value);
+  const mileage = parseFloat(document.getElementById('mileage').value);
+  const maintCost = parseFloat(document.getElementById('maintCost').value) || 0;
+
+  if(!name || isNaN(fuelPrice) || fuelPrice <= 0 || isNaN(mileage) || mileage <= 0){
+    showToast('Enter name, valid fuel price, and mileage.');
+    return;
+  }
+
+  if(editingId){
+    const idx = vehicles.findIndex(x => x.id === editingId);
+    vehicles[idx] = { ...vehicles[idx], name, fuelType, fuelPrice, mileage, maintCost };
+    editingId = null;
+    document.getElementById('saveBtn').textContent = '+ Add Vehicle';
+  } else {
+    vehicles.push({ id: uid(), name, fuelType, fuelPrice, mileage, maintCost });
+  }
+  save();
+  clearForm();
+  renderAll();
+}
+
+function clearForm(){
+  document.getElementById('vehName').value = '';
+  document.getElementById('fuelPrice').value = '';
+  document.getElementById('mileage').value = '';
+  document.getElementById('maintCost').value = '';
+}
+
+function editVehicle(id){
+  const v = vehicles.find(x => x.id === id);
+  if(!v) return;
+  document.getElementById('vehName').value = v.name;
+  document.getElementById('fuelType').value = v.fuelType;
+  updateUnitHint();
+  document.getElementById('fuelPrice').value = v.fuelPrice;
+  document.getElementById('mileage').value = v.mileage;
+  document.getElementById('maintCost').value = v.maintCost;
+  editingId = id;
+  document.getElementById('saveBtn').textContent = '✓ Update Vehicle';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function deleteVehicle(id, btn){
+  confirmDelete('veh-'+id, btn, () => {
+    vehicles = vehicles.filter(x => x.id !== id);
+    save();
+    renderAll();
+    showToast('Vehicle deleted');
+  });
+}
+
+function renderAll(){
+  const list = document.getElementById('vehList');
+  const monthlyKm = parseFloat(document.getElementById('monthlyKm').value) || 0;
+
+  if(vehicles.length === 0){
+    list.innerHTML = '<div class="empty">No vehicles added yet. Add one above to compare.</div>';
+    return;
+  }
+
+  const withCost = vehicles.map(v => ({ ...v, costPerKm: computeCostPerKm(v) }));
+  const sorted = [...withCost].sort((a,b) => a.costPerKm - b.costPerKm);
+  const cheapestId = sorted[0].id;
+
+  list.innerHTML = sorted.map(v => {
+    const monthlyCost = v.costPerKm * monthlyKm;
+    const annualCost = monthlyCost * 12;
+    const isCheapest = v.id === cheapestId;
+    return `
+      <div class="veh-card ${isCheapest ? 'cheapest' : ''}">
+        <div class="veh-top">
+          <div>
+            <span class="veh-name">${escapeHtml(v.name)}</span>
+            <span class="veh-tag">${escapeHtml(v.fuelType)}</span>
+            ${isCheapest ? '<span class="badge">CHEAPEST</span>' : ''}
+            <div class="veh-meta">${fmt(v.fuelPrice)}/${UNIT_LABELS[v.fuelType].unit} · ${v.mileage} km/${UNIT_LABELS[v.fuelType].unit}${v.maintCost ? ' · Maint ' + fmt(v.maintCost) + '/km' : ''}</div>
+          </div>
+          <div class="veh-actions">
+            <button class="icon-btn edit" onclick="editVehicle('${v.id}')">✎</button>
+            <button class="icon-btn del" onclick="deleteVehicle('${v.id}', this)">✕</button>
+          </div>
+        </div>
+        <div class="veh-stats">
+          <div class="stat hilite"><div class="slbl">Cost per KM</div><div class="sval">${fmt(v.costPerKm)}</div></div>
+          <div class="stat"><div class="slbl">Monthly Cost</div><div class="sval">${fmt(monthlyCost)}</div></div>
+          <div class="stat"><div class="slbl">Annual Cost</div><div class="sval">${fmt(annualCost)}</div></div>
+          <div class="stat"><div class="slbl">vs Cheapest</div><div class="sval">${isCheapest ? '—' : '+' + fmt((v.costPerKm - sorted[0].costPerKm) * monthlyKm) + '/mo'}</div></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+updateUnitHint();
+renderAll();
+</script>
+</body>
+</html>

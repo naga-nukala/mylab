@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Children Corpus Planner</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --edit:#60a5fa; --edu:#818cf8; --marriage:#f472b6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:90px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#2a2f3a;
+    color:var(--text); padding:10px 18px; border-radius:20px; font-size:13px; border:1px solid var(--border);
+    box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:100; white-space:nowrap;}
+  .summary-row{display:flex; gap:10px; margin-bottom:16px;}
+  .sum-box{flex:1; background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
+    border-radius:12px; padding:14px; text-align:center;}
+  .sum-box .lbl{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .sum-box .val{font-size:19px; font-weight:700; color:var(--accent); margin-top:4px;}
+  .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;}
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input, select{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;}
+  input:focus, select:focus{outline:none; border-color:var(--accent);}
+  .btn{width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; margin-top:4px;}
+  .btn-primary{background:var(--accent2); color:#08170e;}
+  .preview-box{background:var(--card2); border:1px dashed var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px; display:none;}
+  .preview-row{display:flex; justify-content:space-between; font-size:12px; padding:3px 0; color:var(--muted);}
+  .preview-row .pv{color:var(--text); font-weight:600;}
+  .preview-row.highlight .pv{color:var(--accent); font-size:14px;}
+  .list-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .list-header h2{font-size:14px; margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .goal-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px;}
+  .goal-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;}
+  .goal-name{font-size:15px; font-weight:700;}
+  .goal-tag{display:inline-block; font-size:11px; padding:2px 8px; border-radius:6px; margin-left:6px; font-weight:600;}
+  .goal-tag.education{background:#1e1b4b; color:var(--edu);}
+  .goal-tag.marriage{background:#4a1030; color:var(--marriage);}
+  .goal-meta{font-size:12px; color:var(--muted); margin-top:2px;}
+  .goal-actions{display:flex; gap:6px; flex-shrink:0;}
+  .icon-btn{background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 9px; font-size:13px; cursor:pointer;}
+  .icon-btn.del{color:var(--danger);}
+  .icon-btn.edit{color:var(--edit);}
+  .icon-btn.del.confirming{background:var(--danger); color:#fff; border-color:var(--danger);}
+  .goal-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
+  .stat{background:var(--card2); border-radius:8px; padding:8px 10px;}
+  .stat .slbl{font-size:10px; color:var(--muted); text-transform:uppercase;}
+  .stat .sval{font-size:14px; font-weight:700; margin-top:2px;}
+  .stat.sip .sval{color:var(--accent);}
+  .empty{color:var(--muted); text-align:center; padding:30px 10px; font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast hidden" style="display:none;"></div>
+
+<h1>🎓 Children Education & Marriage Corpus Planner</h1>
+<div class="sub">Future cost of each goal, adjusted for inflation, and the monthly SIP needed to reach it.</div>
+
+<div class="summary-row">
+  <div class="sum-box"><div class="lbl">Total Corpus Needed</div><div class="val" id="totalCorpus">₹0</div></div>
+  <div class="sum-box"><div class="lbl">Total Monthly SIP</div><div class="val" id="totalSip">₹0</div></div>
+</div>
+
+<div class="form-card">
+  <div class="row">
+    <div>
+      <label>Child Name</label>
+      <input type="text" id="childName" placeholder="e.g. Aarav" oninput="updatePreview()">
+    </div>
+    <div>
+      <label>Goal</label>
+      <select id="goalType" onchange="updatePreview()">
+        <option value="Education">Education</option>
+        <option value="Marriage">Marriage</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Child's Current Age</label>
+      <input type="number" id="currentAge" placeholder="5" oninput="updatePreview()">
+    </div>
+    <div>
+      <label>Age When Needed</label>
+      <input type="number" id="targetAge" placeholder="18" oninput="updatePreview()">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Cost Today (₹)</label>
+      <input type="number" id="costToday" placeholder="2000000" oninput="updatePreview()">
+    </div>
+    <div>
+      <label>Already Saved (₹)</label>
+      <input type="number" id="alreadySaved" placeholder="0" oninput="updatePreview()">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Inflation Rate %/yr</label>
+      <input type="number" id="inflationRate" placeholder="8" step="0.1" oninput="updatePreview()">
+    </div>
+    <div>
+      <label>Expected Return %/yr</label>
+      <input type="number" id="returnRate" placeholder="12" step="0.1" oninput="updatePreview()">
+    </div>
+  </div>
+
+  <div class="preview-box" id="previewBox">
+    <div class="preview-row"><span>Years to Goal</span><span class="pv" id="pvYears">-</span></div>
+    <div class="preview-row"><span>Future Cost (inflated)</span><span class="pv" id="pvFutureCost">-</span></div>
+    <div class="preview-row"><span>Savings will grow to</span><span class="pv" id="pvSavingsGrown">-</span></div>
+    <div class="preview-row highlight"><span>Corpus Still Needed</span><span class="pv" id="pvCorpusNeeded">-</span></div>
+    <div class="preview-row highlight"><span>Required Monthly SIP</span><span class="pv" id="pvSip">-</span></div>
+  </div>
+
+  <button class="btn btn-primary" id="saveBtn" onclick="saveGoal()">+ Add Goal</button>
+</div>
+
+<div class="list-header"><h2>Goals</h2></div>
+<div id="goalList"></div>
+
+<script>
+const KEY = 'childCorpus_v1';
+let goals = JSON.parse(localStorage.getItem(KEY) || '[]');
+let editingId = null;
+let pendingDeletes = {};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(goals)); }
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  t.textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2000);
+}
+
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key]);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  if(btn){ btn.textContent = '✔'; btn.classList.add('confirming'); }
+  showToast('Tap ✕ again to confirm delete');
+  pendingDeletes[key] = setTimeout(() => {
+    delete pendingDeletes[key];
+    if(btn){ btn.textContent = '✕'; btn.classList.remove('confirming'); }
+  }, 2500);
+}
+
+function computeGoal(g){
+  const years = Math.max(g.targetAge - g.currentAge, 0);
+  const futureCost = g.costToday * Math.pow(1 + g.inflationRate/100, years);
+  const savingsGrown = g.alreadySaved * Math.pow(1 + g.returnRate/100, years);
+  const corpusNeeded = Math.max(futureCost - savingsGrown, 0);
+  const months = years * 12;
+  const r = g.returnRate / 1200;
+  let sip = 0;
+  if(months > 0){
+    sip = r > 0
+      ? corpusNeeded * r / ((Math.pow(1+r, months) - 1) * (1+r))
+      : corpusNeeded / months;
+  } else {
+    sip = corpusNeeded;
+  }
+  return { years, futureCost, savingsGrown, corpusNeeded, sip };
+}
+
+function readForm(){
+  return {
+    childName: document.getElementById('childName').value.trim(),
+    goalType: document.getElementById('goalType').value,
+    currentAge: parseFloat(document.getElementById('currentAge').value),
+    targetAge: parseFloat(document.getElementById('targetAge').value),
+    costToday: parseFloat(document.getElementById('costToday').value),
+    alreadySaved: parseFloat(document.getElementById('alreadySaved').value) || 0,
+    inflationRate: parseFloat(document.getElementById('inflationRate').value),
+    returnRate: parseFloat(document.getElementById('returnRate').value)
+  };
+}
+
+function isValid(g){
+  return g.childName && !isNaN(g.currentAge) && !isNaN(g.targetAge) && g.targetAge > g.currentAge &&
+    !isNaN(g.costToday) && g.costToday > 0 && !isNaN(g.inflationRate) && !isNaN(g.returnRate);
+}
+
+function updatePreview(){
+  const g = readForm();
+  const box = document.getElementById('previewBox');
+  if(!isValid(g)){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const r = computeGoal(g);
+  document.getElementById('pvYears').textContent = r.years + ' yrs';
+  document.getElementById('pvFutureCost').textContent = fmt(r.futureCost);
+  document.getElementById('pvSavingsGrown').textContent = fmt(r.savingsGrown);
+  document.getElementById('pvCorpusNeeded').textContent = fmt(r.corpusNeeded);
+  document.getElementById('pvSip').textContent = fmt(r.sip) + '/mo';
+}
+
+function saveGoal(){
+  const g = readForm();
+  if(!isValid(g)){ showToast('Fill all fields correctly (target age > current age).'); return; }
+
+  if(editingId){
+    const idx = goals.findIndex(x => x.id === editingId);
+    goals[idx] = { ...goals[idx], ...g };
+    editingId = null;
+    document.getElementById('saveBtn').textContent = '+ Add Goal';
+  } else {
+    goals.push({ id: uid(), ...g });
+  }
+  save();
+  clearForm();
+  renderAll();
+}
+
+function clearForm(){
+  document.getElementById('childName').value = '';
+  document.getElementById('currentAge').value = '';
+  document.getElementById('targetAge').value = '';
+  document.getElementById('costToday').value = '';
+  document.getElementById('alreadySaved').value = '';
+  document.getElementById('inflationRate').value = '';
+  document.getElementById('returnRate').value = '';
+  document.getElementById('previewBox').style.display = 'none';
+}
+
+function editGoal(id){
+  const g = goals.find(x => x.id === id);
+  if(!g) return;
+  document.getElementById('childName').value = g.childName;
+  document.getElementById('goalType').value = g.goalType;
+  document.getElementById('currentAge').value = g.currentAge;
+  document.getElementById('targetAge').value = g.targetAge;
+  document.getElementById('costToday').value = g.costToday;
+  document.getElementById('alreadySaved').value = g.alreadySaved;
+  document.getElementById('inflationRate').value = g.inflationRate;
+  document.getElementById('returnRate').value = g.returnRate;
+  editingId = id;
+  document.getElementById('saveBtn').textContent = '✓ Update Goal';
+  updatePreview();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function deleteGoal(id, btn){
+  confirmDelete('goal-'+id, btn, () => {
+    goals = goals.filter(x => x.id !== id);
+    save();
+    renderAll();
+    showToast('Goal deleted');
+  });
+}
+
+function renderAll(){
+  let totalCorpus = 0, totalSip = 0;
+  const list = document.getElementById('goalList');
+
+  if(goals.length === 0){
+    list.innerHTML = '<div class="empty">No goals added yet. Add your first one above.</div>';
+    document.getElementById('totalCorpus').textContent = fmt(0);
+    document.getElementById('totalSip').textContent = fmt(0);
+    return;
+  }
+
+  const sorted = [...goals].sort((a,b) => (a.targetAge - a.currentAge) - (b.targetAge - b.currentAge));
+
+  list.innerHTML = sorted.map(g => {
+    const r = computeGoal(g);
+    totalCorpus += r.corpusNeeded;
+    totalSip += r.sip;
+    const tagClass = g.goalType.toLowerCase();
+    return `
+      <div class="goal-card">
+        <div class="goal-top">
+          <div>
+            <span class="goal-name">${escapeHtml(g.childName)}</span>
+            <span class="goal-tag ${tagClass}">${escapeHtml(g.goalType)}</span>
+            <div class="goal-meta">Age ${g.currentAge} → ${g.targetAge} (${r.years} yrs) · Today's cost ${fmt(g.costToday)}</div>
+          </div>
+          <div class="goal-actions">
+            <button class="icon-btn edit" onclick="editGoal('${g.id}')">✎</button>
+            <button class="icon-btn del" onclick="deleteGoal('${g.id}', this)">✕</button>
+          </div>
+        </div>
+        <div class="goal-stats">
+          <div class="stat"><div class="slbl">Future Cost</div><div class="sval">${fmt(r.futureCost)}</div></div>
+          <div class="stat"><div class="slbl">Corpus Needed</div><div class="sval">${fmt(r.corpusNeeded)}</div></div>
+          <div class="stat sip"><div class="slbl">Monthly SIP</div><div class="sval">${fmt(r.sip)}</div></div>
+          <div class="stat"><div class="slbl">Savings Grows To</div><div class="sval">${fmt(r.savingsGrown)}</div></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('totalCorpus').textContent = fmt(totalCorpus);
+  document.getElementById('totalSip').textContent = fmt(totalSip) + '/mo';
+}
+
+renderAll();
+</script>
+</body>
+</html>

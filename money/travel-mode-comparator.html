@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Travel Mode Comparator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:100px;}
+
+  .item{border-bottom:1px solid #334155;padding-bottom:12px;margin-bottom:12px;}
+  .item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .item-name-row{display:flex;gap:8px;margin-bottom:8px;}
+  .item-name-row input{flex:1;font-weight:700;}
+  .remove-btn{background:none;border:none;color:var(--bad);font-size:14px;cursor:pointer;}
+  button.add{width:100%;padding:10px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:13px;cursor:pointer;margin-top:4px;}
+
+  .mode-line{padding:12px 0;border-bottom:1px solid #334155;}
+  .mode-line:last-child{border-bottom:none;}
+  .mode-head{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;}
+  .mode-sub{font-size:11px;color:var(--sub);margin-top:2px;}
+  .best-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.15);color:var(--acc);font-weight:700;margin-left:6px;}
+  .cost-val{font-weight:800;font-size:16px;}
+
+  .insight{background:#0f172a;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;color:var(--warn);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🚆 Travel Mode Comparator</h1>
+  <p class="sub">Real cost depends on group size — per-head fares multiply, a cab/car doesn't. See where the "cheapest" option actually flips.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Distance one-way (km)</label><input type="number" id="distance" placeholder="e.g. 300" oninput="calc()"></div>
+      <div class="field"><label>No. of Travelers</label><input type="number" id="travelers" value="1" oninput="calc()"></div>
+      <div class="field"><label>Trip: One-way / Round</label>
+        <select id="tripType" onchange="calc()">
+          <option value="2">Round Trip</option>
+          <option value="1">One-way</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Travel Options</label>
+    <div id="modesList"></div>
+    <button class="add" onclick="addMode()">+ Add Travel Option</button>
+  </div>
+
+  <div class="card">
+    <label style="color:var(--txt);font-weight:700;">Total Cost for Your Group</label>
+    <div id="comparisonList"></div>
+    <div class="insight" id="insightBox"></div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field"><input type="text" id="tripLabel" placeholder="Trip name (e.g. Hyderabad-Vizag Aug)"></div>
+    </div>
+    <button class="add" style="border-style:solid;background:var(--acc);color:#052e16;font-weight:700;" onclick="saveSummary()">💾 Save This Comparison</button>
+  </div>
+
+  <div class="card">
+    <label style="color:var(--txt);font-weight:700;">Saved Comparisons <button class="remove-btn" style="float:right;" onclick="clearSaved()">Clear All</button></label>
+    <div id="savedList"></div>
+  </div>
+</div>
+
+<script>
+let modes = [
+  {name:'Train (Sleeper)', costType:'perhead', cost:0, time:0},
+  {name:'Bus (RTC)', costType:'perhead', cost:0, time:0},
+  {name:'Own Vehicle', costType:'fuel', cost:0, time:0, fuelType:'petrol', mileage:0, fuelPrice:0, toll:0}
+];
+
+function addMode(){ modes.push({name:'', costType:'perhead', cost:0, time:0}); renderModes(); }
+function removeMode(i){ modes.splice(i,1); renderModes(); }
+function updateMode(i, field, val){
+  const strFields = ['name','costType','fuelType'];
+  modes[i][field] = strFields.includes(field) ? val : (parseFloat(val)||0);
+  if(field==='costType') renderModes(); else calc();
+}
+
+function renderModes(){
+  const c = document.getElementById('modesList');
+  c.innerHTML = modes.map((m,i)=>`
+    <div class="item">
+      <div class="item-name-row">
+        <input placeholder="Mode name" value="${m.name}" oninput="updateMode(${i},'name',this.value)">
+        <button class="remove-btn" onclick="removeMode(${i})">✕</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Cost Type</label>
+          <select onchange="updateMode(${i},'costType',this.value)">
+            <option value="perhead" ${m.costType==='perhead'?'selected':''}>Per Person (one-way fare)</option>
+            <option value="fixed" ${m.costType==='fixed'?'selected':''}>Fixed for whole group (manual)</option>
+            <option value="fuel" ${m.costType==='fuel'?'selected':''}>Car/Bike — calculate from fuel</option>
+          </select>
+        </div>
+        ${m.costType==='fuel' ? `
+        <div class="field"><label>Fuel Type</label>
+          <select onchange="updateMode(${i},'fuelType',this.value)">
+            <option value="petrol" ${m.fuelType==='petrol'?'selected':''}>Petrol</option>
+            <option value="diesel" ${m.fuelType==='diesel'?'selected':''}>Diesel</option>
+            <option value="cng" ${m.fuelType==='cng'?'selected':''}>CNG</option>
+            <option value="ev" ${m.fuelType==='ev'?'selected':''}>EV (Electric)</option>
+          </select>
+        </div>
+        <div class="field"><label>Mileage (km per ${m.fuelType==='ev'?'kWh':(m.fuelType==='cng'?'kg':'litre')})</label><input type="number" value="${m.mileage||0}" oninput="updateMode(${i},'mileage',this.value)"></div>
+        <div class="field"><label>Price per ${m.fuelType==='ev'?'kWh':(m.fuelType==='cng'?'kg':'litre')} (₹)</label><input type="number" value="${m.fuelPrice||0}" oninput="updateMode(${i},'fuelPrice',this.value)"></div>
+        <div class="field"><label>Toll/Parking one-way (₹)</label><input type="number" value="${m.toll||0}" oninput="updateMode(${i},'toll',this.value)"></div>
+        ` : `
+        <div class="field"><label>${m.costType==='fixed'?'Fixed one-way cost (₹)':'Fare per person one-way (₹)'}</label><input type="number" value="${m.cost}" oninput="updateMode(${i},'cost',this.value)"></div>
+        `}
+        <div class="field"><label>Travel Time (hrs, one-way)</label><input type="number" value="${m.time}" oninput="updateMode(${i},'time',this.value)"></div>
+        <div class="field"><label>Last-mile Cab/Auto one-way (₹)</label><input type="number" value="${m.lastMile||0}" oninput="updateMode(${i},'lastMile',this.value)"></div>
+      </div>
+    </div>
+  `).join('');
+  calc();
+}
+
+function effectiveOneWayCost(m, distance){
+  if(m.costType === 'fuel'){
+    const mileage = m.mileage || 0;
+    const fuelPrice = m.fuelPrice || 0;
+    const toll = m.toll || 0;
+    const fuelCost = mileage > 0 ? (distance / mileage) * fuelPrice : 0;
+    return fuelCost + toll;
+  }
+  return m.cost;
+}
+
+function calc(){
+  const distance = parseFloat(document.getElementById('distance').value) || 0;
+  const travelers = parseFloat(document.getElementById('travelers').value) || 1;
+  const tripMult = parseFloat(document.getElementById('tripType').value) || 2;
+
+  const valid = modes.filter(m=>{
+    if(m.costType==='fuel') return m.name && (m.mileage>0) && (m.fuelPrice>0);
+    return m.name && m.cost>0;
+  });
+  const computed = valid.map(m=>{
+    const oneWay = effectiveOneWayCost(m, distance);
+    const isFixedType = m.costType==='fixed' || m.costType==='fuel';
+    const lastMile = m.lastMile || 0;
+    const mainCost = isFixedType ? oneWay*tripMult : oneWay*travelers*tripMult;
+    const lastMileCost = lastMile * tripMult;
+    const totalCost = mainCost + lastMileCost;
+    const perPerson = totalCost / travelers;
+    return {...m, oneWay, mainCost, lastMileCost, totalCost, perPerson, isFixedType};
+  });
+  computed.sort((a,b)=>a.totalCost-b.totalCost);
+
+  const list = document.getElementById('comparisonList');
+  if(computed.length===0){
+    list.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:12px;">Add travel options with cost to compare.</div>';
+    document.getElementById('insightBox').textContent = '';
+    return;
+  }
+
+  list.innerHTML = computed.map((m,i)=>`
+    <div class="mode-line">
+      <div class="mode-head">
+        <span>${m.name}${i===0?'<span class="best-tag">CHEAPEST FOR GROUP</span>':''}</span>
+        <span class="cost-val" style="color:${i===0?'var(--acc)':'var(--txt)'};">₹${m.totalCost.toFixed(0)}</span>
+      </div>
+      <div class="mode-sub">₹${m.perPerson.toFixed(0)}/person${m.time>0?` • ${(m.time*tripMult).toFixed(1)} hrs total travel time`:''}${m.isFixedType?' • fixed regardless of group size':''}${m.costType==='fuel'?` • ₹${m.oneWay.toFixed(0)} one-way (fuel+toll)`:''}${m.lastMileCost>0?` • +₹${m.lastMileCost.toFixed(0)} last-mile cab`:''}</div>
+    </div>
+  `).join('');
+
+  // Insight: find crossover — cheapest per-head option vs cheapest fixed option
+  const perHeadOpts = computed.filter(m=>!m.isFixedType);
+  const fixedOpts = computed.filter(m=>m.isFixedType);
+  const insightBox = document.getElementById('insightBox');
+
+  if(perHeadOpts.length && fixedOpts.length){
+    const cheapestPerHead = perHeadOpts.sort((a,b)=>a.oneWay-b.oneWay)[0];
+    const cheapestFixed = fixedOpts.sort((a,b)=>a.oneWay-b.oneWay)[0];
+    const breakEvenTravelers = cheapestFixed.oneWay / cheapestPerHead.oneWay;
+    if(travelers < breakEvenTravelers){
+      insightBox.textContent = `💡 At ${travelers} traveler(s), ${cheapestPerHead.name} wins. But beyond ${Math.ceil(breakEvenTravelers)} travelers, ${cheapestFixed.name} becomes cheaper overall.`;
+    } else {
+      insightBox.textContent = `💡 At ${travelers} travelers, ${cheapestFixed.name} is already cheaper than buying ${travelers} × ${cheapestPerHead.name} tickets — the "always cheapest" assumption doesn't hold for your group size.`;
+    }
+  } else {
+    insightBox.textContent = '';
+  }
+
+  lastComputed = { distance, travelers, tripMult, computed };
+}
+
+const SAVED_KEY = 'travel_comparisons';
+let lastComputed = null;
+
+function saveSummary(){
+  if(!lastComputed || lastComputed.computed.length===0){ alert('Add at least one travel option with cost first.'); return; }
+  const label = document.getElementById('tripLabel').value.trim() || 'Untitled Trip';
+  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  saved.unshift({
+    id: Date.now(),
+    label,
+    date: new Date().toLocaleDateString('en-IN'),
+    distance: lastComputed.distance,
+    travelers: lastComputed.travelers,
+    modes: lastComputed.computed.map(m=>({name:m.name, totalCost:m.totalCost, perPerson:m.perPerson}))
+  });
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  document.getElementById('tripLabel').value = '';
+  renderSaved();
+}
+
+function deleteSaved(id){
+  let saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  saved = saved.filter(s=>s.id!==id);
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  renderSaved();
+}
+
+function clearSaved(){
+  if(!confirm('Clear all saved comparisons?')) return;
+  localStorage.removeItem(SAVED_KEY);
+  renderSaved();
+}
+
+function renderSaved(){
+  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  const el = document.getElementById('savedList');
+  if(saved.length===0){
+    el.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:12px;">No saved comparisons yet.</div>';
+    return;
+  }
+  el.innerHTML = saved.map(s=>{
+    const sorted = [...s.modes].sort((a,b)=>a.totalCost-b.totalCost);
+    const rows = sorted.map((m,i)=>`<div class="mode-sub">${i===0?'🏆 ':''}${m.name}: ₹${m.totalCost.toFixed(0)} (₹${m.perPerson.toFixed(0)}/person)</div>`).join('');
+    return `
+      <div class="item">
+        <div class="item-name-row">
+          <span style="font-weight:700;">${s.label} <span class="mode-sub">(${s.date} • ${s.distance}km • ${s.travelers} traveler${s.travelers>1?'s':''})</span></span>
+          <button class="remove-btn" onclick="deleteSaved(${s.id})">✕</button>
+        </div>
+        ${rows}
+      </div>
+    `;
+  }).join('');
+}
+
+renderModes();
+renderSaved();
+</script>
+</body>
+</html>

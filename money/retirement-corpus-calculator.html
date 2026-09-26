@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement Corpus Calculator</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e; --danger:#f87171;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:60px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:12px 0 8px;}
+  .section-title:first-child{margin-top:0;}
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;}
+  input:focus{outline:none; border-color:var(--accent);}
+  .result-card{background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
+    border-radius:14px; padding:18px; text-align:center; margin-bottom:12px;}
+  .result-card .label{color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em;}
+  .result-card .amount{color:var(--accent); font-size:30px; font-weight:700; margin-top:4px;}
+  .summary-row{display:flex; gap:10px; margin-bottom:14px;}
+  .sum-box{flex:1; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center;}
+  .sum-box .lbl{font-size:10px; color:var(--muted); text-transform:uppercase;}
+  .sum-box .val{font-size:16px; font-weight:700; margin-top:3px;}
+  .breakdown{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .bd-row{display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);}
+  .bd-row:last-child{border-bottom:none;}
+  .bd-row .bv{font-weight:600;}
+  .bd-row.hilite .bv{color:var(--accent); font-size:15px;}
+  .warn{background:#2e1a1a; border:1px solid #5a2d2d; color:var(--danger); border-radius:8px; padding:10px 12px; font-size:12px; margin-bottom:14px;}
+  .empty{color:var(--muted); text-align:center; padding:20px; font-size:13px;}
+  .note{color:var(--muted); font-size:11px; text-align:center; margin-top:10px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<h1>🏖️ Retirement Corpus Calculator</h1>
+<div class="sub">What you'll need at retirement, adjusted for inflation, and the SIP gap to get there.</div>
+
+<div class="form-card">
+  <div class="section-title">Timeline</div>
+  <div class="row">
+    <div><label>Current Age</label><input type="number" id="currentAge" placeholder="30" oninput="calc()"></div>
+    <div><label>Retirement Age</label><input type="number" id="retireAge" placeholder="60" oninput="calc()"></div>
+    <div><label>Life Expectancy</label><input type="number" id="lifeExp" placeholder="85" oninput="calc()"></div>
+  </div>
+
+  <div class="section-title">Expenses & Assumptions</div>
+  <div class="row">
+    <div><label>Current Monthly Expenses (₹)</label><input type="number" id="monthlyExp" placeholder="50000" oninput="calc()"></div>
+  </div>
+  <div class="row">
+    <div><label>Inflation %/yr</label><input type="number" id="inflation" placeholder="6" step="0.1" oninput="calc()"></div>
+    <div><label>Pre-Retirement Return %/yr</label><input type="number" id="preReturn" placeholder="12" step="0.1" oninput="calc()"></div>
+    <div><label>Post-Retirement Return %/yr</label><input type="number" id="postReturn" placeholder="7" step="0.1" oninput="calc()"></div>
+  </div>
+
+  <div class="section-title">Existing Savings</div>
+  <div class="row">
+    <div><label>Current Retirement Savings (₹)</label><input type="number" id="currentSavings" placeholder="0" oninput="calc()"></div>
+    <div><label>Existing Monthly SIP (₹)</label><input type="number" id="existingSip" placeholder="0" oninput="calc()"></div>
+  </div>
+</div>
+
+<div id="warnBox"></div>
+<div id="resultsBox"></div>
+
+<div class="note">Assumes withdrawals at the start of each year in retirement and a constant real return post-retirement. Estimates only — actual returns and inflation will vary.</div>
+
+<script>
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+
+function calc(){
+  const currentAge = parseFloat(document.getElementById('currentAge').value);
+  const retireAge = parseFloat(document.getElementById('retireAge').value);
+  const lifeExp = parseFloat(document.getElementById('lifeExp').value);
+  const monthlyExp = parseFloat(document.getElementById('monthlyExp').value);
+  const inflation = parseFloat(document.getElementById('inflation').value);
+  const preReturn = parseFloat(document.getElementById('preReturn').value);
+  const postReturn = parseFloat(document.getElementById('postReturn').value);
+  const currentSavings = parseFloat(document.getElementById('currentSavings').value) || 0;
+  const existingSip = parseFloat(document.getElementById('existingSip').value) || 0;
+
+  const warnBox = document.getElementById('warnBox');
+  const resultsBox = document.getElementById('resultsBox');
+
+  const valid = !isNaN(currentAge) && !isNaN(retireAge) && !isNaN(lifeExp) && !isNaN(monthlyExp) &&
+    !isNaN(inflation) && !isNaN(preReturn) && !isNaN(postReturn) && monthlyExp > 0 &&
+    retireAge > currentAge && lifeExp > retireAge;
+
+  if(!valid){
+    warnBox.innerHTML = '';
+    resultsBox.innerHTML = '<div class="empty">Fill in your age, retirement age, life expectancy, and monthly expenses to see your target corpus.</div>';
+    return;
+  }
+  warnBox.innerHTML = '';
+
+  const yearsToRetire = retireAge - currentAge;
+  const yearsInRetirement = lifeExp - retireAge;
+
+  const futureMonthlyExp = monthlyExp * Math.pow(1 + inflation/100, yearsToRetire);
+  const futureAnnualExp = futureMonthlyExp * 12;
+
+  const realReturn = ((1 + postReturn/100) / (1 + inflation/100)) - 1;
+  let corpusRequired;
+  if(Math.abs(realReturn) < 0.0001){
+    corpusRequired = futureAnnualExp * yearsInRetirement;
+  } else {
+    corpusRequired = futureAnnualExp * (1 - Math.pow(1+realReturn, -yearsInRetirement)) / realReturn * (1+realReturn);
+  }
+
+  const fvCurrentSavings = currentSavings * Math.pow(1 + preReturn/100, yearsToRetire);
+
+  const monthsToRetire = yearsToRetire * 12;
+  const rMonthly = preReturn / 1200;
+  const fvExistingSip = rMonthly > 0
+    ? existingSip * ((Math.pow(1+rMonthly, monthsToRetire) - 1) / rMonthly) * (1+rMonthly)
+    : existingSip * monthsToRetire;
+
+  const totalProjected = fvCurrentSavings + fvExistingSip;
+  const gap = Math.max(corpusRequired - totalProjected, 0);
+
+  let requiredSip = 0;
+  if(gap > 0 && monthsToRetire > 0){
+    requiredSip = rMonthly > 0
+      ? gap * rMonthly / ((Math.pow(1+rMonthly, monthsToRetire) - 1) * (1+rMonthly))
+      : gap / monthsToRetire;
+  }
+
+  const onTrack = gap <= 0;
+
+  resultsBox.innerHTML = `
+    <div class="result-card">
+      <div class="label">Corpus Required at Retirement</div>
+      <div class="amount">${fmt(corpusRequired)}</div>
+    </div>
+    <div class="summary-row">
+      <div class="sum-box"><div class="lbl">Years to Retire</div><div class="val">${yearsToRetire}</div></div>
+      <div class="sum-box"><div class="lbl">Years in Retirement</div><div class="val">${yearsInRetirement}</div></div>
+      <div class="sum-box"><div class="lbl">Future Monthly Exp</div><div class="val">${fmt(futureMonthlyExp)}</div></div>
+    </div>
+    <div class="breakdown">
+      <div class="bd-row"><span>Current Savings Grows To</span><span class="bv">${fmt(fvCurrentSavings)}</span></div>
+      <div class="bd-row"><span>Existing SIP Grows To</span><span class="bv">${fmt(fvExistingSip)}</span></div>
+      <div class="bd-row"><span>Total Projected</span><span class="bv">${fmt(totalProjected)}</span></div>
+      <div class="bd-row hilite"><span>${onTrack ? 'Surplus' : 'Corpus Gap'}</span><span class="bv">${fmt(onTrack ? (totalProjected-corpusRequired) : gap)}</span></div>
+      <div class="bd-row hilite"><span>${onTrack ? 'Extra SIP Needed' : 'Additional Monthly SIP Needed'}</span><span class="bv">${onTrack ? "You're on track" : fmt(requiredSip)}</span></div>
+    </div>
+  `;
+}
+
+(function(){
+  const K='as_retirementcorpus';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+calc();
+</script>
+</body>
+</html>

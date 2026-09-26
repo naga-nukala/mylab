@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Emergency Fund Calculator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:14px;margin-bottom:6px;font-weight:600;}
+  .hint{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
+  input:focus{outline:2px solid var(--acc);}
+  input[readonly]{border-style:dashed;color:var(--acc);font-weight:700;cursor:not-allowed;}
+  .result-box{text-align:center;padding:24px 16px;}
+  .result-num{font-size:36px;font-weight:800;color:var(--acc);}
+  .result-label{color:var(--sub);font-size:13px;margin-top:2px;}
+  .bar{height:12px;border-radius:6px;background:#334155;overflow:hidden;margin-top:14px;}
+  .bar-fill{height:100%;background:var(--acc);transition:width .3s;}
+  .bar-text{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-top:6px;}
+  .subgrid{display:flex;gap:8px;margin-top:14px;}
+  .subcard{flex:1;background:#0f172a;border-radius:10px;padding:10px;text-align:center;}
+  .subcard .n{font-size:16px;font-weight:700;}
+  .subcard .l{font-size:11px;color:var(--sub);margin-top:2px;}
+  .verdict{font-size:13px;text-align:center;margin-top:10px;color:var(--sub);}
+  .actions{display:flex;gap:8px;margin-top:12px;}
+  button{flex:1;padding:10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:var(--txt);font:inherit;font-size:13px;cursor:pointer;}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#052e16;font-weight:700;}
+  button:hover{border-color:var(--acc);}
+  .saved-section{margin-top:16px;}
+  .saved-heading{display:flex;justify-content:space-between;align-items:center;color:var(--sub);font-size:12px;margin-bottom:8px;}
+  .saved-heading button{flex:0 0 auto;padding:4px 8px;font-size:11px;}
+  .saved-heading button.confirming{background:var(--bad);border-color:var(--bad);color:#fff;}
+  .saved-empty{color:var(--sub);font-size:12px;text-align:center;padding:10px 0;}
+  .saved-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 0;border-top:1px solid #334155;font-size:12px;}
+  .saved-item strong{display:block;font-size:13px;margin-bottom:5px;}
+  .saved-details{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;color:var(--sub);line-height:1.4;}
+  .saved-details b{color:var(--txt);font-weight:600;}
+  .saved-date{display:block;color:var(--sub);font-size:11px;margin-top:5px;}
+  .saved-item-actions{display:flex;flex-direction:column;gap:5px;flex:0 0 auto;}
+  .saved-item button{flex:0 0 auto;padding:5px 8px;font-size:11px;}
+  .saved-item button.confirming{background:var(--bad);border-color:var(--bad);color:#fff;}
+  details.split{margin-top:10px;border:1px solid #334155;border-radius:10px;padding:0 12px;}
+  details.split summary{cursor:pointer;padding:10px 0;font-size:13px;color:var(--sub);display:flex;justify-content:space-between;gap:8px;list-style:none;}
+  details.split summary::-webkit-details-marker{display:none;}
+  details.split summary::before{content:'▸';margin-right:6px;}
+  details.split[open] summary::before{content:'▾';}
+  details.split summary .sum{margin-left:auto;color:var(--acc);font-weight:700;}
+  .split-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .split-row label{flex:1;margin:0;font-size:13px;font-weight:500;}
+  .split-row label small{display:block;color:var(--sub);font-size:11px;font-weight:400;}
+  .split-row input{flex:0 0 120px;padding:8px;font-size:14px;}
+  .split-foot{padding:0 0 12px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #475569;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;max-width:90%;}
+  @media(max-width:380px){.actions{flex-direction:column;}.split-row input{flex-basis:100px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛟 Emergency Fund Calculator</h1>
+  <p class="sub">Recommended buffer: 9 months of essential expenses.</p>
+
+  <div class="card">
+    <label for="monthlyExp">Monthly Essential Expenses (₹)</label>
+    <div class="hint">Rent, food, utilities, EMIs, insurance — not discretionary spend</div>
+    <input type="number" id="monthlyExp" placeholder="e.g. 40000" min="0" step="100" inputmode="decimal" oninput="calc()">
+  </div>
+
+  <div class="card">
+    <label for="months">Months of Buffer Needed</label>
+    <div class="hint">Default 9 — adjust for job stability, dependents</div>
+    <input type="number" id="months" value="9" min="1" step="1" inputmode="decimal" oninput="calc()">
+  </div>
+
+  <div class="card">
+    <label for="current">Current Emergency Savings (₹)</label>
+    <div class="hint">Type a total, or split by where it is kept below (optional)</div>
+    <input type="number" id="current" value="0" min="0" step="100" inputmode="decimal" oninput="calc()">
+    <details class="split" id="curSplit">
+      <summary>Split by where it is kept <span class="sum" id="curSum"></span></summary>
+      <div class="split-row"><label for="cur_savings">Savings account<small>Instant</small></label><input type="number" id="cur_savings" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="cur_cash">Cash in hand<small>Instant</small></label><input type="number" id="cur_cash" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="cur_liquid">Liquid mutual fund<small>1 working day</small></label><input type="number" id="cur_liquid" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="cur_fd">Fixed deposit<small>Premature-break penalty applies</small></label><input type="number" id="cur_fd" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="cur_rd">Recurring deposit<small>Premature-break penalty applies</small></label><input type="number" id="cur_rd" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="cur_other">Other<small>Only if quickly convertible to cash</small></label><input type="number" id="cur_other" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="hint split-foot">Total fills the field above automatically.</div>
+    </details>
+  </div>
+
+  <div class="card">
+    <label for="monthlyContrib">Monthly Amount You Can Save Towards This (₹)</label>
+    <div class="hint">Type a total, or split by where it goes below (optional)</div>
+    <input type="number" id="monthlyContrib" value="0" min="0" step="100" inputmode="decimal" oninput="calc()">
+    <details class="split" id="monSplit">
+      <summary>Split by where it goes <span class="sum" id="monSum"></span></summary>
+      <div class="split-row"><label for="mon_savings">Savings account<small>Transfer each month</small></label><input type="number" id="mon_savings" data-group="mon" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="mon_liquid">Liquid fund SIP</label><input type="number" id="mon_liquid" data-group="mon" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="mon_rd">Recurring deposit</label><input type="number" id="mon_rd" data-group="mon" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="mon_cash">Cash in hand</label><input type="number" id="mon_cash" data-group="mon" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="mon_other">Other</label><input type="number" id="mon_other" data-group="mon" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="hint split-foot">Total fills the field above automatically.</div>
+    </details>
+  </div>
+
+  <div class="card result-box">
+    <div class="result-num" id="targetNum">₹0</div>
+    <div class="result-label">Target Emergency Fund</div>
+
+    <div class="bar"><div class="bar-fill" id="barFill" style="width:0%;"></div></div>
+    <div class="bar-text"><span id="pctText">0% covered</span><span id="gapText">Gap: ₹0</span></div>
+
+    <div class="subgrid">
+      <div class="subcard"><div class="n" id="gapNum">₹0</div><div class="l">Shortfall</div></div>
+      <div class="subcard"><div class="n" id="monthsToGoal">--</div><div class="l">Months to Goal</div></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div class="actions">
+      <button class="primary" type="button" id="saveRefBtn">Save Reference</button>
+      <button type="button" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div class="saved-section" aria-live="polite">
+    <div class="saved-heading"><strong>Saved References</strong><button type="button" id="clearRefsBtn">Clear all</button></div>
+    <div id="savedReferences"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const DRAFT_KEY = 'emergencyFundCalculator_draft_v1';
+const REFERENCES_KEY = 'emergencyFundCalculator_references_v1';
+const MAIN_IDS = ['monthlyExp', 'months', 'current', 'monthlyContrib'];
+const SPLIT_IDS = ['cur_savings','cur_cash','cur_liquid','cur_fd','cur_rd','cur_other','mon_savings','mon_liquid','mon_rd','mon_cash','mon_other'];
+const FIELD_IDS = MAIN_IDS.concat(SPLIT_IDS);
+const GROUPS = { cur: {main:'current', sum:'curSum', box:'curSplit'}, mon: {main:'monthlyContrib', sum:'monSum', box:'monSplit'} };
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatCurrency(value){ return '₹' + Math.round(value).toLocaleString('en-IN'); }
+function formatDate(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const day = d.getDate();
+  const suffix = (day % 100 >= 11 && day % 100 <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[day % 10] || 'th');
+  return day + suffix + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2200);
+}
+
+// Tap-twice confirm (no native dialogs)
+const pending = {};
+function confirmTwice(key, btn, label, action){
+  if(pending[key]){ clearTimeout(pending[key]); delete pending[key]; btn.classList.remove('confirming'); btn.textContent = label; action(); return; }
+  btn.classList.add('confirming'); btn.textContent = 'Tap again';
+  showToast('Tap again to confirm');
+  pending[key] = setTimeout(() => { delete pending[key]; btn.classList.remove('confirming'); btn.textContent = label; }, 2500);
+}
+
+function readStorage(key, fallback){
+  try{ const value = JSON.parse(localStorage.getItem(key)); return value === null ? fallback : value; }
+  catch(error){ return fallback; }
+}
+
+function saveDraft(){
+  const draft = Object.fromEntries(FIELD_IDS.map(id => [id, document.getElementById(id).value]));
+  try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }catch(error){}
+}
+
+function loadDraft(){
+  const draft = readStorage(DRAFT_KEY, {});
+  FIELD_IDS.forEach(id => {
+    if(Object.prototype.hasOwnProperty.call(draft, id)) document.getElementById(id).value = draft[id];
+  });
+}
+
+// Split totals: if any split row has a value, total auto-fills and locks the main field
+function syncSplit(group){
+  const g = GROUPS[group];
+  const inputs = [...document.querySelectorAll(`[data-group="${group}"]`)];
+  const filled = inputs.filter(i => i.value.trim() !== '');
+  const main = document.getElementById(g.main);
+  const sumEl = document.getElementById(g.sum);
+  if(filled.length){
+    const total = inputs.reduce((s, i) => s + (Math.max(parseFloat(i.value), 0) || 0), 0);
+    main.value = total; main.readOnly = true;
+    sumEl.textContent = formatCurrency(total);
+  } else {
+    if(main.readOnly){ main.value = '0'; }
+    main.readOnly = false; sumEl.textContent = '';
+  }
+}
+function syncAllSplits(){ Object.keys(GROUPS).forEach(syncSplit); }
+
+function getValues(){
+  return {
+    monthlyExp: parseFloat(document.getElementById('monthlyExp').value),
+    months: parseFloat(document.getElementById('months').value),
+    current: parseFloat(document.getElementById('current').value),
+    monthlyContrib: parseFloat(document.getElementById('monthlyContrib').value)
+  };
+}
+function getSplits(){
+  const out = {};
+  SPLIT_IDS.forEach(id => { const v = document.getElementById(id).value; if(v.trim() !== '') out[id] = v; });
+  return out;
+}
+
+function validValues(values){
+  return Number.isFinite(values.monthlyExp) && values.monthlyExp > 0 &&
+    Number.isFinite(values.months) && values.months > 0 &&
+    Number.isFinite(values.current) && values.current >= 0 &&
+    Number.isFinite(values.monthlyContrib) && values.monthlyContrib >= 0;
+}
+
+function calc(){
+  const values = getValues();
+  saveDraft();
+  const exp = Number.isFinite(values.monthlyExp) ? values.monthlyExp : 0;
+  const months = Number.isFinite(values.months) ? values.months : 9;
+  const current = Number.isFinite(values.current) ? Math.max(values.current, 0) : 0;
+  const contrib = Number.isFinite(values.monthlyContrib) ? Math.max(values.monthlyContrib, 0) : 0;
+
+  const target = validValues(values) ? exp * months : 0;
+  const gap = Math.max(0, target - current);
+  const pct = target > 0 ? Math.min(100, (current/target)*100) : 0;
+
+  document.getElementById('targetNum').textContent = formatCurrency(target);
+  document.getElementById('barFill').style.width = pct + '%';
+  document.getElementById('pctText').textContent = pct.toFixed(0) + '% covered';
+  document.getElementById('gapText').textContent = 'Gap: ' + formatCurrency(gap);
+  document.getElementById('gapNum').textContent = formatCurrency(gap);
+
+  const monthsToGoal = contrib > 0 ? Math.ceil(gap / contrib) : null;
+  document.getElementById('monthsToGoal').textContent = monthsToGoal !== null ? (monthsToGoal + ' mo') : '--';
+
+  const barEl = document.getElementById('barFill');
+  const verdictEl = document.getElementById('verdict');
+  if(pct >= 100){ barEl.style.background='var(--acc)'; verdictEl.textContent = '✅ Fully funded — great position.'; }
+  else if(pct >= 50){ barEl.style.background='var(--warn)'; verdictEl.textContent = '⚠️ Halfway there — keep building.'; }
+  else { barEl.style.background='var(--bad)'; verdictEl.textContent = '🔴 Underfunded — prioritize this before investing.'; }
+}
+
+function saveReference(){
+  const values = getValues();
+  if(!validValues(values)){ showToast('Enter monthly expenses and a buffer of at least 1 month first.'); return; }
+  const references = readStorage(REFERENCES_KEY, []);
+  references.unshift({id:Date.now().toString(36), savedAt:new Date().toISOString(), ...values, splits:getSplits()});
+  try{ localStorage.setItem(REFERENCES_KEY, JSON.stringify(references.slice(0, 10))); }catch(error){}
+  renderReferences();
+  showToast('Reference saved');
+}
+
+function deleteReference(id){
+  const references = readStorage(REFERENCES_KEY, []).filter(reference => reference.id !== id);
+  try{ localStorage.setItem(REFERENCES_KEY, JSON.stringify(references)); }catch(error){}
+  renderReferences();
+  showToast('Reference deleted');
+}
+
+function restoreReference(id){
+  const reference = readStorage(REFERENCES_KEY, []).find(item => item.id === id);
+  if(!reference) return;
+  const splits = reference.splits || {};
+  SPLIT_IDS.forEach(fid => { document.getElementById(fid).value = splits[fid] !== undefined ? splits[fid] : ''; });
+  MAIN_IDS.forEach(fid => { document.getElementById(fid).value = reference[fid]; });
+  document.getElementById('curSplit').open = SPLIT_IDS.some(fid => fid.startsWith('cur_') && splits[fid] !== undefined);
+  document.getElementById('monSplit').open = SPLIT_IDS.some(fid => fid.startsWith('mon_') && splits[fid] !== undefined);
+  syncAllSplits();
+  calc();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function clearReferences(){
+  if(!readStorage(REFERENCES_KEY, []).length){ showToast('Nothing to clear'); return; }
+  try{ localStorage.removeItem(REFERENCES_KEY); }catch(error){}
+  renderReferences();
+  showToast('All references cleared');
+}
+
+function resetCalculator(){
+  document.getElementById('monthlyExp').value = '';
+  document.getElementById('months').value = '9';
+  SPLIT_IDS.forEach(fid => { document.getElementById(fid).value = ''; });
+  document.getElementById('current').value = '0';
+  document.getElementById('monthlyContrib').value = '0';
+  syncAllSplits();
+  calc();
+}
+
+function renderReferences(){
+  const container = document.getElementById('savedReferences');
+  const references = readStorage(REFERENCES_KEY, []);
+  if(!references.length){ container.innerHTML = '<div class="saved-empty">No saved references yet.</div>'; return; }
+  container.innerHTML = references.map(reference => {
+    const target = reference.monthlyExp * reference.months;
+    const gap = Math.max(0, target - reference.current);
+    const pct = target > 0 ? Math.min(100, (reference.current / target) * 100) : 0;
+    const monthsToGoal = reference.monthlyContrib > 0 ? Math.ceil(gap / reference.monthlyContrib) : null;
+    const date = formatDate(reference.savedAt);
+    return `<div class="saved-item"><div><strong>${formatCurrency(target)} target · ${pct.toFixed(0)}% covered</strong><div class="saved-details"><span>Expenses: <b>${formatCurrency(reference.monthlyExp)}/mo</b></span><span>Buffer: <b>${reference.months} months</b></span><span>Current: <b>${formatCurrency(reference.current)}</b></span><span>Covered: <b>${pct.toFixed(0)}%</b></span><span>Monthly saving: <b>${formatCurrency(reference.monthlyContrib)}</b></span><span>Shortfall: <b>${formatCurrency(gap)}</b></span><span>Time to goal: <b>${monthsToGoal === null ? '--' : monthsToGoal + ' mo'}</b></span></div><span class="saved-date">Saved ${date}</span></div><div class="saved-item-actions"><button type="button" data-action="restore" data-id="${reference.id}">Restore</button><button type="button" data-action="delete" data-id="${reference.id}" aria-label="Delete saved reference">Delete</button></div></div>`;
+  }).join('');
+}
+
+// Event wiring (delegation, no inline handlers for dynamic content)
+document.getElementById('savedReferences').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-action]'); if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.action === 'restore') restoreReference(id);
+  else confirmTwice('del-' + id, btn, 'Delete', () => deleteReference(id));
+});
+document.getElementById('saveRefBtn').addEventListener('click', saveReference);
+document.getElementById('resetBtn').addEventListener('click', resetCalculator);
+const clearBtn = document.getElementById('clearRefsBtn');
+clearBtn.addEventListener('click', () => confirmTwice('clear-all', clearBtn, 'Clear all', clearReferences));
+document.querySelectorAll('[data-group]').forEach(input => input.addEventListener('input', () => { syncSplit(input.dataset.group); calc(); }));
+
+loadDraft();
+syncAllSplits();
+['cur','mon'].forEach(g => { if(document.querySelector(`[data-group="${g}"]:not([value=""])`) && [...document.querySelectorAll(`[data-group="${g}"]`)].some(i => i.value.trim() !== '')) document.getElementById(GROUPS[g].box).open = true; });
+calc();
+renderReferences();
+</script>
+</body>
+</html>

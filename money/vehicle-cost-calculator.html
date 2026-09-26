@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Bike/Car Ownership Cost Calculator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:14px;margin-bottom:6px;font-weight:600;}
+  .hint{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  input, select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;}
+  .field{flex:1;}
+
+  .result-box{text-align:center;padding:24px 16px;}
+  .result-num{font-size:36px;font-weight:800;color:var(--bad);}
+  .result-label{color:var(--sub);font-size:13px;margin-top:2px;}
+  .breakdown{font-size:13px;margin-top:16px;text-align:left;}
+  .breakdown div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #334155;}
+  .breakdown div:last-child{border-bottom:none;}
+  .stat-row{display:flex;gap:10px;margin-top:14px;}
+  .stat{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:12px;}
+  .stat .n{font-size:18px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏍️ Bike/Car Ownership Cost</h1>
+  <p class="sub">A vehicle is a depreciating asset — see the true cost before buying.</p>
+
+  <div class="card">
+    <label>Purchase Price (₹)</label>
+    <input type="number" id="price" placeholder="e.g. 90000" oninput="calc()">
+  </div>
+
+  <div class="card">
+    <label>Expected Resale Value After Ownership (₹)</label>
+    <input type="number" id="resale" placeholder="e.g. 40000" oninput="calc()">
+  </div>
+
+  <div class="card">
+    <label>Years of Ownership</label>
+    <input type="number" id="years" value="5" oninput="calc()">
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Fuel Cost/month (₹)</label><input type="number" id="fuel" value="0" oninput="calc()"></div>
+      <div class="field"><label>Servicing/year (₹)</label><input type="number" id="service" value="0" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Insurance/year (₹)</label><input type="number" id="insurance" value="0" oninput="calc()"></div>
+      <div class="field"><label>Pollution Check/year (₹)</label><input type="number" id="pollution" value="0" oninput="calc()"></div>
+    </div>
+  </div>
+
+  <div class="card result-box">
+    <div class="result-num" id="perDay">₹0</div>
+    <div class="result-label">Total Cost of Ownership Per Day</div>
+    <div class="hint" style="margin-top:4px;">(Depreciation + Fuel + Maintenance) ÷ Total Days Owned</div>
+
+    <div class="breakdown">
+      <div><span>Depreciation (Purchase − Resale)</span><span id="deprecTotal">₹0</span></div>
+      <div><span>Fuel (over ownership)</span><span id="fuelTotal">₹0</span></div>
+      <div><span>Servicing + Insurance + Pollution</span><span id="maintTotal">₹0</span></div>
+      <div><span>Total Cost of Ownership</span><span id="grandTotal">₹0</span></div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="perMonth">₹0</div><div class="l">Per Month</div></div>
+      <div class="stat"><div class="n" id="perYear">₹0</div><div class="l">Per Year</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function calc(){
+  const price = parseFloat(document.getElementById('price').value) || 0;
+  const resale = parseFloat(document.getElementById('resale').value) || 0;
+  const years = parseFloat(document.getElementById('years').value) || 1;
+  const fuel = parseFloat(document.getElementById('fuel').value) || 0;
+  const service = parseFloat(document.getElementById('service').value) || 0;
+  const insurance = parseFloat(document.getElementById('insurance').value) || 0;
+  const pollution = parseFloat(document.getElementById('pollution').value) || 0;
+
+  const depreciation = Math.max(0, price - resale);
+  const fuelTotal = fuel * 12 * years;
+  const maintTotal = (service + insurance + pollution) * years;
+  const grandTotal = depreciation + fuelTotal + maintTotal;
+
+  const days = years * 365;
+  const perDay = grandTotal / days;
+  const perMonth = grandTotal / (years*12);
+  const perYear = grandTotal / years;
+
+  document.getElementById('deprecTotal').textContent = '₹' + depreciation.toLocaleString('en-IN');
+  document.getElementById('fuelTotal').textContent = '₹' + fuelTotal.toLocaleString('en-IN');
+  document.getElementById('maintTotal').textContent = '₹' + maintTotal.toLocaleString('en-IN');
+  document.getElementById('grandTotal').textContent = '₹' + grandTotal.toLocaleString('en-IN');
+
+  document.getElementById('perDay').textContent = '₹' + perDay.toFixed(2);
+  document.getElementById('perMonth').textContent = '₹' + perMonth.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('perYear').textContent = '₹' + perYear.toLocaleString('en-IN',{maximumFractionDigits:0});
+}
+
+(function(){
+  const K='as_vehiclecost';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+calc();
+</script>
+</body>
+</html>

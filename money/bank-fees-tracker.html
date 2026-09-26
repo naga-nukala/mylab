@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Bank Fees & Card Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .item{border-bottom:1px solid #334155;padding-bottom:14px;margin-bottom:14px;}
+  .item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .row{display:flex;gap:8px;margin-bottom:8px;}
+  .field{flex:1;min-width:0;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  .field-hint{font-size:10px;color:var(--sub);margin-top:3px;}
+  input, select{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:13px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .name-row{display:flex;gap:8px;margin-bottom:10px;}
+  .name-row input{font-weight:700;font-size:15px;flex:1;}
+  .remove-btn{background:none;border:none;color:var(--bad);font-size:14px;cursor:pointer;}
+  .verdict-line{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+  .net-val{font-weight:700;font-size:15px;}
+  .badge{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;}
+  .good{background:rgba(34,197,94,.15);color:var(--acc);}
+  .mid{background:rgba(245,158,11,.15);color:var(--warn);}
+  .bad{background:rgba(239,68,68,.15);color:var(--bad);}
+  button.add{width:100%;padding:12px;border:1px dashed #475569;border-radius:10px;background:transparent;color:var(--txt);font-size:14px;cursor:pointer;margin-bottom:12px;}
+  .summary-box{text-align:center;padding:20px 16px;}
+  .summary-num{font-size:32px;font-weight:800;}
+  .summary-label{color:var(--sub);font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏦 Bank Fees & Card Tracker</h1>
+  <p class="sub">Track each Debit/Credit card's cost vs value — decide keep or close.</p>
+
+  <div class="card summary-box">
+    <div class="summary-num" id="totalNet">₹0</div>
+    <div class="summary-label">Total Net Value/Year (all cards)</div>
+  </div>
+
+  <div class="card" id="cardsContainer"></div>
+  <button class="add" onclick="addCard()">+ Add Card / Account</button>
+</div>
+
+<script>
+const STORAGE_KEY = 'bank_fees_cards_v1';
+function inr(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+function loadCards(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(Array.isArray(saved) && saved.length) return saved;
+  }catch(e){}
+  return [{name:'', type:'CC', annualFee:0, monthlyFee:0, waiverSpend:0, actualSpend:0, rewardsValue:0}];
+}
+let cards = loadCards();
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); }
+
+function addCard(){
+  cards.push({name:'', type:'CC', annualFee:0, monthlyFee:0, waiverSpend:0, actualSpend:0, rewardsValue:0});
+  save();
+  render();
+}
+function removeCard(i){
+  cards.splice(i,1);
+  save();
+  render();
+}
+function updateField(i, field, val){
+  cards[i][field] = (field==='name'||field==='type') ? val : (parseFloat(val)||0);
+  save();
+  updateAll();
+}
+
+function computeCard(c){
+  const totalCost = (c.annualFee||0) + (c.monthlyFee||0)*12;
+  const feeWaived = c.waiverSpend>0 && c.actualSpend >= c.waiverSpend;
+  const effectiveFee = feeWaived ? (c.monthlyFee||0)*12 : totalCost;
+  const net = (c.rewardsValue||0) - effectiveFee;
+  return { totalCost, feeWaived, effectiveFee, net };
+}
+
+function render(){
+  const container = document.getElementById('cardsContainer');
+  container.innerHTML = '';
+  cards.forEach((c,i)=>{
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.dataset.index = i;
+    div.innerHTML = `
+      <div class="name-row">
+        <input placeholder="Card/Account name" value="${c.name}" oninput="updateField(${i},'name',this.value)">
+        <select onchange="updateField(${i},'type',this.value)">
+          <option value="CC" ${c.type==='CC'?'selected':''}>Credit Card</option>
+          <option value="DC" ${c.type==='DC'?'selected':''}>Debit Card</option>
+          <option value="Rewards" ${c.type==='Rewards'?'selected':''}>Rewards Account</option>
+        </select>
+        <button class="remove-btn" onclick="removeCard(${i})">✕</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Annual Fee (₹)</label><input type="number" value="${c.annualFee}" oninput="updateField(${i},'annualFee',this.value)"></div>
+        <div class="field"><label>Monthly Fee (₹)</label><input type="number" value="${c.monthlyFee}" oninput="updateField(${i},'monthlyFee',this.value)"><div class="field-hint">Recurring a/c maintenance fee needed for rewards, e.g. Axis Amaze ₹200/mo</div></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Fee Waiver Spend/yr (₹)</label><input type="number" value="${c.waiverSpend}" oninput="updateField(${i},'waiverSpend',this.value)"></div>
+        <div class="field"><label>Your Actual Spend/yr (₹)</label><input type="number" value="${c.actualSpend}" oninput="updateField(${i},'actualSpend',this.value)"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Rewards/Cashback Value Earned/yr (₹)</label><input type="number" value="${c.rewardsValue}" oninput="updateField(${i},'rewardsValue',this.value)"></div>
+      </div>
+      <div class="verdict-line">
+        <span class="net-val" data-role="net">₹0</span>
+        <span class="badge" data-role="badge">--</span>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+  updateAll();
+}
+
+function updateAll(){
+  const container = document.getElementById('cardsContainer');
+  let totalNet = 0;
+  cards.forEach((c,i)=>{
+    const div = container.querySelector(`[data-index="${i}"]`);
+    if(!div) return;
+    const {net, feeWaived} = computeCard(c);
+    totalNet += net;
+    const netEl = div.querySelector('[data-role="net"]');
+    const badgeEl = div.querySelector('[data-role="badge"]');
+    netEl.textContent = (net>=0?'+':'') + inr(net) + '/yr' + (feeWaived ? ' (fee waived)' : '');
+    netEl.style.color = net >= 0 ? 'var(--acc)' : 'var(--bad)';
+    badgeEl.classList.remove('good','mid','bad');
+    if(net > 0){ badgeEl.classList.add('good'); badgeEl.textContent = 'Keep'; }
+    else if(net === 0){ badgeEl.classList.add('mid'); badgeEl.textContent = 'Neutral'; }
+    else { badgeEl.classList.add('bad'); badgeEl.textContent = 'Close it'; }
+  });
+  const totalEl = document.getElementById('totalNet');
+  totalEl.textContent = (totalNet>=0?'+':'') + inr(totalNet);
+  totalEl.style.color = totalNet >= 0 ? 'var(--acc)' : 'var(--bad)';
+}
+
+render();
+</script>
+</body>
+</html>

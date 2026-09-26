@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Credit Card Cashback Calculator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .cat-row{border-bottom:1px solid #334155;padding-bottom:14px;margin-bottom:14px;}
+  .cat-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .cat-title{font-weight:700;font-size:15px;margin-bottom:2px;}
+  .cat-cap{font-size:11px;color:var(--sub);margin-bottom:10px;}
+  .row{display:flex;gap:8px;}
+  .field{flex:1;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus{outline:2px solid var(--acc);}
+  .earn{text-align:right;font-size:13px;font-weight:700;color:var(--acc);margin-top:6px;}
+  .cap-warn{font-size:11px;color:var(--warn);text-align:right;margin-top:2px;}
+  .result-box{text-align:center;padding:24px 16px;}
+  .result-num{font-size:36px;font-weight:800;color:var(--acc);}
+  .result-label{color:var(--sub);font-size:13px;margin-top:2px;}
+  .breakdown{font-size:13px;margin-top:16px;text-align:left;}
+  .breakdown div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #334155;}
+  .breakdown div:last-child{border-bottom:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💸 Credit Card Cashback Calculator</h1>
+  <p class="sub">Max realistic cashback: Online 5%, Offline 1%, Utilities 5%. Enter your monthly spend & actual card rate per category.</p>
+
+  <div class="card">
+    <div class="cat-row">
+      <div class="cat-title">Online Spend</div>
+      <div class="cat-cap">Max typical cashback: 5%</div>
+      <div class="row">
+        <div class="field"><label>Monthly Spend (₹)</label><input type="number" id="onlineSpend" oninput="calc()"></div>
+        <div class="field"><label>Card Rate (%)</label><input type="number" id="onlineRate" value="5" step="0.1" oninput="calc()"></div>
+      </div>
+      <div class="earn" id="onlineEarn">₹0</div>
+      <div class="cap-warn" id="onlineWarn"></div>
+    </div>
+
+    <div class="cat-row">
+      <div class="cat-title">Offline Spend</div>
+      <div class="cat-cap">Max typical cashback: 1%</div>
+      <div class="row">
+        <div class="field"><label>Monthly Spend (₹)</label><input type="number" id="offlineSpend" oninput="calc()"></div>
+        <div class="field"><label>Card Rate (%)</label><input type="number" id="offlineRate" value="1" step="0.1" oninput="calc()"></div>
+      </div>
+      <div class="earn" id="offlineEarn">₹0</div>
+      <div class="cap-warn" id="offlineWarn"></div>
+    </div>
+
+    <div class="cat-row">
+      <div class="cat-title">Utilities Spend</div>
+      <div class="cat-cap">Max typical cashback: 5%</div>
+      <div class="row">
+        <div class="field"><label>Monthly Spend (₹)</label><input type="number" id="utilSpend" oninput="calc()"></div>
+        <div class="field"><label>Card Rate (%)</label><input type="number" id="utilRate" value="5" step="0.1" oninput="calc()"></div>
+      </div>
+      <div class="earn" id="utilEarn">₹0</div>
+      <div class="cap-warn" id="utilWarn"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Annual Fee (₹)</label>
+    <input type="number" id="annualFee" value="0" oninput="calc()">
+  </div>
+
+  <div class="card result-box">
+    <div class="result-num" id="netMonthly">₹0</div>
+    <div class="result-label">Net Monthly Cashback (after fee amortized)</div>
+    <div class="breakdown">
+      <div><span>Total Cashback Earned/mo</span><span id="totalEarn">₹0</span></div>
+      <div><span>Annual Fee (amortized/mo)</span><span id="feeAmort">-₹0</span></div>
+      <div><span>Effective Rate on Total Spend</span><span id="effRate">0%</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CAPS = { online: 5, offline: 1, util: 5 };
+
+function calcCategory(spendId, rateId, earnId, warnId, capKey){
+  const spend = parseFloat(document.getElementById(spendId).value) || 0;
+  const rate = parseFloat(document.getElementById(rateId).value) || 0;
+  const earn = spend * (rate/100);
+  document.getElementById(earnId).textContent = '₹' + earn.toFixed(2);
+  const warnEl = document.getElementById(warnId);
+  if(rate > CAPS[capKey]){
+    warnEl.textContent = `⚠️ ${rate}% is above typical max (${CAPS[capKey]}%) — verify with your card's T&Cs`;
+  } else {
+    warnEl.textContent = '';
+  }
+  return { spend, earn };
+}
+
+function calc(){
+  const online = calcCategory('onlineSpend','onlineRate','onlineEarn','onlineWarn','online');
+  const offline = calcCategory('offlineSpend','offlineRate','offlineEarn','offlineWarn','offline');
+  const util = calcCategory('utilSpend','utilRate','utilEarn','utilWarn','util');
+
+  const fee = parseFloat(document.getElementById('annualFee').value) || 0;
+  const feeMonthly = fee / 12;
+
+  const totalSpend = online.spend + offline.spend + util.spend;
+  const totalEarn = online.earn + offline.earn + util.earn;
+  const net = totalEarn - feeMonthly;
+  const effRate = totalSpend > 0 ? (totalEarn/totalSpend)*100 : 0;
+
+  document.getElementById('totalEarn').textContent = '₹' + totalEarn.toFixed(2);
+  document.getElementById('feeAmort').textContent = '-₹' + feeMonthly.toFixed(2);
+  document.getElementById('effRate').textContent = effRate.toFixed(2) + '%';
+
+  const netEl = document.getElementById('netMonthly');
+  netEl.textContent = '₹' + net.toFixed(2);
+  netEl.style.color = net >= 0 ? 'var(--acc)' : 'var(--bad)';
+}
+calc();
+</script>
+</body>
+</html>

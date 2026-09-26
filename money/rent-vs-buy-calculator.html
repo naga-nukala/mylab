@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Rent vs Buy Calculator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:580px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:16px;}
+  .disclaimer{background:#1e293b;border-left:3px solid var(--warn);padding:10px 12px;border-radius:6px;font-size:11px;color:var(--sub);margin-bottom:16px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:120px;}
+  .section-title{font-size:12px;font-weight:700;color:var(--txt);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em;}
+  .section-title:first-child{margin-top:0;}
+
+  .compare-box{display:flex;gap:10px;}
+  .side-box{flex:1;background:#0f172a;border-radius:10px;padding:14px;text-align:center;border:2px solid transparent;}
+  .side-box.winner{border-color:var(--acc);}
+  .side-name{font-size:12px;color:var(--sub);margin-bottom:6px;}
+  .side-num{font-size:20px;font-weight:800;}
+  .winner-tag{font-size:10px;background:rgba(34,197,94,.15);color:var(--acc);padding:2px 8px;border-radius:10px;font-weight:700;margin-top:6px;display:inline-block;}
+
+  .result-line{text-align:center;padding:12px;margin-top:10px;font-size:14px;font-weight:700;color:var(--acc);}
+  .breakeven-note{text-align:center;font-size:12px;color:var(--sub);margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏘️ Rent vs Buy Calculator</h1>
+  <p class="sub">Compares long-term net worth: home equity if you buy, vs down payment + monthly savings invested if you rent.</p>
+  <div class="disclaimer">Estimate based on your assumptions about appreciation, rent growth, and investment returns — real outcomes vary. Not financial advice.</div>
+
+  <div class="card">
+    <div class="section-title">Buying Scenario</div>
+    <div class="row">
+      <div class="field"><label>Home Price (₹)</label><input type="number" id="homePrice" placeholder="e.g. 8000000" oninput="calc()"></div>
+      <div class="field"><label>Down Payment (₹)</label><input type="number" id="downPayment" placeholder="e.g. 1600000" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Loan Interest Rate (% p.a.)</label><input type="number" id="loanRate" placeholder="e.g. 8.5" oninput="calc()"></div>
+      <div class="field"><label>Loan Tenure (years)</label><input type="number" id="loanTenure" placeholder="e.g. 20" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Monthly Maintenance + Property Tax (₹)</label><input type="number" id="maintenance" value="0" oninput="calc()"></div>
+      <div class="field"><label>One-time Buying Costs (stamp duty etc, ₹)</label><input type="number" id="oneTimeCosts" value="0" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Home Appreciation Rate (% p.a.)</label><input type="number" id="appreciation" placeholder="e.g. 5" oninput="calc()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Renting Scenario</div>
+    <div class="row">
+      <div class="field"><label>Equivalent Monthly Rent (₹)</label><input type="number" id="monthlyRent" placeholder="e.g. 25000" oninput="calc()"></div>
+      <div class="field"><label>Rent Escalation (% p.a.)</label><input type="number" id="rentEscalation" placeholder="e.g. 5" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Investment Return if Renting (% p.a.)</label><input type="number" id="investReturn" placeholder="e.g. 10" oninput="calc()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Time Horizon (years)</label><input type="number" id="horizon" value="10" oninput="calc()"></div>
+    </div>
+
+    <div class="compare-box">
+      <div class="side-box" id="buyBox">
+        <div class="side-name">🏠 Buying — Home Equity</div>
+        <div class="side-num" id="buyNetWorth">₹0</div>
+        <div id="buyWinnerTag"></div>
+      </div>
+      <div class="side-box" id="rentBox">
+        <div class="side-name">🏢 Renting — Investment Corpus</div>
+        <div class="side-num" id="rentNetWorth">₹0</div>
+        <div id="rentWinnerTag"></div>
+      </div>
+    </div>
+    <div class="result-line" id="resultLine"></div>
+    <div class="breakeven-note" id="breakevenNote"></div>
+  </div>
+</div>
+
+<script>
+function calcEMI(principal, annualRate, months){
+  const r = annualRate/12/100;
+  if(!months || months<=0) return 0;
+  if(r===0) return principal/months;
+  const emi = principal * r * Math.pow(1+r, months) / (Math.pow(1+r, months)-1);
+  return isFinite(emi) ? emi : 0;
+}
+
+function simulate(inputs, horizonYears){
+  const { homePrice, downPayment, loanRate, loanTenureMonths, maintenance, oneTimeCosts, appreciation, monthlyRent, rentEscalation, investReturn } = inputs;
+
+  const loanAmount = Math.max(0, homePrice - downPayment);
+  const emi = calcEMI(loanAmount, loanRate, loanTenureMonths);
+
+  let loanBalance = loanAmount;
+  let renterCorpus = downPayment + oneTimeCosts; // renter invests what buyer spends upfront
+  let currentRent = monthlyRent;
+
+  const horizonMonths = horizonYears * 12;
+  const yearlySnapshots = [];
+
+  for(let m=1; m<=horizonMonths; m++){
+    // loan amortization
+    if(loanBalance > 0.5 && m <= loanTenureMonths){
+      const interest = loanBalance * (loanRate/100/12);
+      loanBalance = loanBalance + interest - emi;
+      if(loanBalance < 0) loanBalance = 0;
+    }
+
+    const buyMonthlyCost = maintenance + (m <= loanTenureMonths ? emi : 0);
+
+    // rent escalates annually
+    if(m>1 && (m-1)%12===0){ currentRent *= (1+rentEscalation/100); }
+
+    const delta = buyMonthlyCost - currentRent;
+    renterCorpus = renterCorpus*(1+investReturn/100/12) + delta;
+
+    if(m % 12 === 0){
+      const homeValue = homePrice * Math.pow(1+appreciation/100, m/12);
+      const buyEquity = homeValue - loanBalance;
+      yearlySnapshots.push({ year: m/12, buyEquity, rentCorpus: renterCorpus });
+    }
+  }
+
+  return yearlySnapshots;
+}
+
+function calc(){
+  const homePrice = parseFloat(document.getElementById('homePrice').value) || 0;
+  const downPayment = parseFloat(document.getElementById('downPayment').value) || 0;
+  const loanRate = parseFloat(document.getElementById('loanRate').value) || 0;
+  const loanTenure = parseFloat(document.getElementById('loanTenure').value) || 0;
+  const maintenance = parseFloat(document.getElementById('maintenance').value) || 0;
+  const oneTimeCosts = parseFloat(document.getElementById('oneTimeCosts').value) || 0;
+  const appreciation = parseFloat(document.getElementById('appreciation').value) || 0;
+  const monthlyRent = parseFloat(document.getElementById('monthlyRent').value) || 0;
+  const rentEscalation = parseFloat(document.getElementById('rentEscalation').value) || 0;
+  const investReturn = parseFloat(document.getElementById('investReturn').value) || 0;
+  const horizon = parseFloat(document.getElementById('horizon').value) || 10;
+
+  if(homePrice<=0 || monthlyRent<=0){
+    document.getElementById('buyNetWorth').textContent = '₹0';
+    document.getElementById('rentNetWorth').textContent = '₹0';
+    document.getElementById('resultLine').textContent = '';
+    document.getElementById('breakevenNote').textContent = '';
+    return;
+  }
+
+  const inputs = { homePrice, downPayment, loanRate, loanTenureMonths: loanTenure*12, maintenance, oneTimeCosts, appreciation, monthlyRent, rentEscalation, investReturn };
+
+  // simulate up to max(horizon, 30) to detect breakeven
+  const maxSimYears = Math.max(horizon, 30);
+  const snapshots = simulate(inputs, maxSimYears);
+
+  const atHorizon = snapshots.find(s=>s.year===horizon) || snapshots[snapshots.length-1];
+
+  document.getElementById('buyNetWorth').textContent = '₹' + atHorizon.buyEquity.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('rentNetWorth').textContent = '₹' + atHorizon.rentCorpus.toLocaleString('en-IN',{maximumFractionDigits:0});
+
+  const buyBox = document.getElementById('buyBox');
+  const rentBox = document.getElementById('rentBox');
+  const buyTag = document.getElementById('buyWinnerTag');
+  const rentTag = document.getElementById('rentWinnerTag');
+  buyBox.classList.remove('winner'); rentBox.classList.remove('winner');
+  buyTag.innerHTML=''; rentTag.innerHTML='';
+
+  const diff = Math.abs(atHorizon.buyEquity - atHorizon.rentCorpus);
+  const resultLine = document.getElementById('resultLine');
+  if(atHorizon.buyEquity > atHorizon.rentCorpus){
+    buyBox.classList.add('winner');
+    buyTag.innerHTML = '<span class="winner-tag">BETTER</span>';
+    resultLine.textContent = `Buying builds ₹${diff.toLocaleString('en-IN',{maximumFractionDigits:0})} more wealth over ${horizon} years`;
+  } else {
+    rentBox.classList.add('winner');
+    rentTag.innerHTML = '<span class="winner-tag">BETTER</span>';
+    resultLine.textContent = `Renting + Investing builds ₹${diff.toLocaleString('en-IN',{maximumFractionDigits:0})} more wealth over ${horizon} years`;
+  }
+
+  // breakeven detection across full simulation
+  let crossoverYear = null;
+  for(let i=1; i<snapshots.length; i++){
+    const prevBuyAhead = snapshots[i-1].buyEquity >= snapshots[i-1].rentCorpus;
+    const currBuyAhead = snapshots[i].buyEquity >= snapshots[i].rentCorpus;
+    if(prevBuyAhead !== currBuyAhead){ crossoverYear = snapshots[i].year; break; }
+  }
+  const breakevenEl = document.getElementById('breakevenNote');
+  if(crossoverYear){
+    breakevenEl.textContent = `The better option flips around year ${crossoverYear} (simulated up to ${maxSimYears}y).`;
+  } else {
+    breakevenEl.textContent = `Same winner holds consistently through ${maxSimYears} years in this simulation.`;
+  }
+}
+
+(function(){
+  const K='as_rentvsbuy';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+calc();
+</script>
+</body>
+</html>

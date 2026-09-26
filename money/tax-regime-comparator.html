@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Old vs New Tax Regime Comparator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:16px;}
+  .disclaimer{background:#1e293b;border-left:3px solid var(--warn);padding:10px 12px;border-radius:6px;font-size:11px;color:var(--sub);margin-bottom:16px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:120px;}
+  .toggle{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .toggle input{width:auto;}
+  .toggle label{margin:0;font-size:13px;color:var(--txt);}
+
+  .compare-box{display:flex;gap:10px;}
+  .regime-box{flex:1;background:#0f172a;border-radius:10px;padding:14px;text-align:center;border:2px solid transparent;}
+  .regime-box.winner{border-color:var(--acc);}
+  .regime-name{font-size:12px;color:var(--sub);margin-bottom:6px;}
+  .regime-tax{font-size:22px;font-weight:800;}
+  .winner-tag{font-size:10px;background:rgba(34,197,94,.15);color:var(--acc);padding:2px 8px;border-radius:10px;font-weight:700;margin-top:6px;display:inline-block;}
+
+  .savings-line{text-align:center;padding:14px;margin-top:10px;font-size:14px;font-weight:700;color:var(--acc);}
+
+  .breakdown{font-size:12px;margin-top:8px;}
+  .breakdown-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #334155;}
+  .breakdown-row:last-child{border-bottom:none;}
+  .section-title{font-size:12px;font-weight:700;color:var(--txt);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚖️ Old vs New Tax Regime</h1>
+  <p class="sub">FY 2025-26 (AY 2026-27) slabs, unchanged in Budget 2026.</p>
+  <div class="disclaimer">Reference estimate only — not tax advice. Excludes marginal relief on surcharge and less-common deductions. Confirm with a CA or the official IT portal before filing.</div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Gross Annual Income (₹)</label><input type="number" id="grossIncome" placeholder="e.g. 1500000" oninput="calc()"></div>
+      <div class="field"><label>Age Category</label>
+        <select id="ageCategory" onchange="calc()">
+          <option value="below60">Below 60</option>
+          <option value="senior">60-80 (Senior)</option>
+          <option value="supersenior">80+ (Super Senior)</option>
+        </select>
+      </div>
+    </div>
+    <div class="toggle">
+      <input type="checkbox" id="isSalaried" checked onchange="calc()">
+      <label>Salaried / Pensioner (standard deduction applies)</label>
+    </div>
+    <div class="row">
+      <div class="field"><label>Employer NPS Contribution 80CCD(2) (₹)</label><input type="number" id="employerNps" value="0" oninput="calc()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Old Regime Deductions</div>
+    <div class="row">
+      <div class="field"><label>80C (PF, ELSS, LIC etc, max 1.5L)</label><input type="number" id="ded80C" value="0" oninput="calc()"></div>
+      <div class="field"><label>80D Health Insurance</label><input type="number" id="ded80D" value="0" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Home Loan Interest (self-occ, max 2L)</label><input type="number" id="dedHomeLoan" value="0" oninput="calc()"></div>
+      <div class="field"><label>HRA Exemption</label><input type="number" id="dedHRA" value="0" oninput="calc()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>NPS 80CCD(1B) (max 50k, self)</label><input type="number" id="dedNPS1B" value="0" oninput="calc()"></div>
+      <div class="field"><label>Other Deductions</label><input type="number" id="dedOther" value="0" oninput="calc()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="compare-box">
+      <div class="regime-box" id="oldBox">
+        <div class="regime-name">Old Regime</div>
+        <div class="regime-tax" id="oldTax">₹0</div>
+        <div id="oldWinnerTag"></div>
+      </div>
+      <div class="regime-box" id="newBox">
+        <div class="regime-name">New Regime</div>
+        <div class="regime-tax" id="newTax">₹0</div>
+        <div id="newWinnerTag"></div>
+      </div>
+    </div>
+    <div class="savings-line" id="savingsLine"></div>
+
+    <div class="section-title">Old Regime Breakdown</div>
+    <div class="breakdown" id="oldBreakdown"></div>
+    <div class="section-title">New Regime Breakdown</div>
+    <div class="breakdown" id="newBreakdown"></div>
+  </div>
+</div>
+
+<script>
+function slabTax(income, slabs){
+  let tax = 0;
+  for(const [from, to, rate] of slabs){
+    if(income > from){
+      const taxable = Math.min(income, to) - from;
+      tax += taxable * rate;
+    }
+  }
+  return tax;
+}
+
+function surcharge(tax, income, isNewRegime){
+  let rate = 0;
+  if(income > 50000000) rate = isNewRegime ? 0.25 : 0.37;
+  else if(income > 20000000) rate = 0.25;
+  else if(income > 10000000) rate = 0.15;
+  else if(income > 5000000) rate = 0.10;
+  return tax * rate;
+}
+
+function calcNewRegime(gross, isSalaried, employerNps){
+  const stdDed = isSalaried ? 75000 : 0;
+  const taxableIncome = Math.max(0, gross - stdDed - employerNps);
+
+  const slabs = [
+    [0, 400000, 0],
+    [400000, 800000, 0.05],
+    [800000, 1200000, 0.10],
+    [1200000, 1600000, 0.15],
+    [1600000, 2000000, 0.20],
+    [2000000, 2400000, 0.25],
+    [2400000, Infinity, 0.30]
+  ];
+
+  let tax = slabTax(taxableIncome, slabs);
+  let rebate = 0;
+  if(taxableIncome <= 1200000){ rebate = Math.min(tax, 60000); tax -= rebate; }
+
+  const sur = surcharge(tax, taxableIncome, true);
+  const cess = (tax + sur) * 0.04;
+  const totalTax = tax + sur + cess;
+
+  return { taxableIncome, stdDed, baseTax: slabTax(taxableIncome, slabs), rebate, surcharge: sur, cess, totalTax };
+}
+
+function calcOldRegime(gross, isSalaried, employerNps, ageCategory, deductions){
+  const stdDed = isSalaried ? 50000 : 0;
+  const totalDeductions = Math.min(deductions.ded80C, 150000) + deductions.ded80D + Math.min(deductions.dedHomeLoan, 200000) + deductions.dedHRA + Math.min(deductions.dedNPS1B, 50000) + deductions.dedOther;
+  const taxableIncome = Math.max(0, gross - stdDed - employerNps - totalDeductions);
+
+  let exemptionLimit = 250000;
+  if(ageCategory==='senior') exemptionLimit = 300000;
+  if(ageCategory==='supersenior') exemptionLimit = 500000;
+
+  const slabs = [
+    [0, exemptionLimit, 0],
+    [exemptionLimit, 500000, 0.05],
+    [500000, 1000000, 0.20],
+    [1000000, Infinity, 0.30]
+  ];
+  // guard: if exemptionLimit >= 500000 (super senior), skip the 5% slab overlap
+  const cleanSlabs = slabs.filter(s => s[0] < s[1]);
+
+  let tax = slabTax(taxableIncome, cleanSlabs);
+  let rebate = 0;
+  if(taxableIncome <= 500000){ rebate = Math.min(tax, 12500); tax -= rebate; }
+
+  const sur = surcharge(tax, taxableIncome, false);
+  const cess = (tax + sur) * 0.04;
+  const totalTax = tax + sur + cess;
+
+  return { taxableIncome, stdDed, totalDeductions, baseTax: slabTax(taxableIncome, cleanSlabs), rebate, surcharge: sur, cess, totalTax };
+}
+
+function calc(){
+  const gross = parseFloat(document.getElementById('grossIncome').value) || 0;
+  const isSalaried = document.getElementById('isSalaried').checked;
+  const employerNps = parseFloat(document.getElementById('employerNps').value) || 0;
+  const ageCategory = document.getElementById('ageCategory').value;
+
+  const deductions = {
+    ded80C: parseFloat(document.getElementById('ded80C').value) || 0,
+    ded80D: parseFloat(document.getElementById('ded80D').value) || 0,
+    dedHomeLoan: parseFloat(document.getElementById('dedHomeLoan').value) || 0,
+    dedHRA: parseFloat(document.getElementById('dedHRA').value) || 0,
+    dedNPS1B: parseFloat(document.getElementById('dedNPS1B').value) || 0,
+    dedOther: parseFloat(document.getElementById('dedOther').value) || 0
+  };
+
+  const newR = calcNewRegime(gross, isSalaried, employerNps);
+  const oldR = calcOldRegime(gross, isSalaried, employerNps, ageCategory, deductions);
+
+  document.getElementById('oldTax').textContent = '₹' + oldR.totalTax.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('newTax').textContent = '₹' + newR.totalTax.toLocaleString('en-IN',{maximumFractionDigits:0});
+
+  const oldBox = document.getElementById('oldBox');
+  const newBox = document.getElementById('newBox');
+  const oldTag = document.getElementById('oldWinnerTag');
+  const newTag = document.getElementById('newWinnerTag');
+  const savingsLine = document.getElementById('savingsLine');
+
+  oldBox.classList.remove('winner'); newBox.classList.remove('winner');
+  oldTag.innerHTML=''; newTag.innerHTML='';
+
+  if(gross>0){
+    const diff = Math.abs(oldR.totalTax - newR.totalTax);
+    if(oldR.totalTax < newR.totalTax){
+      oldBox.classList.add('winner');
+      oldTag.innerHTML = '<span class="winner-tag">BETTER</span>';
+      savingsLine.textContent = `Old Regime saves you ₹${diff.toLocaleString('en-IN',{maximumFractionDigits:0})}`;
+    } else if(newR.totalTax < oldR.totalTax){
+      newBox.classList.add('winner');
+      newTag.innerHTML = '<span class="winner-tag">BETTER</span>';
+      savingsLine.textContent = `New Regime saves you ₹${diff.toLocaleString('en-IN',{maximumFractionDigits:0})}`;
+    } else {
+      savingsLine.textContent = 'Both regimes result in the same tax';
+    }
+  } else {
+    savingsLine.textContent = '';
+  }
+
+  document.getElementById('oldBreakdown').innerHTML = `
+    <div class="breakdown-row"><span>Standard Deduction</span><span>₹${oldR.stdDed.toLocaleString('en-IN')}</span></div>
+    <div class="breakdown-row"><span>Total Other Deductions</span><span>₹${oldR.totalDeductions.toLocaleString('en-IN')}</span></div>
+    <div class="breakdown-row"><span>Taxable Income</span><span>₹${oldR.taxableIncome.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Base Tax</span><span>₹${oldR.baseTax.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Rebate (87A)</span><span>-₹${oldR.rebate.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Surcharge</span><span>₹${oldR.surcharge.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Cess (4%)</span><span>₹${oldR.cess.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+  `;
+
+  document.getElementById('newBreakdown').innerHTML = `
+    <div class="breakdown-row"><span>Standard Deduction</span><span>₹${newR.stdDed.toLocaleString('en-IN')}</span></div>
+    <div class="breakdown-row"><span>Taxable Income</span><span>₹${newR.taxableIncome.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Base Tax</span><span>₹${newR.baseTax.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Rebate (87A)</span><span>-₹${newR.rebate.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Surcharge</span><span>₹${newR.surcharge.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+    <div class="breakdown-row"><span>Cess (4%)</span><span>₹${newR.cess.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+  `;
+}
+
+(function(){
+  const K='as_taxregime';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ el.type==='checkbox' ? (el.checked = d[id]==='true') : (el.value=d[id]); }
+    });
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{
+      d[el.id]= el.type==='checkbox' ? String(el.checked) : el.value;
+    });
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+  document.addEventListener('change',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{
+      d[el.id]= el.type==='checkbox' ? String(el.checked) : el.value;
+    });
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+calc();
+</script>
+</body>
+</html>

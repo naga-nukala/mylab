@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>CASA vs Rupay CC Savings</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;padding-bottom:70px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:14px;}
+  .card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px;}
+  label{display:block;font-size:10px;color:var(--sub);margin-bottom:3px;}
+  input{width:100%;padding:7px 8px;border-radius:7px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:13px;}
+  input:focus{outline:2px solid var(--acc);}
+
+  .summary{text-align:center;padding:14px 12px;}
+  .summary-num{font-size:30px;font-weight:800;}
+  .summary-label{color:var(--sub);font-size:12px;}
+  .summary-row{display:flex;gap:8px;margin-top:10px;}
+  .summary-row .s{flex:1;background:#0f172a;border-radius:8px;padding:8px 4px;min-width:0;}
+  .summary-row .n{font-size:14px;font-weight:700;white-space:nowrap;}
+  .summary-row .l{font-size:10px;color:var(--sub);margin-top:1px;}
+
+  .cc-head{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .cc-head input{flex:1;font-weight:700;font-size:14px;}
+  .cc-head .rm{background:none;border:none;color:var(--bad);font-size:14px;cursor:pointer;padding:4px 8px;border-radius:6px;}
+  .cc-head .rm.confirming{background:var(--bad);color:#fff;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .eff{grid-column:span 2;font-size:11px;color:var(--sub);align-self:end;padding-bottom:8px;line-height:1.3;}
+  .cc-result{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #334155;flex-wrap:wrap;}
+  .cc-break{font-size:11px;color:var(--sub);line-height:1.5;}
+  .cc-net{font-size:16px;font-weight:800;white-space:nowrap;}
+  .badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;margin-left:6px;vertical-align:middle;}
+  .b-good{background:rgba(34,197,94,.15);color:var(--acc);}
+  .b-mid{background:rgba(245,158,11,.15);color:var(--warn);}
+  .b-bad{background:rgba(239,68,68,.15);color:var(--bad);}
+  .b-best{background:rgba(251,191,36,.18);color:#fbbf24;}
+  .pos{color:var(--acc);} .neg{color:var(--bad);}
+
+  button.add{width:100%;padding:10px;border:1px dashed #475569;border-radius:10px;background:transparent;color:var(--txt);font-size:13px;cursor:pointer;margin-bottom:10px;}
+  details{font-size:12px;color:var(--sub);margin-bottom:10px;}
+  details summary{cursor:pointer;padding:4px 0;}
+  details ul{margin:6px 0 0;padding-left:18px;line-height:1.6;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #475569;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;max-width:90%;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💳 CASA vs Rupay CC Savings</h1>
+  <p class="sub">Keep money in savings, pay via Rupay Credit Card on UPI — earn CASA interest during the credit-free period plus card rewards.</p>
+
+  <div class="card summary">
+    <div class="summary-num" id="totalNet">₹0.00</div>
+    <div class="summary-label">Net Monthly Savings vs Direct UPI/Cash (all cards)</div>
+    <div class="summary-row">
+      <div class="s"><div class="n" id="totalYear">₹0</div><div class="l">Per Year</div></div>
+      <div class="s"><div class="n" id="totalSpend">₹0</div><div class="l">Spend / month</div></div>
+      <div class="s"><div class="n" id="totalRate">0%</div><div class="l">Effective rate</div></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>What do the fields mean?</summary>
+    <ul>
+      <li><b>Spend/mo</b>: amount paid through this card each month.</li>
+      <li><b>Points % of spend</b>: points earned per ₹100 of spend (1% = 1 point per ₹100).</li>
+      <li><b>₹ per point</b>: rupee value when redeemed (for example ₹0.25). Rupees = points × this value.</li>
+      <li><b>CASA %</b>: interest on the savings account that funds this card.</li>
+      <li><b>Float days</b>: days your money stays in the account before the bill is paid (about 30–45).</li>
+      <li><b>Redeem fee / every</b>: one-time fee (about ₹49) spread over the months between redemptions (points expire in about 36).</li>
+    </ul>
+  </details>
+
+  <div id="cards"></div>
+  <button class="add" id="addCardBtn" type="button">+ Add Card</button>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const STORAGE_KEY = 'casa_rupay_cards_v1';
+const MAX_CARDS = 10;
+const FIELDS = [
+  {f:'spend',  label:'Spend/mo (₹)',  step:'100'},
+  {f:'reward', label:'Points % of spend', step:'0.01'},
+  {f:'value',  label:'₹ per point',   step:'0.01'},
+  {f:'casa',   label:'CASA %',        step:'0.1'},
+  {f:'float',  label:'Float days',    step:'1'},
+  {f:'fee',    label:'Redeem fee (₹)',step:'1'},
+  {f:'cycle',  label:'Redeem every (mo)', step:'1'}
+];
+const DEFAULTS = {casa:'3', reward:'1', value:'0.25', float:'30', fee:'49', cycle:'36'};
+
+let cards = [];
+try { cards = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { cards = []; }
+if(Array.isArray(cards)) cards.forEach(c=>{ if(c.value === undefined) c.value = '1'; }); // older cards entered rupee % directly
+if(!Array.isArray(cards) || !cards.length) cards = [{id:Date.now(), name:'Card 1', spend:'', ...DEFAULTS}];
+
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); }catch(e){} }
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function money(n, d=2){ return (n<0?'-':'') + '₹' + Math.abs(n).toLocaleString('en-IN', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.style.display='none'; }, 2200);
+}
+const pending = {};
+function confirmTwice(key, btn, action){
+  if(pending[key]){ clearTimeout(pending[key]); delete pending[key]; action(); return; }
+  btn.classList.add('confirming'); btn.textContent='Sure?';
+  showToast('Tap again to remove this card');
+  pending[key]=setTimeout(()=>{ delete pending[key]; btn.classList.remove('confirming'); btn.textContent='✕'; }, 2500);
+}
+
+function compute(c){
+  const n = v => parseFloat(v) || 0;
+  const spend = n(c.spend);
+  const interest = spend * (n(c.casa)/100) * (n(c.float)/365);
+  const points = spend * (n(c.reward)/100);
+  const reward = points * n(c.value);
+  const effective = n(c.reward) * n(c.value);
+  const cycle = n(c.cycle) > 0 ? n(c.cycle) : 36;
+  const fee = n(c.fee) / cycle;
+  return {spend, points, interest, reward, effective, fee, net: interest + reward - fee};
+}
+
+/* structural render: only on add / remove */
+function renderCards(){
+  document.getElementById('cards').innerHTML = cards.map(c=>`
+    <div class="card" data-id="${c.id}">
+      <div class="cc-head">
+        <input type="text" data-id="${c.id}" data-f="name" value="${esc(c.name)}" placeholder="Card name" aria-label="Card name">
+        ${cards.length>1 ? `<button type="button" class="rm" data-remove="${c.id}" aria-label="Remove ${esc(c.name)}">✕</button>` : ''}
+      </div>
+      <div class="grid">
+        ${FIELDS.map(x=>`<div><label>${x.label}</label><input type="number" inputmode="decimal" step="${x.step}" min="0" data-id="${c.id}" data-f="${x.f}" value="${esc(String(c[x.f] ?? ''))}" placeholder="0"></div>`).join('')}
+        <div class="eff" data-role="eff"></div>
+      </div>
+      <div class="cc-result">
+        <div class="cc-break" data-role="break"></div>
+        <div class="cc-net" data-role="net"></div>
+      </div>
+    </div>`).join('');
+  update();
+}
+
+/* in-place update: safe on every keystroke */
+function update(){
+  let totalNet = 0, totalSpend = 0;
+  const results = cards.map(c=>({c, r:compute(c)}));
+  const best = results.length>1 ? results.reduce((a,b)=>b.r.net>a.r.net?b:a) : null;
+
+  results.forEach(({c, r})=>{
+    totalNet += r.net; totalSpend += r.spend;
+    const el = document.querySelector(`.card[data-id="${c.id}"]`); if(!el) return;
+    el.querySelector('[data-role="eff"]').textContent =
+      `${Math.round(r.points).toLocaleString('en-IN')} points/mo = ${money(r.reward)} · effective ${r.effective.toFixed(2)}% of spend`;
+    el.querySelector('[data-role="break"]').innerHTML =
+      `Interest ${money(r.interest)} + Rewards ${money(r.reward)} − Fee ${money(r.fee)}`;
+    const badge = r.spend<=0 ? '' :
+      r.net > 50 ? '<span class="badge b-good">Worth it</span>' :
+      r.net >= 0 ? '<span class="badge b-mid">Marginal</span>' :
+                   '<span class="badge b-bad">Losing</span>';
+    const bestTag = best && best.c.id===c.id && r.spend>0 ? '<span class="badge b-best">Best</span>' : '';
+    const netEl = el.querySelector('[data-role="net"]');
+    netEl.innerHTML = `<span class="${r.net>=0?'pos':'neg'}">${money(r.net)}/mo</span>${badge}${bestTag}`;
+  });
+
+  const netEl = document.getElementById('totalNet');
+  netEl.textContent = money(totalNet);
+  netEl.style.color = totalNet >= 0 ? 'var(--acc)' : 'var(--bad)';
+  document.getElementById('totalYear').textContent = money(totalNet*12, 0);
+  document.getElementById('totalSpend').textContent = money(totalSpend, 0);
+  document.getElementById('totalRate').textContent = totalSpend>0 ? (totalNet/totalSpend*100).toFixed(2) + '%' : '0%';
+}
+
+/* events (delegation) */
+const container = document.getElementById('cards');
+container.addEventListener('input', e=>{
+  const t = e.target; if(!t.dataset.f) return;
+  const card = cards.find(c=>String(c.id)===t.dataset.id); if(!card) return;
+  card[t.dataset.f] = t.value;
+  save(); update();
+});
+container.addEventListener('click', e=>{
+  const b = e.target.closest('[data-remove]'); if(!b) return;
+  const id = b.dataset.remove;
+  confirmTwice('rm-'+id, b, ()=>{
+    cards = cards.filter(c=>String(c.id)!==id);
+    save(); renderCards(); showToast('Card removed');
+  });
+});
+document.getElementById('addCardBtn').addEventListener('click', ()=>{
+  if(cards.length >= MAX_CARDS){ showToast('Maximum ' + MAX_CARDS + ' cards.'); return; }
+  const last = cards[cards.length-1];
+  cards.push({id:Date.now(), name:'Card ' + (cards.length+1), spend:'', reward:last.reward, value:last.value, casa:last.casa, float:last.float, fee:last.fee, cycle:last.cycle});
+  save(); renderCards();
+  const inputs = container.querySelectorAll('input[data-f="name"]');
+  inputs[inputs.length-1].focus(); inputs[inputs.length-1].select();
+});
+
+renderCards();
+</script>
+</body>
+</html>

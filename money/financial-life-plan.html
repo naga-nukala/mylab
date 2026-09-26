@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Financial Life Plan</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:16px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:120px;}
+  button.primary{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+
+  .checkbox-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #334155;}
+  .checkbox-row:last-child{border-bottom:none;}
+  .checkbox-row input{width:auto;}
+  .checkbox-row label{margin:0;font-size:14px;color:var(--txt);}
+
+  .score-box{text-align:center;padding:18px;}
+  .score-num{font-size:30px;font-weight:800;color:var(--acc);}
+  .score-label{font-size:12px;color:var(--sub);}
+  .score-msg{font-size:13px;color:var(--warn);margin-top:8px;font-style:italic;}
+
+  .goal-card{border-bottom:1px solid #334155;padding:14px 0;}
+  .goal-card:last-child{border-bottom:none;}
+  .goal-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+  .goal-title{font-weight:700;font-size:15px;}
+  .badge{font-size:10px;padding:3px 10px;border-radius:10px;font-weight:700;}
+  .badge.red{background:rgba(239,68,68,.15);color:var(--bad);}
+  .badge.amber{background:rgba(245,158,11,.15);color:var(--warn);}
+  .badge.green{background:rgba(34,197,94,.15);color:var(--acc);}
+  .goal-msg{font-size:12px;color:var(--sub);margin-top:6px;}
+  .goal-detail{margin-top:12px;display:none;}
+  .goal-detail.open{display:block;}
+  .math-line{background:#0f172a;border-radius:8px;padding:10px;font-size:12px;margin-top:8px;line-height:1.6;}
+  .math-line:empty{display:none;}
+  .subgoal-title{font-size:13px;font-weight:700;margin:10px 0 6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧭 Financial Life Plan</h1>
+  <p class="sub">You've plugged the daily leaks. Now let's protect what you're building.</p>
+
+  <div class="card" id="lifeStageCard">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Which of these describe you right now?</label>
+    <div class="checkbox-row"><input type="checkbox" id="ls-married" onchange="saveLifeStage()"><label for="ls-married">Married</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="ls-children" onchange="saveLifeStage()"><label for="ls-children">Have children</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="ls-parents" onchange="saveLifeStage()"><label for="ls-parents">Parents dependent on me</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="ls-loan" onchange="saveLifeStage()"><label for="ls-loan">Have a home loan or personal loan</label></div>
+    <div class="checkbox-row"><input type="checkbox" id="ls-none" onchange="saveLifeStage(true)"><label for="ls-none">None of the above — just starting out</label></div>
+  </div>
+
+  <div class="card score-box">
+    <div class="score-num" id="scoreNum">0/6</div>
+    <div class="score-label">Financial Safety Score — goals Protected</div>
+    <div class="score-msg" id="scoreMsg"></div>
+  </div>
+
+  <div class="card" id="goalsContainer"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'financial_life_plan_v2';
+function safeGetItem(key){
+  try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+function safeSetItem(key, val){
+  try { localStorage.setItem(key, val); } catch(e) { /* storage unavailable, continue in-memory */ }
+}
+let state = JSON.parse(safeGetItem(STORAGE_KEY) || 'null') || {
+  lifeStage: { married:false, children:false, parents:false, loan:false, none:false },
+  emergencyFund: { monthlyExpense:0, currentSavings:0 },
+  health: { coverAmount:0, members:1 },
+  debts: [ { type:'Home', outstanding:0, rate:0 } ],
+  extraPayment: 0,
+  childAge: 0,
+  eduTarget: 1500000, eduCurrentSIP: 0,
+  marriageTarget: 1000000, marriageCurrentSIP: 0,
+  parentsHealthIns: false, parentsBudgetSet: false, parentsBudgetAmt: 0,
+  retirement: { currentAge:0, targetAge:60, currentSIP:0 },
+  openCard: null
+};
+
+function save(){ safeSetItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function saveLifeStage(isNone){
+  if(isNone && document.getElementById('ls-none').checked){
+    ['ls-married','ls-children','ls-parents','ls-loan'].forEach(id=>document.getElementById(id).checked=false);
+  } else if(!isNone) {
+    document.getElementById('ls-none').checked = false;
+  }
+  state.lifeStage.married = document.getElementById('ls-married').checked;
+  state.lifeStage.children = document.getElementById('ls-children').checked;
+  state.lifeStage.parents = document.getElementById('ls-parents').checked;
+  state.lifeStage.loan = document.getElementById('ls-loan').checked;
+  state.lifeStage.none = document.getElementById('ls-none').checked;
+  save();
+  renderGoals();
+}
+
+function loadLifeStageUI(){
+  document.getElementById('ls-married').checked = state.lifeStage.married;
+  document.getElementById('ls-children').checked = state.lifeStage.children;
+  document.getElementById('ls-parents').checked = state.lifeStage.parents;
+  document.getElementById('ls-loan').checked = state.lifeStage.loan;
+  document.getElementById('ls-none').checked = state.lifeStage.none;
+}
+
+function toggleCard(id){
+  state.openCard = state.openCard===id ? null : id;
+  save();
+  renderGoals();
+}
+
+function addLoan(){
+  state.debts.push({type:'', outstanding:0, rate:0});
+  save();
+  renderGoals();
+}
+
+function requiredMonthlySIP(futureValueTarget, annualReturnPct, years){
+  const r = annualReturnPct/12/100;
+  const n = years*12;
+  if(n<=0) return futureValueTarget;
+  if(r===0) return futureValueTarget/n;
+  const factor = (Math.pow(1+r,n)-1)/r * (1+r);
+  return futureValueTarget/factor;
+}
+function fvOfSIP(monthlyAmt, annualReturnPct, years){
+  const r = annualReturnPct/12/100;
+  const n = years*12;
+  if(r===0) return monthlyAmt*n;
+  return monthlyAmt * ((Math.pow(1+r,n)-1)/r) * (1+r);
+}
+
+function emergencyFundStatus(){
+  const { monthlyExpense, currentSavings } = state.emergencyFund;
+  if(monthlyExpense<=0) return {status:'red', msg:'Enter your monthly expense to see your safety net.'};
+  const months = currentSavings/monthlyExpense;
+  const target = monthlyExpense*9;
+  const gap = Math.max(0, target-currentSavings);
+  const status = months>=9 ? 'green' : months>=3 ? 'amber' : 'red';
+  return { status, msg: `${months.toFixed(1)} months covered. Target: 9 months (₹${target.toLocaleString('en-IN')}). ${gap>0?`Need ₹${gap.toLocaleString('en-IN')} more.`:'Fully funded.'}` };
+}
+
+function healthStatus(){
+  const { coverAmount, members } = state.health;
+  const recommended = 500000*Math.max(1,members);
+  const status = coverAmount<=0 ? 'red' : coverAmount>=recommended ? 'green' : 'amber';
+  return { status, msg: coverAmount<=0 ? `No cover on file. Recommended: ₹${recommended.toLocaleString('en-IN')} for ${members} member(s).` : `₹${coverAmount.toLocaleString('en-IN')} of ~₹${recommended.toLocaleString('en-IN')} recommended.` };
+}
+
+function debtStatus(){
+  const validDebts = state.debts.filter(d=>d.outstanding>0);
+  if(validDebts.length===0) return {status:'red', msg:'Add your loans to see the payoff order.'};
+  const sorted = [...validDebts].sort((a,b)=>b.rate-a.rate);
+  const priority = sorted[0];
+  const status = state.extraPayment>0 ? 'green' : 'amber';
+  const totalOutstanding = validDebts.reduce((s,d)=>s+d.outstanding,0);
+  return { status, msg: `Close ${priority.type||'top loan'} first (${priority.rate}% — highest rate). Total outstanding: ₹${totalOutstanding.toLocaleString('en-IN')}. ${state.extraPayment>0?`Extra ₹${state.extraPayment}/mo committed.`:'No extra payment committed yet.'}` };
+}
+
+function childGoalCalc(targetToday, milestoneAge, inflationPct, currentSIP){
+  const yearsAway = Math.max(0, milestoneAge - state.childAge);
+  const futureValue = targetToday * Math.pow(1+inflationPct/100, yearsAway);
+  const requiredSIP = requiredMonthlySIP(futureValue, 12, yearsAway);
+  const status = currentSIP<=0 ? 'red' : currentSIP>=requiredSIP ? 'green' : 'amber';
+  return { yearsAway, futureValue, requiredSIP, status };
+}
+
+function parentsStatus(){
+  const { parentsHealthIns, parentsBudgetSet } = state;
+  const status = (parentsHealthIns && parentsBudgetSet) ? 'green' : (parentsHealthIns || parentsBudgetSet) ? 'amber' : 'red';
+  return { status, msg: !parentsHealthIns ? '⚠️ No health insurance for parents — senior premiums are high but critical.' : (!parentsBudgetSet ? 'Health insurance in place. Set aside a monthly budget too.' : 'Health insurance + monthly budget both in place.') };
+}
+
+function retirementStatus(){
+  const { currentAge, targetAge, currentSIP } = state.retirement;
+  const gapYears = Math.max(0, targetAge-currentAge);
+  if(currentAge<=0) return {status:'red', msg:'Enter your age to see your retirement runway.', requiredSIP:0, startNowVs5:''};
+
+  const monthlyExpense = state.emergencyFund.monthlyExpense || 0;
+  const annualExpenseAtRetirement = monthlyExpense*12*Math.pow(1.06, gapYears);
+  const corpusTarget = annualExpenseAtRetirement*25;
+  const requiredSIP = corpusTarget>0 ? requiredMonthlySIP(corpusTarget, 12, gapYears) : 0;
+
+  const status = currentSIP<=0 ? 'red' : (requiredSIP>0 && currentSIP>=requiredSIP) ? 'green' : 'amber';
+
+  let startNowVs5 = '';
+  if(currentSIP<=0 && gapYears>5){
+    const demo = 5000;
+    const fvNow = fvOfSIP(demo, 12, gapYears);
+    const fvLater = fvOfSIP(demo, 12, gapYears-5);
+    startNowVs5 = `⏰ Starting ₹${demo}/mo now vs waiting 5 years: ₹${fvNow.toLocaleString('en-IN',{maximumFractionDigits:0})} vs ₹${fvLater.toLocaleString('en-IN',{maximumFractionDigits:0})} — a ₹${(fvNow-fvLater).toLocaleString('en-IN',{maximumFractionDigits:0})} difference just from 5 years of delay.`;
+  }
+
+  return { status, requiredSIP, startNowVs5, msg: `${gapYears} years to retirement. Est. corpus needed: ₹${corpusTarget.toLocaleString('en-IN',{maximumFractionDigits:0})} (25x annual expense at retirement).` };
+}
+
+function badgeHTML(status){
+  const label = status==='green'?'Protected':status==='amber'?'In Progress':'Not Started';
+  return `<span class="badge ${status}">${label}</span>`;
+}
+
+// ---------- STRUCTURAL RENDER (rebuilds DOM: call only on card add/remove/open/close/life-stage change) ----------
+function renderGoals(){
+  loadLifeStageUI();
+
+  // preserve focus across re-render (inputs use data-key)
+  const active = document.activeElement;
+  let activeKey = null, selStart = null, selEnd = null;
+  if(active && active.tagName==='INPUT' && active.dataset.key){
+    activeKey = active.dataset.key;
+    selStart = active.selectionStart;
+    selEnd = active.selectionEnd;
+  }
+
+  const container = document.getElementById('goalsContainer');
+  let html = '';
+
+  html += `
+    <div class="goal-card">
+      <div class="goal-head" onclick="toggleCard('ef')"><span class="goal-title">🛟 Emergency Fund</span><span id="badge-ef"></span></div>
+      <div class="goal-msg" id="msg-ef"></div>
+      <div class="goal-detail ${state.openCard==='ef'?'open':''}">
+        <div class="row">
+          <div class="field"><label>Monthly Essential Expense (₹)</label><input type="number" value="${state.emergencyFund.monthlyExpense||''}" oninput="state.emergencyFund.monthlyExpense=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="field"><label>Current Emergency Savings (₹)</label><input type="number" value="${state.emergencyFund.currentSavings||''}" oninput="state.emergencyFund.currentSavings=parseFloat(this.value)||0; save(); patchUI();"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="goal-card">
+      <div class="goal-head" onclick="toggleCard('health')"><span class="goal-title">🏥 Health Insurance</span><span id="badge-health"></span></div>
+      <div class="goal-msg" id="msg-health"></div>
+      <div class="goal-detail ${state.openCard==='health'?'open':''}">
+        <div class="row">
+          <div class="field"><label>Cover Amount (₹)</label><input type="number" value="${state.health.coverAmount||''}" oninput="state.health.coverAmount=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="field"><label>Family Members Covered</label><input type="number" value="${state.health.members||1}" oninput="state.health.members=parseFloat(this.value)||1; save(); patchUI();"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if(state.lifeStage.loan){
+    const debtRows = state.debts.map((d,i)=>`
+      <div class="row">
+        <div class="field"><label>Type</label><input type="text" value="${d.type}" oninput="state.debts[${i}].type=this.value; save(); patchUI();"></div>
+        <div class="field"><label>Outstanding (₹)</label><input type="number" value="${d.outstanding||''}" oninput="state.debts[${i}].outstanding=parseFloat(this.value)||0; save(); patchUI();"></div>
+        <div class="field"><label>Rate (%)</label><input type="number" value="${d.rate||''}" oninput="state.debts[${i}].rate=parseFloat(this.value)||0; save(); patchUI();"></div>
+      </div>
+    `).join('');
+    html += `
+      <div class="goal-card">
+        <div class="goal-head" onclick="toggleCard('debt')"><span class="goal-title">💳 Debt Dashboard</span><span id="badge-debt"></span></div>
+        <div class="goal-msg" id="msg-debt"></div>
+        <div class="goal-detail ${state.openCard==='debt'?'open':''}">
+          ${debtRows}
+          <button class="primary" style="margin-bottom:8px;" onclick="addLoan()">+ Add Loan</button>
+          <div class="field"><label>Extra Monthly Payment Committed (₹)</label><input type="number" value="${state.extraPayment||''}" oninput="state.extraPayment=parseFloat(this.value)||0; save(); patchUI();"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  if(state.lifeStage.children){
+    html += `
+      <div class="goal-card">
+        <div class="goal-head" onclick="toggleCard('children')"><span class="goal-title">🎓 Children's Goals</span><span id="badge-children"></span></div>
+        <div class="goal-msg" id="msg-children"></div>
+        <div class="goal-detail ${state.openCard==='children'?'open':''}">
+          <div class="row">
+            <div class="field"><label>Child's Current Age</label><input type="number" value="${state.childAge||''}" oninput="state.childAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+          </div>
+          <div class="subgoal-title">🎓 Education (assumed age 18)</div>
+          <div class="row">
+            <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.eduTarget}" oninput="state.eduTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
+            <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.eduCurrentSIP||''}" oninput="state.eduCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
+          </div>
+          <div class="math-line" id="math-edu"></div>
+
+          <div class="subgoal-title">💍 Marriage (assumed age 25)</div>
+          <div class="row">
+            <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.marriageTarget}" oninput="state.marriageTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
+            <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.marriageCurrentSIP||''}" oninput="state.marriageCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
+          </div>
+          <div class="math-line" id="math-marriage"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  if(state.lifeStage.parents){
+    html += `
+      <div class="goal-card">
+        <div class="goal-head" onclick="toggleCard('parents')"><span class="goal-title">👨‍👩‍👧 Parents' Protection</span><span id="badge-parents"></span></div>
+        <div class="goal-msg" id="msg-parents"></div>
+        <div class="goal-detail ${state.openCard==='parents'?'open':''}">
+          <div class="checkbox-row"><input type="checkbox" ${state.parentsHealthIns?'checked':''} onchange="state.parentsHealthIns=this.checked; save(); patchUI();"><label>Parents have health insurance</label></div>
+          <div class="checkbox-row"><input type="checkbox" ${state.parentsBudgetSet?'checked':''} onchange="state.parentsBudgetSet=this.checked; save(); patchUI();"><label>Monthly budget set aside for their expenses</label></div>
+          <div class="row" style="margin-top:8px;">
+            <div class="field"><label>Monthly Budget Amount (₹)</label><input type="number" value="${state.parentsBudgetAmt||''}" oninput="state.parentsBudgetAmt=parseFloat(this.value)||0; save(); patchUI();"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+    <div class="goal-card">
+      <div class="goal-head" onclick="toggleCard('retirement')"><span class="goal-title">🌅 Retirement</span><span id="badge-retirement"></span></div>
+      <div class="goal-msg" id="msg-retirement"></div>
+      <div class="goal-detail ${state.openCard==='retirement'?'open':''}">
+        <div class="row">
+          <div class="field"><label>Current Age</label><input type="number" value="${state.retirement.currentAge||''}" oninput="state.retirement.currentAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="field"><label>Target Retirement Age</label><input type="number" value="${state.retirement.targetAge||60}" oninput="state.retirement.targetAge=parseFloat(this.value)||60; save(); patchUI();"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Current Monthly Savings Toward Retirement (₹)</label><input type="number" value="${state.retirement.currentSIP||''}" oninput="state.retirement.currentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
+        </div>
+        <div class="math-line" id="math-retirement-required"></div>
+        <div class="math-line" id="math-retirement-shock"></div>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+  patchUI();
+}
+
+// ---------- LIGHTWEIGHT PATCH (updates text/badges only: safe to call on every keystroke) ----------
+function patchUI(){
+  let applicableCount=0, protectedCount=0;
+
+  const ef = emergencyFundStatus();
+  applicableCount++; if(ef.status==='green') protectedCount++;
+  setIfExists('badge-ef', badgeHTML(ef.status));
+  setIfExists('msg-ef', ef.msg, true);
+
+  const hs = healthStatus();
+  applicableCount++; if(hs.status==='green') protectedCount++;
+  setIfExists('badge-health', badgeHTML(hs.status));
+  setIfExists('msg-health', hs.msg, true);
+
+  if(state.lifeStage.loan){
+    const ds = debtStatus();
+    applicableCount++; if(ds.status==='green') protectedCount++;
+    setIfExists('badge-debt', badgeHTML(ds.status));
+    setIfExists('msg-debt', ds.msg, true);
+  }
+
+  if(state.lifeStage.children){
+    const edu = childGoalCalc(state.eduTarget, 18, 8, state.eduCurrentSIP);
+    const marriage = childGoalCalc(state.marriageTarget, 25, 6, state.marriageCurrentSIP);
+    const overallStatus = (edu.status==='green' && marriage.status==='green') ? 'green' : (edu.status==='red' && marriage.status==='red') ? 'red' : 'amber';
+    applicableCount++; if(overallStatus==='green') protectedCount++;
+    setIfExists('badge-children', badgeHTML(overallStatus));
+    setIfExists('msg-children', `Education in ${edu.yearsAway}y, Marriage in ${marriage.yearsAway}y.`, true);
+    setIfExists('math-edu', `${badgeHTML(edu.status)} In ${edu.yearsAway} years, ₹${state.eduTarget.toLocaleString('en-IN')} today = ₹${edu.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (8% education inflation). Required SIP: ₹${edu.requiredSIP.toFixed(0)}/month at 12% return.`);
+    setIfExists('math-marriage', `${badgeHTML(marriage.status)} In ${marriage.yearsAway} years, ₹${state.marriageTarget.toLocaleString('en-IN')} today = ₹${marriage.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (6% inflation). Required SIP: ₹${marriage.requiredSIP.toFixed(0)}/month at 12% return.`);
+  }
+
+  if(state.lifeStage.parents){
+    const ps = parentsStatus();
+    applicableCount++; if(ps.status==='green') protectedCount++;
+    setIfExists('badge-parents', badgeHTML(ps.status));
+    setIfExists('msg-parents', ps.msg, true);
+  }
+
+  const rs = retirementStatus();
+  applicableCount++; if(rs.status==='green') protectedCount++;
+  setIfExists('badge-retirement', badgeHTML(rs.status));
+  setIfExists('msg-retirement', rs.msg, true);
+  setIfExists('math-retirement-required', rs.requiredSIP ? `Required SIP to hit target corpus: ₹${rs.requiredSIP.toFixed(0)}/month at 12% return.` : '');
+  setIfExists('math-retirement-shock', rs.startNowVs5 || '');
+
+  document.getElementById('scoreNum').textContent = `${protectedCount}/${applicableCount}`;
+  const weakest = [];
+  if(ef.status!=='green') weakest.push('Emergency Fund');
+  if(hs.status!=='green') weakest.push('Health Insurance');
+  const msgEl = document.getElementById('scoreMsg');
+  if(weakest.length>0){
+    msgEl.textContent = `${weakest.join(' and ')} need attention first — these protect everything else.`;
+  } else if(protectedCount===applicableCount){
+    msgEl.textContent = "You're fully protected across every applicable goal. 🎉";
+  } else {
+    msgEl.textContent = 'Keep building — check the amber cards above for what to do next.';
+  }
+}
+
+function setIfExists(id, html, isText){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(isText) el.textContent = html.replace(/<[^>]*>/g,''); // msg lines are plain text
+  else el.innerHTML = html;
+}
+
+loadLifeStageUI();
+renderGoals();
+</script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Money Framework Dashboard</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  h2{font-size:14px;margin:0 0 10px 0;color:var(--sub);text-transform:uppercase;letter-spacing:.03em;}
+  label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+
+  .flow-box{text-align:center;padding:22px 16px;}
+  .flow-num{font-size:34px;font-weight:800;}
+  .flow-label{color:var(--sub);font-size:12px;}
+  .bar{height:10px;border-radius:6px;background:#334155;overflow:hidden;margin-top:12px;display:flex;}
+  .bar-seg{height:100%;}
+
+  .row{display:flex;gap:8px;margin-bottom:8px;}
+  .field{flex:1;min-width:0;}
+  .item{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .item input{flex:1;}
+  .item .remove{background:none;border:none;color:var(--bad);font-size:14px;cursor:pointer;}
+  button.add{width:100%;padding:10px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:13px;cursor:pointer;margin-top:4px;}
+
+  .debt-line{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #334155;}
+  .debt-line:last-child{border-bottom:none;}
+  .priority-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--bad);font-weight:700;}
+
+  .stat-row{display:flex;gap:10px;}
+  .stat{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:12px;}
+  .stat .n{font-size:18px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📊 Money Framework Dashboard</h1>
+  <p class="sub">Inflow → Outflow → Clear debts → Save → Invest → Track appreciation.</p>
+
+  <div class="card flow-box">
+    <div class="flow-num" id="netFlow">₹0</div>
+    <div class="flow-label">Net Monthly Cash Flow (Inflow − Outflow)</div>
+    <div class="bar">
+      <div class="bar-seg" id="segExp" style="background:var(--bad);"></div>
+      <div class="bar-seg" id="segSave" style="background:var(--acc);"></div>
+      <div class="bar-seg" id="segInvest" style="background:#3b82f6;"></div>
+    </div>
+    <div class="stat-row" style="margin-top:12px;">
+      <div class="stat"><div class="n" id="savingsRate">0%</div><div class="l">Savings Rate</div></div>
+      <div class="stat"><div class="n" id="investRate">0%</div><div class="l">Investment Rate</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Inflow</h2>
+    <label>Monthly Income (all sources, ₹)</label>
+    <input type="number" id="inflow" placeholder="e.g. 80000" oninput="calc()">
+  </div>
+
+  <div class="card">
+    <h2>Outflow (Expenses)</h2>
+    <div id="expensesList"></div>
+    <button class="add" onclick="addExpense()">+ Add Expense Category</button>
+  </div>
+
+  <div class="card">
+    <h2>Debts (highest interest cleared first)</h2>
+    <div id="debtsList"></div>
+    <button class="add" onclick="addDebt()">+ Add Debt</button>
+    <div id="debtPriority" style="margin-top:10px;font-size:13px;color:var(--warn);"></div>
+  </div>
+
+  <div class="card">
+    <h2>Savings & Investment</h2>
+    <div class="row">
+      <div class="field"><label>Monthly Savings (₹)</label><input type="number" id="savings" value="0" oninput="calc()"></div>
+      <div class="field"><label>Monthly Investment (₹)</label><input type="number" id="invest" value="0" oninput="calc()"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'money_framework_state_v1';
+function inr(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+
+function loadState(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(saved && Array.isArray(saved.expenses) && Array.isArray(saved.debts)) return saved;
+  }catch(e){}
+  return {
+    inflow:'', savings:0, invest:0,
+    expenses:[{name:'Rent', amount:0}, {name:'Food', amount:0}],
+    debts:[{name:'', amount:0, rate:0}]
+  };
+}
+const state = loadState();
+let expenses = state.expenses;
+let debts = state.debts;
+
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    inflow: document.getElementById('inflow').value,
+    savings: document.getElementById('savings').value,
+    invest: document.getElementById('invest').value,
+    expenses, debts
+  }));
+}
+
+function addExpense(){ expenses.push({name:'', amount:0}); save(); renderExpenses(); }
+function removeExpense(i){ expenses.splice(i,1); save(); renderExpenses(); }
+function updateExpense(i, field, val){
+  expenses[i][field] = field==='name' ? val : (parseFloat(val)||0);
+  save();
+  calc();
+}
+
+function addDebt(){ debts.push({name:'', amount:0, rate:0}); save(); renderDebts(); }
+function removeDebt(i){ debts.splice(i,1); save(); renderDebts(); }
+function updateDebt(i, field, val){
+  debts[i][field] = field==='name' ? val : (parseFloat(val)||0);
+  save();
+  updateDebtPriority();
+}
+
+function renderExpenses(){
+  const c = document.getElementById('expensesList');
+  c.innerHTML = expenses.map((e,i)=>`
+    <div class="item">
+      <input placeholder="Category" value="${e.name}" oninput="updateExpense(${i},'name',this.value)">
+      <input type="number" placeholder="₹" style="max-width:100px;" value="${e.amount}" oninput="updateExpense(${i},'amount',this.value)">
+      <button class="remove" onclick="removeExpense(${i})">✕</button>
+    </div>
+  `).join('');
+  calc();
+}
+
+function renderDebts(){
+  const c = document.getElementById('debtsList');
+  c.innerHTML = debts.map((d,i)=>`
+    <div class="item">
+      <input placeholder="Debt name" value="${d.name}" oninput="updateDebt(${i},'name',this.value)">
+      <input type="number" placeholder="Amount ₹" style="max-width:110px;" value="${d.amount}" oninput="updateDebt(${i},'amount',this.value)">
+      <input type="number" placeholder="Rate %" style="max-width:80px;" value="${d.rate}" oninput="updateDebt(${i},'rate',this.value)">
+      <button class="remove" onclick="removeDebt(${i})">✕</button>
+    </div>
+  `).join('');
+  updateDebtPriority();
+}
+
+function updateDebtPriority(){
+  const valid = debts.filter(d=>d.name && d.amount>0);
+  const el = document.getElementById('debtPriority');
+  if(valid.length===0){ el.textContent=''; return; }
+  const sorted = [...valid].sort((a,b)=>b.rate-a.rate);
+  el.textContent = `🎯 Clear first: ${sorted[0].name} (${sorted[0].rate}% interest)`;
+}
+
+function calc(){
+  save();
+  const inflow = parseFloat(document.getElementById('inflow').value) || 0;
+  const totalExp = expenses.reduce((s,e)=>s+e.amount,0);
+  const savings = parseFloat(document.getElementById('savings').value) || 0;
+  const invest = parseFloat(document.getElementById('invest').value) || 0;
+
+  const net = inflow - totalExp - savings - invest;
+  const netEl = document.getElementById('netFlow');
+  netEl.textContent = (net>=0?'+':'') + inr(net);
+  netEl.style.color = net >= 0 ? 'var(--acc)' : 'var(--bad)';
+
+  const total = totalExp + savings + invest || 1;
+  document.getElementById('segExp').style.width = (totalExp/total*100)+'%';
+  document.getElementById('segSave').style.width = (savings/total*100)+'%';
+  document.getElementById('segInvest').style.width = (invest/total*100)+'%';
+
+  document.getElementById('savingsRate').textContent = inflow>0 ? ((savings/inflow)*100).toFixed(0)+'%' : '0%';
+  document.getElementById('investRate').textContent = inflow>0 ? ((invest/inflow)*100).toFixed(0)+'%' : '0%';
+}
+
+document.getElementById('inflow').value = state.inflow || '';
+document.getElementById('savings').value = state.savings || 0;
+document.getElementById('invest').value = state.invest || 0;
+renderExpenses();
+renderDebts();
+calc();
+</script>
+</body>
+</html>

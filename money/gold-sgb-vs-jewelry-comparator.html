@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold: SGB vs Jewelry Comparator</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --sgb:#818cf8; --jewel:#f472b6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:60px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:12px 0 8px;}
+  .section-title:first-child{margin-top:0;}
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;}
+  input:focus{outline:none; border-color:var(--accent);}
+  .btn{width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px;
+    background:var(--accent2); color:#08170e;}
+  .compare{display:flex; gap:10px; margin-bottom:14px;}
+  .opt-card{flex:1; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px;}
+  .opt-card.best{border-color:var(--accent); background:linear-gradient(135deg,#132018,#0f1115);}
+  .opt-title{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; margin-bottom:8px;}
+  .opt-card.sgb .opt-title{color:var(--sgb);}
+  .opt-card.jewel .opt-title{color:var(--jewel);}
+  .badge{display:inline-block; background:var(--accent); color:#08170e; font-size:10px; padding:2px 6px;
+    border-radius:5px; margin-left:6px; font-weight:700;}
+  .oline{display:flex; justify-content:space-between; font-size:12px; padding:4px 0; color:var(--muted); border-bottom:1px solid var(--border);}
+  .oline:last-child{border-bottom:none;}
+  .oline .ov{color:var(--text); font-weight:600;}
+  .oline.hilite .ov{color:var(--accent); font-size:15px; font-weight:700;}
+  .empty{color:var(--muted); text-align:center; padding:20px; font-size:13px;}
+  .note{color:var(--muted); font-size:11px; text-align:center; margin-top:10px; line-height:1.6;}
+</style>
+</head>
+<body>
+
+<h1>🪙 Gold: SGB vs Jewelry Comparator</h1>
+<div class="sub">Same rupees, different gold — see what each route actually gives back.</div>
+
+<div class="form-card">
+  <div class="section-title">Investment Basics</div>
+  <div class="row">
+    <div><label>Amount to Invest (₹)</label><input type="number" id="amount" placeholder="100000" oninput="calc()"></div>
+    <div><label>Gold Price Today (₹/gram)</label><input type="number" id="goldPrice" placeholder="7500" oninput="calc()"></div>
+  </div>
+  <div class="row">
+    <div><label>Holding Period (years)</label><input type="number" id="years" placeholder="8" oninput="calc()"></div>
+    <div><label>Expected Gold Appreciation %/yr</label><input type="number" id="appreciation" placeholder="8" step="0.1" oninput="calc()"></div>
+  </div>
+
+  <div class="section-title">Jewelry Costs</div>
+  <div class="row">
+    <div><label>Making Charges %</label><input type="number" id="makingPct" placeholder="12" step="0.1" oninput="calc()"></div>
+    <div><label>Wastage %</label><input type="number" id="wastagePct" placeholder="4" step="0.1" oninput="calc()"></div>
+  </div>
+  <div class="row">
+    <div><label>GST %</label><input type="number" id="gstPct" placeholder="3" step="0.1" oninput="calc()"></div>
+    <div><label>Resale Deduction %</label><input type="number" id="resaleDeduction" placeholder="8" step="0.1" oninput="calc()"></div>
+  </div>
+  <div class="row">
+    <div><label>Annual Locker/Insurance (₹)</label><input type="number" id="storageCost" placeholder="0" oninput="calc()"></div>
+  </div>
+
+  <div class="section-title">SGB Details</div>
+  <div class="row">
+    <div><label>SGB Interest %/yr</label><input type="number" id="sgbInterest" placeholder="2.5" step="0.1" oninput="calc()"></div>
+  </div>
+</div>
+
+<div id="resultsBox"></div>
+
+<div class="note">SGB capital gains are tax-free if held to maturity (usually 8 years); the 2.5%/yr interest is taxable at your slab rate. Jewelry making charges and wastage are rarely recovered on resale. Both assume the same gold price appreciation. Not tax advice.</div>
+
+<script>
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function fmtG(n){ return n.toFixed(2) + ' g'; }
+
+function calc(){
+  const amount = parseFloat(document.getElementById('amount').value);
+  const goldPrice = parseFloat(document.getElementById('goldPrice').value);
+  const years = parseFloat(document.getElementById('years').value);
+  const appreciation = parseFloat(document.getElementById('appreciation').value);
+  const makingPct = parseFloat(document.getElementById('makingPct').value) || 0;
+  const wastagePct = parseFloat(document.getElementById('wastagePct').value) || 0;
+  const gstPct = parseFloat(document.getElementById('gstPct').value) || 0;
+  const resaleDeduction = parseFloat(document.getElementById('resaleDeduction').value) || 0;
+  const storageCost = parseFloat(document.getElementById('storageCost').value) || 0;
+  const sgbInterest = parseFloat(document.getElementById('sgbInterest').value) || 0;
+
+  const resultsBox = document.getElementById('resultsBox');
+  const valid = amount > 0 && goldPrice > 0 && years > 0 && !isNaN(appreciation);
+  if(!valid){
+    resultsBox.innerHTML = '<div class="empty">Enter amount, gold price, holding period, and expected appreciation.</div>';
+    return;
+  }
+
+  const futurePrice = goldPrice * Math.pow(1 + appreciation/100, years);
+
+  // ---- Jewelry ----
+  const effPricePerGram = goldPrice * (1 + wastagePct/100);
+  const makingChargePerGram = effPricePerGram * makingPct/100;
+  const gstPerGram = (effPricePerGram + makingChargePerGram) * gstPct/100;
+  const totalCostPerGram = effPricePerGram + makingChargePerGram + gstPerGram;
+  const jewelryGrams = amount / totalCostPerGram;
+
+  const jewelryFutureGross = jewelryGrams * futurePrice;
+  const jewelryResaleValue = jewelryFutureGross * (1 - resaleDeduction/100);
+  const totalStorageCost = storageCost * years;
+  const jewelryNet = jewelryResaleValue - totalStorageCost;
+  const jewelryCAGR = (Math.pow(jewelryNet / amount, 1/years) - 1) * 100;
+
+  // ---- SGB ----
+  const sgbGrams = amount / goldPrice;
+  const sgbMaturityValue = sgbGrams * futurePrice; // capital gain, tax-free at maturity
+  const sgbTotalInterest = amount * sgbInterest/100 * years; // simple interest, paid out, not compounded
+  const sgbTotalReturn = sgbMaturityValue + sgbTotalInterest;
+  const sgbCAGR = (Math.pow(sgbTotalReturn / amount, 1/years) - 1) * 100;
+
+  const sgbBetter = sgbTotalReturn > jewelryNet;
+
+  resultsBox.innerHTML = `
+    <div class="compare">
+      <div class="opt-card sgb ${sgbBetter ? 'best':''}">
+        <div class="opt-title">SGB ${sgbBetter ? '<span class="badge">BETTER</span>' : ''}</div>
+        <div class="oline"><span>Grams Bought</span><span class="ov">${fmtG(sgbGrams)}</span></div>
+        <div class="oline"><span>Maturity Value (gold)</span><span class="ov">${fmt(sgbMaturityValue)}</span></div>
+        <div class="oline"><span>Total Interest Earned</span><span class="ov">${fmt(sgbTotalInterest)}</span></div>
+        <div class="oline hilite"><span>Total Return</span><span class="ov">${fmt(sgbTotalReturn)}</span></div>
+        <div class="oline"><span>Effective CAGR</span><span class="ov">${sgbCAGR.toFixed(2)}%</span></div>
+      </div>
+      <div class="opt-card jewel ${!sgbBetter ? 'best':''}">
+        <div class="opt-title">Jewelry ${!sgbBetter ? '<span class="badge">BETTER</span>' : ''}</div>
+        <div class="oline"><span>Grams Bought</span><span class="ov">${fmtG(jewelryGrams)}</span></div>
+        <div class="oline"><span>Resale Value</span><span class="ov">${fmt(jewelryResaleValue)}</span></div>
+        <div class="oline"><span>Storage Cost (${years}y)</span><span class="ov">−${fmt(totalStorageCost)}</span></div>
+        <div class="oline hilite"><span>Net Return</span><span class="ov">${fmt(jewelryNet)}</span></div>
+        <div class="oline"><span>Effective CAGR</span><span class="ov">${jewelryCAGR.toFixed(2)}%</span></div>
+      </div>
+    </div>
+    <div class="opt-card" style="margin-bottom:14px;">
+      <div class="oline"><span>Gold gained just on making/wastage/GST</span><span class="ov">${fmtG(sgbGrams - jewelryGrams)} less in jewelry</span></div>
+      <div class="oline hilite"><span>SGB Advantage</span><span class="ov">${fmt(sgbTotalReturn - jewelryNet)}</span></div>
+    </div>
+  `;
+}
+
+(function(){
+  const K='as_goldsgb';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+calc();
+</script>
+</body>
+</html>

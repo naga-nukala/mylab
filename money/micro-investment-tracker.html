@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Micro-Investment Redirect Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:100px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+
+  .pool-box{text-align:center;padding:22px 16px;}
+  .pool-num{font-size:34px;font-weight:800;color:var(--acc);}
+  .pool-label{color:var(--sub);font-size:12px;}
+  .stat-row{display:flex;gap:10px;margin-top:14px;}
+  .stat{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:12px;}
+  .stat .n{font-size:16px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
+
+  .preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .preset-btn{font-size:11px;padding:6px 10px;border-radius:20px;border:1px solid #334155;background:#0f172a;color:var(--sub);cursor:pointer;}
+  .preset-btn:hover{border-color:var(--acc);color:var(--acc);}
+
+  .entry-item{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:8px 0;border-bottom:1px solid #334155;}
+  .entry-item:last-child{border-bottom:none;}
+  .entry-meta{color:var(--sub);font-size:11px;}
+  .edit{background:none;border:none;color:var(--acc);cursor:pointer;font-size:12px;margin-left:6px;}
+  .del{background:none;border:none;color:var(--bad);cursor:pointer;font-size:13px;margin-left:6px;}
+  .invest-btn{background:none;border:1px solid var(--acc);color:var(--acc);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;}
+
+  .dest-line{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #334155;}
+  .dest-line:last-child{border-bottom:none;}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:16px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;white-space:nowrap;display:none;}
+  .del.confirming{background:var(--bad);color:#fff;border-radius:6px;padding:2px 6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌱 Micro-Investment Redirect</h1>
+  <p class="sub">Every small saving — RC, cashback, avoided spend — logged here, then pushed into a real investment before it quietly disappears.</p>
+
+  <div class="card pool-box">
+    <div class="pool-num" id="poolAmount">₹0</div>
+    <div class="pool-label">Uninvested Pool — ready to redirect</div>
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="totalLogged">₹0</div><div class="l">Total Ever Logged</div></div>
+      <div class="stat"><div class="n" id="totalInvested">₹0</div><div class="l">Total Invested</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Log a Saving</label>
+    <div class="preset-row">
+      <button class="preset-btn" onclick="quickFill('Mobile RC savings')">📱 Mobile RC</button>
+      <button class="preset-btn" onclick="quickFill('Cashback received')">💳 Cashback</button>
+      <button class="preset-btn" onclick="quickFill('DMart bulk-buy saving')">🛒 DMart</button>
+      <button class="preset-btn" onclick="quickFill('Avoided impulse buy')">🚫 Avoided Buy</button>
+      <button class="preset-btn" onclick="quickFill('Round-up saving')">🔄 Round-up</button>
+    </div>
+    <div class="row">
+      <div class="field"><label>Source</label><input type="text" id="source" placeholder="e.g. Gift card discount"></div>
+      <div class="field"><label>Amount (₹)</label><input type="number" id="amount" placeholder="e.g. 150"></div>
+    </div>
+    <button class="add" id="logBtn" onclick="logSaving()">+ Add to Pool</button>
+  </div>
+
+  <div class="card">
+    <label>Move Pool to Investment</label>
+    <div class="row">
+      <div class="field"><label>Destination</label>
+        <select id="destination">
+          <option value="SIP/Mutual Fund">SIP / Mutual Fund</option>
+          <option value="Recurring Deposit">Recurring Deposit</option>
+          <option value="Liquid Fund">Liquid Fund</option>
+          <option value="Stocks">Stocks</option>
+          <option value="PPF/EPF">PPF/EPF</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field"><label>Amount to Invest (₹)</label><input type="number" id="investAmount" placeholder="e.g. 500"></div>
+    </div>
+    <button class="add" style="background:#3b82f6;" onclick="investPool()">💸 Redirect to Investment</button>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Recent Log</label>
+    <div id="logList"></div>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Where It Went</label>
+    <div id="destList"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'micro_invest_entries';
+const INVEST_KEY = 'micro_invest_destinations';
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let investments = JSON.parse(localStorage.getItem(INVEST_KEY) || '[]');
+let editingId = null;
+let pendingDeletes = {};
+
+function fmt(n){ return '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+
+function ordinalDate(d){
+  const day = d.getDate();
+  const suffix = (day%10===1&&day!==11) ? 'st' : (day%10===2&&day!==12) ? 'nd' : (day%10===3&&day!==13) ? 'rd' : 'th';
+  const month = d.toLocaleDateString('en-IN', {month:'short'});
+  return `${day}${suffix} ${month} ${d.getFullYear()}`;
+}
+
+function saveEntries(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+function saveInvestments(){ localStorage.setItem(INVEST_KEY, JSON.stringify(investments)); }
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 2000);
+}
+
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key]);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  if(btn){ btn.textContent = '✔'; btn.classList.add('confirming'); }
+  showToast('Tap ✕ again to confirm delete');
+  pendingDeletes[key] = setTimeout(() => {
+    delete pendingDeletes[key];
+    if(btn){ btn.textContent = '✕'; btn.classList.remove('confirming'); }
+  }, 2500);
+}
+
+function quickFill(label){
+  document.getElementById('source').value = label;
+  document.getElementById('amount').focus();
+}
+
+function logSaving(){
+  const source = document.getElementById('source').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value) || 0;
+  if(!source || amount<=0) return;
+
+  if(editingId){
+    const idx = entries.findIndex(e=>e.id===editingId);
+    if(idx>-1) entries[idx] = { ...entries[idx], source, amount };
+    editingId = null;
+    document.getElementById('logBtn').textContent = '+ Add to Pool';
+  } else {
+    entries.push({ id: Date.now(), source, amount, date: ordinalDate(new Date()), invested: false });
+  }
+  saveEntries();
+
+  document.getElementById('source').value='';
+  document.getElementById('amount').value='';
+  document.getElementById('source').focus();
+
+  render();
+}
+
+function editEntry(id){
+  const e = entries.find(e=>e.id===id && !e.invested);
+  if(!e) return;
+  document.getElementById('source').value = e.source;
+  document.getElementById('amount').value = e.amount;
+  editingId = id;
+  document.getElementById('logBtn').textContent = '✓ Update Entry';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function removeEntry(id, btn){
+  confirmDelete('entry-'+id, btn, () => {
+    entries = entries.filter(e=>e.id!==id);
+    saveEntries();
+    render();
+    showToast('Entry deleted');
+  });
+}
+
+function poolTotal(){
+  return entries.filter(e=>!e.invested).reduce((s,e)=>s+e.amount,0);
+}
+
+function investPool(){
+  const destination = document.getElementById('destination').value;
+  const amount = parseFloat(document.getElementById('investAmount').value) || 0;
+  const available = poolTotal();
+
+  if(amount<=0){ showToast('Enter an amount to invest.'); return; }
+  if(amount > available){ showToast(`Only ${fmt(available)} available in pool.`); return; }
+
+  let remaining = amount;
+  for(const e of entries){
+    if(remaining<=0) break;
+    if(!e.invested){
+      const take = Math.min(e.amount, remaining);
+      if(take === e.amount){
+        e.invested = true;
+      } else {
+        e.amount -= take;
+        entries.push({ id: Date.now()+Math.random(), source: e.source, amount: take, date: e.date, invested: true });
+      }
+      remaining -= take;
+    }
+  }
+  saveEntries();
+
+  investments.push({ id: Date.now(), destination, amount, date: ordinalDate(new Date()) });
+  saveInvestments();
+
+  document.getElementById('investAmount').value = '';
+  render();
+}
+
+function render(){
+  const pool = poolTotal();
+  const totalInvested = investments.reduce((s,i)=>s+i.amount,0);
+
+  document.getElementById('poolAmount').textContent = fmt(pool);
+  document.getElementById('totalLogged').textContent = fmt(pool + totalInvested);
+  document.getElementById('totalInvested').textContent = fmt(totalInvested);
+
+  const logList = document.getElementById('logList');
+  const recent = [...entries].filter(e=>!e.invested).sort((a,b)=>b.id-a.id).slice(0,10);
+  logList.innerHTML = recent.length===0
+    ? '<div class="empty">No pending savings — log one above.</div>'
+    : recent.map(e=>`
+      <div class="entry-item">
+        <span>${e.source}<div class="entry-meta">${e.date}</div></span>
+        <span>${fmt(e.amount)} <button class="edit" onclick="editEntry(${e.id})">Edit</button> <button class="del" onclick="removeEntry(${e.id}, this)">✕</button></span>
+      </div>
+    `).join('');
+
+  const destList = document.getElementById('destList');
+  if(investments.length===0){
+    destList.innerHTML = '<div class="empty">Nothing invested yet.</div>';
+  } else {
+    const grouped = {};
+    investments.forEach(i=>{ grouped[i.destination] = (grouped[i.destination]||0) + i.amount; });
+    destList.innerHTML = Object.keys(grouped).map(dest=>`
+      <div class="dest-line"><span>${dest}</span><span style="color:var(--acc);font-weight:700;">${fmt(grouped[dest])}</span></div>
+    `).join('');
+  }
+}
+
+render();
+</script>
+</body>
+</html>

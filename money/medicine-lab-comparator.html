@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Medicine & Lab Test Price Comparator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:100px;}
+
+  .platform-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .platform-row input{flex:1;}
+  .platform-row .price-field{max-width:100px;}
+  .platform-row .disc-tag{font-size:11px;color:var(--acc);min-width:60px;text-align:right;}
+  .platform-row .remove{background:none;border:none;color:var(--bad);cursor:pointer;font-size:14px;}
+  button.add-platform{width:100%;padding:8px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:12px;cursor:pointer;margin-bottom:10px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+
+  .item{border-bottom:1px solid #334155;padding:12px 0;}
+  .item:last-child{border-bottom:none;}
+  .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .item-name{font-weight:700;font-size:14px;}
+  .type-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:#60a5fa;font-weight:700;margin-left:6px;}
+  .edit{background:none;border:none;color:var(--acc);cursor:pointer;font-size:12px;margin-left:6px;}
+  .del{background:none;border:none;color:var(--bad);cursor:pointer;font-size:13px;margin-left:6px;}
+  .opt-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
+  .opt-best{color:var(--acc);font-weight:700;}
+  .tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.15);color:var(--acc);font-weight:700;margin-left:6px;}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+  .clear-btn{background:none;border:none;color:var(--bad);font-size:12px;cursor:pointer;float:right;}
+  .save-total{text-align:center;padding:14px;background:#0f172a;border-radius:10px;margin-top:10px;font-size:14px;color:var(--acc);font-weight:700;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;white-space:nowrap;display:none;}
+  .del.confirming{background:var(--bad);color:#fff;border-radius:6px;padding:2px 6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💊 Medicine & Lab Test Comparator</h1>
+  <p class="sub">Compare Actual MRP against named platforms/shops — live discount shown as you type. Expect at least 10% off.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Item Name</label><input type="text" id="itemName" placeholder="e.g. Paracetamol 500mg or CBC Test"></div>
+      <div class="field"><label>Type</label>
+        <select id="itemType">
+          <option value="Medicine">Medicine</option>
+          <option value="Lab Test">Lab Test</option>
+        </select>
+      </div>
+      <div class="field"><label>Actual MRP (₹)</label><input type="number" id="mrp" placeholder="e.g. 50" oninput="updateDiscountTags()"></div>
+    </div>
+
+    <label style="margin-top:6px;">Platform / Shop Prices</label>
+    <div id="platformRows"></div>
+    <button class="add-platform" onclick="addPlatformRow()">+ Add Platform / Shop</button>
+
+    <button class="add" id="saveBtn" onclick="addEntry()">Save Item</button>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Saved Comparisons <button class="clear-btn" onclick="clearAll()">Clear All</button></label>
+    <div id="itemsList"></div>
+    <div class="save-total" id="totalSavings" style="display:none;"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'medicine_comparator_entries_v2';
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let editingId = null;
+let pendingDeletes = {};
+let draftPlatforms = [
+  {platform:'', price:0},
+  {platform:'', price:0}
+];
+
+function fmt(n){ return '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 2000);
+}
+
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key]);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  if(btn){ btn.textContent = '✔'; btn.classList.add('confirming'); }
+  showToast('Tap ✕ again to confirm delete');
+  pendingDeletes[key] = setTimeout(() => {
+    delete pendingDeletes[key];
+    if(btn){ btn.textContent = '✕'; btn.classList.remove('confirming'); }
+  }, 2500);
+}
+
+function addPlatformRow(){
+  draftPlatforms.push({platform:'', price:0});
+  buildPlatformRows();
+}
+function removePlatformRow(i){
+  draftPlatforms.splice(i,1);
+  buildPlatformRows();
+}
+function updatePlatformRow(i, field, val){
+  draftPlatforms[i][field] = field==='platform' ? val : (parseFloat(val)||0);
+  updateDiscountTags();
+}
+
+function buildPlatformRows(){
+  const c = document.getElementById('platformRows');
+  c.innerHTML = draftPlatforms.map((p,i)=>`
+    <div class="platform-row" data-index="${i}">
+      <input placeholder="Platform (e.g. PharmEasy, Apollo, Local Shop)" value="${p.platform}" oninput="updatePlatformRow(${i},'platform',this.value)">
+      <input type="number" class="price-field" placeholder="₹" value="${p.price||''}" oninput="updatePlatformRow(${i},'price',this.value)">
+      <span class="disc-tag" data-role="disc"></span>
+      <button class="remove" onclick="removePlatformRow(${i})">✕</button>
+    </div>
+  `).join('');
+  updateDiscountTags();
+}
+
+function updateDiscountTags(){
+  const mrp = parseFloat(document.getElementById('mrp').value) || 0;
+  draftPlatforms.forEach((p,i)=>{
+    const row = document.querySelector(`.platform-row[data-index="${i}"]`);
+    if(!row) return;
+    const tag = row.querySelector('[data-role="disc"]');
+    const disc = (mrp>0 && p.price>0) ? ((mrp-p.price)/mrp)*100 : null;
+    tag.textContent = disc===null ? '' : (disc>=0 ? `${disc.toFixed(0)}% off` : `${Math.abs(disc).toFixed(0)}% above MRP`);
+  });
+}
+
+function clearForm(){
+  document.getElementById('itemName').value='';
+  document.getElementById('itemType').value='Medicine';
+  document.getElementById('mrp').value='';
+  draftPlatforms = [{platform:'', price:0},{platform:'', price:0}];
+  buildPlatformRows();
+}
+
+function addEntry(){
+  const name = document.getElementById('itemName').value.trim();
+  const type = document.getElementById('itemType').value;
+  const mrp = parseFloat(document.getElementById('mrp').value) || 0;
+  const platforms = draftPlatforms.filter(p=>p.platform && p.price>0);
+
+  if(!name || mrp<=0 || platforms.length===0) return;
+
+  if(editingId){
+    const idx = entries.findIndex(e=>e.id===editingId);
+    if(idx>-1) entries[idx] = { ...entries[idx], name, type, mrp, platforms };
+    editingId = null;
+    document.getElementById('saveBtn').textContent = 'Save Item';
+  } else {
+    entries.push({ id: Date.now(), name, type, mrp, platforms });
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+
+  clearForm();
+  document.getElementById('itemName').focus();
+
+  render();
+}
+
+function editEntry(id){
+  const e = entries.find(e=>e.id===id);
+  if(!e) return;
+  document.getElementById('itemName').value = e.name;
+  document.getElementById('itemType').value = e.type;
+  document.getElementById('mrp').value = e.mrp;
+  draftPlatforms = e.platforms.map(p=>({...p}));
+  buildPlatformRows();
+  editingId = id;
+  document.getElementById('saveBtn').textContent = '✓ Update Item';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function removeEntry(id, btn){
+  confirmDelete('entry-'+id, btn, () => {
+    entries = entries.filter(e=>e.id!==id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    render();
+    showToast('Item deleted');
+  });
+}
+
+function clearAll(){
+  confirmDelete('all', null, () => {
+    entries = [];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    render();
+    showToast('All items cleared');
+  });
+}
+
+function render(){
+  const container = document.getElementById('itemsList');
+  const totalBox = document.getElementById('totalSavings');
+
+  if(entries.length===0){
+    container.innerHTML = '<div class="empty">No items added yet.</div>';
+    totalBox.style.display = 'none';
+    return;
+  }
+
+  let totalMrp = 0, totalBest = 0;
+
+  container.innerHTML = entries.map(e=>{
+    const sorted = [...e.platforms].sort((a,b)=>a.price-b.price);
+    totalMrp += e.mrp;
+    totalBest += sorted[0].price;
+
+    const lines = sorted.map((p,i)=>{
+      const disc = e.mrp>0 ? ((e.mrp-p.price)/e.mrp)*100 : 0;
+      return `<div class="opt-line ${i===0?'opt-best':''}">
+        <span>${p.platform}${i===0?'<span class="tag">BEST</span>':''}</span>
+        <span>${fmt(p.price)} (${disc>=0?disc.toFixed(0)+'% off':Math.abs(disc).toFixed(0)+'% above MRP'})</span>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="item">
+        <div class="item-head">
+          <span class="item-name">${e.name}<span class="type-badge">${e.type}</span></span>
+          <span>
+            <button class="edit" onclick="editEntry(${e.id})">Edit</button>
+            <button class="del" onclick="removeEntry(${e.id}, this)">✕</button>
+          </span>
+        </div>
+        <div class="opt-line"><span>Actual MRP</span><span>${fmt(e.mrp)}</span></div>
+        ${lines}
+      </div>
+    `;
+  }).join('');
+
+  const totalSaved = totalMrp - totalBest;
+  totalBox.style.display = 'block';
+  totalBox.textContent = `Total: ${fmt(totalMrp)} MRP → ${fmt(totalBest)} best price (saved ${fmt(totalSaved)})`;
+}
+
+buildPlatformRows();
+render();
+</script>
+</body>
+</html>

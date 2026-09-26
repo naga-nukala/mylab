@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Net Worth Tracker</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --edit:#60a5fa; --liab:#fb923c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:90px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .total-card{background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
+    border-radius:14px; padding:18px; text-align:center; margin-bottom:12px;}
+  .total-card .label{color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em;}
+  .total-card .amount{color:var(--accent); font-size:32px; font-weight:700; margin-top:4px;}
+  .total-card.negative{background:linear-gradient(135deg,#2e1a1a,#201313); border-color:#5a2d2d;}
+  .total-card.negative .amount{color:var(--danger);}
+  .summary-row{display:flex; gap:10px; margin-bottom:16px;}
+  .sum-box{flex:1; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center;}
+  .sum-box .lbl{font-size:11px; color:var(--muted); text-transform:uppercase;}
+  .sum-box .val{font-size:17px; font-weight:700; margin-top:3px;}
+  .sum-box.assets .val{color:var(--accent);}
+  .sum-box.liab .val{color:var(--liab);}
+  .tabs{display:flex; gap:8px; margin-bottom:14px;}
+  .tab{flex:1; padding:10px; text-align:center; border-radius:8px; background:var(--card);
+    border:1px solid var(--border); color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;}
+  .tab.active{background:var(--card2); color:var(--text); border-color:var(--accent);}
+  .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;}
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input, select{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;}
+  input:focus, select:focus{outline:none; border-color:var(--accent);}
+  .btn{width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; margin-top:4px;}
+  .btn-primary{background:var(--accent2); color:#08170e;}
+  .btn-primary.liab-btn{background:var(--liab); color:#2b1400;}
+  .btn-secondary{background:var(--card2); color:var(--text); border:1px solid var(--border);}
+  .list-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .list-header h2{font-size:14px; margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .cat-group{margin-bottom:14px;}
+  .cat-title{font-size:12px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between;}
+  .cat-title .cat-total{color:var(--text); font-weight:600;}
+  .entry{background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .entry-info{flex:1; min-width:0;}
+  .entry-name{font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .entry-meta{font-size:12px; color:var(--muted); margin-top:2px;}
+  .entry-amount{font-weight:700; font-size:15px; white-space:nowrap;}
+  .entry-amount.assets{color:var(--accent);}
+  .entry-amount.liab{color:var(--liab);}
+  .entry-actions{display:flex; gap:6px;}
+  .icon-btn{background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 9px; font-size:13px; cursor:pointer;}
+  .icon-btn.del{color:var(--danger);}
+  .icon-btn.edit{color:var(--edit);}
+  .empty{color:var(--muted); text-align:center; padding:30px 10px; font-size:13px;}
+  .snapshot-row-wrap{margin-bottom:8px;}
+  .snapshot-row{display:flex; justify-content:space-between; align-items:center; background:var(--card);
+    border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; cursor:pointer;}
+  .snapshot-row .sdate{color:var(--muted);}
+  .snapshot-row .snw{font-weight:700;}
+  .snapshot-row .sdelta{font-size:11px; margin-left:6px;}
+  .sdelta.up{color:var(--accent);} .sdelta.down{color:var(--danger);}
+  .snapshot-detail{background:var(--card2); border:1px solid var(--border); border-top:none;
+    border-radius:0 0 10px 10px; padding:10px 12px; margin-top:-1px;}
+  .detail-section-title{font-size:11px; color:var(--muted); text-transform:uppercase; margin:8px 0 4px; letter-spacing:.04em;}
+  .detail-section-title:first-child{margin-top:0;}
+  .detail-row{display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid var(--border);}
+  .detail-row:last-of-type{border-bottom:none;}
+  .detail-row.empty-row{color:var(--muted); font-style:italic;}
+  .detail-cat{color:var(--muted); font-size:11px;}
+  .detail-amt.assets{color:var(--accent); font-weight:600;}
+  .detail-amt.liab{color:var(--liab); font-weight:600;}
+  .hidden{display:none;}
+  .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#2a2f3a;
+    color:var(--text); padding:10px 18px; border-radius:20px; font-size:13px; border:1px solid var(--border);
+    box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:100; white-space:nowrap;}
+  .icon-btn.del.confirming{background:var(--danger); color:#fff; border-color:var(--danger);}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast hidden"></div>
+
+<h1>💰 Net Worth Tracker</h1>
+<div class="sub">All assets minus all liabilities, in one place.</div>
+
+<div class="total-card" id="netWorthCard">
+  <div class="label">Net Worth</div>
+  <div class="amount" id="netWorthAmount">₹0</div>
+</div>
+<div class="summary-row">
+  <div class="sum-box assets"><div class="lbl">Assets</div><div class="val" id="totalAssets">₹0</div></div>
+  <div class="sum-box liab"><div class="lbl">Liabilities</div><div class="val" id="totalLiab">₹0</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" id="tabAssets" onclick="switchTab('assets')">Assets</div>
+  <div class="tab" id="tabLiab" onclick="switchTab('liab')">Liabilities</div>
+  <div class="tab" id="tabHistory" onclick="switchTab('history')">History</div>
+</div>
+
+<!-- ASSETS PANEL -->
+<div id="panelAssets">
+  <div class="form-card">
+    <div class="row">
+      <div>
+        <label>Asset Name</label>
+        <input type="text" id="assetName" placeholder="e.g. HDFC Savings, Mutual Fund">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Category</label>
+        <select id="assetCategory">
+          <option>Cash & Bank</option>
+          <option>Investments</option>
+          <option>Real Estate</option>
+          <option>Gold/Jewelry</option>
+          <option>Retirement (EPF/PPF/NPS)</option>
+          <option>Vehicle</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Value (₹)</label>
+        <input type="number" id="assetValue" placeholder="0" step="0.01">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="assetSaveBtn" onclick="saveAsset()">+ Add Asset</button>
+  </div>
+  <div id="assetList"></div>
+</div>
+
+<!-- LIABILITIES PANEL -->
+<div id="panelLiab" class="hidden">
+  <div class="form-card">
+    <div class="row">
+      <div>
+        <label>Liability Name</label>
+        <input type="text" id="liabName" placeholder="e.g. Home Loan, Credit Card Due">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Category</label>
+        <select id="liabCategory">
+          <option>Home Loan</option>
+          <option>Vehicle Loan</option>
+          <option>Personal Loan</option>
+          <option>Credit Card Due</option>
+          <option>Education Loan</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Amount (₹)</label>
+        <input type="number" id="liabValue" placeholder="0" step="0.01">
+      </div>
+    </div>
+    <button class="btn btn-primary liab-btn" id="liabSaveBtn" onclick="saveLiab()">+ Add Liability</button>
+  </div>
+  <div id="liabList"></div>
+</div>
+
+<!-- HISTORY PANEL -->
+<div id="panelHistory" class="hidden">
+  <div class="form-card">
+    <div class="sub" style="margin-bottom:10px;">Save today's net worth as a snapshot to track trend over time.</div>
+    <button class="btn btn-secondary" onclick="saveSnapshot()">📸 Save Snapshot for Today</button>
+  </div>
+  <div class="list-header"><h2>Snapshots</h2></div>
+  <div id="snapshotList"></div>
+</div>
+
+<script>
+const KEY_ASSETS = 'nwt_assets_v1';
+const KEY_LIAB = 'nwt_liab_v1';
+const KEY_SNAP = 'nwt_snapshots_v1';
+
+let assets = JSON.parse(localStorage.getItem(KEY_ASSETS) || '[]');
+let liabs = JSON.parse(localStorage.getItem(KEY_LIAB) || '[]');
+let snapshots = JSON.parse(localStorage.getItem(KEY_SNAP) || '[]');
+
+let editingAssetId = null;
+let editingLiabId = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function saveAll(){
+  localStorage.setItem(KEY_ASSETS, JSON.stringify(assets));
+  localStorage.setItem(KEY_LIAB, JSON.stringify(liabs));
+  localStorage.setItem(KEY_SNAP, JSON.stringify(snapshots));
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 2000);
+}
+
+// Tap-to-confirm delete: browser confirm()/alert() dialogs are blocked in
+// some sandboxed preview environments, so deletes use a two-tap pattern instead.
+let pendingDeletes = {};
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key].timer);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  if(btn){ btn.textContent = '✔'; btn.classList.add('confirming'); }
+  showToast('Tap ✕ again to confirm delete');
+  pendingDeletes[key] = { timer: setTimeout(() => {
+    delete pendingDeletes[key];
+    if(btn){ btn.textContent = '✕'; btn.classList.remove('confirming'); }
+  }, 2500) };
+}
+
+function switchTab(tab){
+  ['Assets','Liab','History'].forEach(t => {
+    document.getElementById('tab'+t).classList.toggle('active', t.toLowerCase()===tab);
+    document.getElementById('panel'+t).classList.toggle('hidden', t.toLowerCase()!==tab);
+  });
+  if(tab==='history') renderSnapshots();
+}
+
+// ---------- ASSETS ----------
+function saveAsset(){
+  const name = document.getElementById('assetName').value.trim();
+  const category = document.getElementById('assetCategory').value;
+  const value = parseFloat(document.getElementById('assetValue').value);
+  if(!name || isNaN(value) || value < 0){ alert('Enter asset name and a valid value.'); return; }
+
+  if(editingAssetId){
+    const a = assets.find(x => x.id === editingAssetId);
+    a.name = name; a.category = category; a.value = value;
+    editingAssetId = null;
+    document.getElementById('assetSaveBtn').textContent = '+ Add Asset';
+  } else {
+    assets.push({ id: uid(), name, category, value });
+  }
+  saveAll();
+  clearAssetForm();
+  renderAll();
+}
+function clearAssetForm(){
+  document.getElementById('assetName').value = '';
+  document.getElementById('assetValue').value = '';
+}
+function editAsset(id){
+  const a = assets.find(x => x.id === id);
+  if(!a) return;
+  document.getElementById('assetName').value = a.name;
+  document.getElementById('assetCategory').value = a.category;
+  document.getElementById('assetValue').value = a.value;
+  editingAssetId = id;
+  document.getElementById('assetSaveBtn').textContent = '✓ Update Asset';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function deleteAsset(id, btn){
+  confirmDelete('asset-'+id, btn, () => {
+    assets = assets.filter(x => x.id !== id);
+    saveAll(); renderAll();
+    showToast('Asset deleted');
+  });
+}
+
+// ---------- LIABILITIES ----------
+function saveLiab(){
+  const name = document.getElementById('liabName').value.trim();
+  const category = document.getElementById('liabCategory').value;
+  const value = parseFloat(document.getElementById('liabValue').value);
+  if(!name || isNaN(value) || value < 0){ alert('Enter liability name and a valid amount.'); return; }
+
+  if(editingLiabId){
+    const l = liabs.find(x => x.id === editingLiabId);
+    l.name = name; l.category = category; l.value = value;
+    editingLiabId = null;
+    document.getElementById('liabSaveBtn').textContent = '+ Add Liability';
+  } else {
+    liabs.push({ id: uid(), name, category, value });
+  }
+  saveAll();
+  clearLiabForm();
+  renderAll();
+}
+function clearLiabForm(){
+  document.getElementById('liabName').value = '';
+  document.getElementById('liabValue').value = '';
+}
+function editLiab(id){
+  const l = liabs.find(x => x.id === id);
+  if(!l) return;
+  document.getElementById('liabName').value = l.name;
+  document.getElementById('liabCategory').value = l.category;
+  document.getElementById('liabValue').value = l.value;
+  editingLiabId = id;
+  document.getElementById('liabSaveBtn').textContent = '✓ Update Liability';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function deleteLiab(id, btn){
+  confirmDelete('liab-'+id, btn, () => {
+    liabs = liabs.filter(x => x.id !== id);
+    saveAll(); renderAll();
+    showToast('Liability deleted');
+  });
+}
+
+// ---------- SNAPSHOTS ----------
+function saveSnapshot(){
+  const totalA = assets.reduce((s,a)=>s+a.value,0);
+  const totalL = liabs.reduce((s,l)=>s+l.value,0);
+  const nw = totalA - totalL;
+  const today = new Date().toISOString().slice(0,10);
+  const snapAssets = assets.map(a => ({name:a.name, category:a.category, value:a.value}));
+  const snapLiabs = liabs.map(l => ({name:l.name, category:l.category, value:l.value}));
+  const existing = snapshots.find(s => s.date === today);
+  if(existing){
+    existing.assets = totalA; existing.liab = totalL; existing.nw = nw;
+    existing.assetList = snapAssets; existing.liabList = snapLiabs;
+  } else {
+    snapshots.push({ date: today, assets: totalA, liab: totalL, nw, assetList: snapAssets, liabList: snapLiabs });
+  }
+  saveAll();
+  renderSnapshots();
+  showToast('Snapshot saved for ' + today);
+}
+function deleteSnapshot(date, btn){
+  confirmDelete('snap-'+date, btn, () => {
+    snapshots = snapshots.filter(s => s.date !== date);
+    saveAll(); renderSnapshots();
+    showToast('Snapshot deleted');
+  });
+}
+function toggleSnapshotDetail(date){
+  const el = document.getElementById('detail-' + date);
+  if(el) el.classList.toggle('hidden');
+}
+function renderSnapshots(){
+  const list = document.getElementById('snapshotList');
+  const sorted = [...snapshots].sort((a,b) => b.date.localeCompare(a.date));
+  if(sorted.length === 0){
+    list.innerHTML = '<div class="empty">No snapshots yet. Save one to start tracking your trend.</div>';
+    return;
+  }
+  list.innerHTML = sorted.map((s, i) => {
+    const prev = sorted[i+1];
+    let deltaHtml = '';
+    if(prev){
+      const delta = s.nw - prev.nw;
+      const cls = delta >= 0 ? 'up' : 'down';
+      const sign = delta >= 0 ? '+' : '';
+      deltaHtml = `<span class="sdelta ${cls}">${sign}${fmt(delta)}</span>`;
+    }
+    const safeId = s.date;
+    const assetRows = (s.assetList||[]).map(a => `<div class="detail-row"><span>${escapeHtml(a.name)} <span class="detail-cat">(${escapeHtml(a.category)})</span></span><span class="detail-amt assets">${fmt(a.value)}</span></div>`).join('') || '<div class="detail-row empty-row">No assets recorded</div>';
+    const liabRows = (s.liabList||[]).map(l => `<div class="detail-row"><span>${escapeHtml(l.name)} <span class="detail-cat">(${escapeHtml(l.category)})</span></span><span class="detail-amt liab">${fmt(l.value)}</span></div>`).join('') || '<div class="detail-row empty-row">No liabilities recorded</div>';
+    return `
+      <div class="snapshot-row-wrap">
+        <div class="snapshot-row" data-toggle="${safeId}">
+          <div>
+            <div class="sdate">${formatDate(s.date)}</div>
+            <div class="snw">${fmt(s.nw)}${deltaHtml}</div>
+          </div>
+          <div class="entry-actions">
+            <button class="icon-btn" data-toggle="${safeId}">▾</button>
+            <button class="icon-btn del" data-delete="${safeId}">✕</button>
+          </div>
+        </div>
+        <div class="snapshot-detail hidden" id="detail-${safeId}">
+          <div class="detail-section-title">Assets (${fmt(s.assets)})</div>
+          ${assetRows}
+          <div class="detail-section-title">Liabilities (${fmt(s.liab)})</div>
+          ${liabRows}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('snapshotList').addEventListener('click', function(e){
+  const delBtn = e.target.closest('[data-delete]');
+  if(delBtn){ deleteSnapshot(delBtn.getAttribute('data-delete'), delBtn); return; }
+  const toggleBtn = e.target.closest('[data-toggle]');
+  if(toggleBtn){ toggleSnapshotDetail(toggleBtn.getAttribute('data-toggle')); }
+});
+
+// ---------- RENDER ----------
+function renderAll(){
+  const totalA = assets.reduce((s,a)=>s+a.value,0);
+  const totalL = liabs.reduce((s,l)=>s+l.value,0);
+  const nw = totalA - totalL;
+
+  document.getElementById('totalAssets').textContent = fmt(totalA);
+  document.getElementById('totalLiab').textContent = fmt(totalL);
+  document.getElementById('netWorthAmount').textContent = fmt(nw);
+  document.getElementById('netWorthCard').classList.toggle('negative', nw < 0);
+
+  renderGroup('assetList', assets, 'assets', editAsset, deleteAsset);
+  renderGroup('liabList', liabs, 'liab', editLiab, deleteLiab);
+}
+
+function renderGroup(containerId, items, kind, editFn, delFn){
+  const container = document.getElementById(containerId);
+  if(items.length === 0){
+    container.innerHTML = `<div class="empty">No ${kind==='assets'?'assets':'liabilities'} added yet.</div>`;
+    return;
+  }
+  const byCat = {};
+  items.forEach(it => { (byCat[it.category] = byCat[it.category] || []).push(it); });
+
+  container.innerHTML = Object.keys(byCat).sort().map(cat => {
+    const catItems = byCat[cat].sort((a,b) => b.value - a.value);
+    const catTotal = catItems.reduce((s,i)=>s+i.value,0);
+    return `
+      <div class="cat-group">
+        <div class="cat-title"><span>${escapeHtml(cat)}</span><span class="cat-total">${fmt(catTotal)}</span></div>
+        ${catItems.map(it => `
+          <div class="entry">
+            <div class="entry-info">
+              <div class="entry-name">${escapeHtml(it.name)}</div>
+            </div>
+            <div class="entry-amount ${kind}">${fmt(it.value)}</div>
+            <div class="entry-actions">
+              <button class="icon-btn edit" onclick="${editFn.name}('${it.id}')">✎</button>
+              <button class="icon-btn del" onclick="${delFn.name}('${it.id}', this)">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+  }).join('');
+}
+
+function formatDate(d){
+  const dt = new Date(d);
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+
+renderAll();
+</script>
+</body>
+</html>

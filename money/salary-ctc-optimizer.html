@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salary/CTC Structure Optimizer</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --old:#f472b6; --new:#818cf8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:60px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:12px 0 8px;}
+  .section-title:first-child{margin-top:0;}
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input, select{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;}
+  input:focus, select:focus{outline:none; border-color:var(--accent);}
+  .toggle-row{display:flex; gap:8px;}
+  .toggle-btn{flex:1; padding:9px; text-align:center; border-radius:8px; background:var(--card2);
+    border:1px solid var(--border); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer;}
+  .toggle-btn.active{background:#1e2229; color:var(--text); border-color:var(--accent);}
+  .compare{display:flex; gap:10px; margin-bottom:14px;}
+  .regime-card{flex:1; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px;}
+  .regime-card.best{border-color:var(--accent); background:linear-gradient(135deg,#132018,#0f1115);}
+  .regime-title{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; margin-bottom:8px;}
+  .regime-card.old .regime-title{color:var(--old);}
+  .regime-card.new .regime-title{color:var(--new);}
+  .badge{display:inline-block; background:var(--accent); color:#08170e; font-size:10px; padding:2px 6px;
+    border-radius:5px; margin-left:6px; font-weight:700;}
+  .rline{display:flex; justify-content:space-between; font-size:12px; padding:4px 0; color:var(--muted); border-bottom:1px solid var(--border);}
+  .rline:last-child{border-bottom:none;}
+  .rline .rv{color:var(--text); font-weight:600;}
+  .rline.hilite .rv{color:var(--accent); font-size:15px; font-weight:700;}
+  .breakdown{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .bd-row{display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);}
+  .bd-row:last-child{border-bottom:none;}
+  .bd-row .bv{font-weight:600;}
+  .warn{background:#2e1a1a; border:1px solid #5a2d2d; color:var(--danger); border-radius:8px; padding:10px 12px; font-size:12px; margin-bottom:14px;}
+  .note{color:var(--muted); font-size:11px; text-align:center; margin-top:10px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<h1>💼 Salary/CTC Structure Optimizer</h1>
+<div class="sub">Break down your CTC, see real in-hand salary, and compare old vs new tax regime.</div>
+
+<div class="form-card">
+  <div class="section-title">CTC Structure</div>
+  <div class="row">
+    <div>
+      <label>Annual CTC (₹)</label>
+      <input type="number" id="ctc" placeholder="1200000" oninput="calc()">
+    </div>
+    <div>
+      <label>Basic % of CTC</label>
+      <input type="number" id="basicPct" placeholder="40" value="40" oninput="calc()">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>HRA % of Basic</label>
+      <input type="number" id="hraPct" placeholder="50" value="50" oninput="calc()">
+    </div>
+    <div>
+      <label>Employer NPS % of Basic</label>
+      <input type="number" id="npsEmployerPct" placeholder="0" value="0" oninput="calc()">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Meal Coupons (₹/yr)</label>
+      <input type="number" id="mealCoupons" placeholder="0" value="0" oninput="calc()">
+    </div>
+    <div>
+      <label>LTA (₹/yr)</label>
+      <input type="number" id="lta" placeholder="0" value="0" oninput="calc()">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Bonus/Variable Pay (₹/yr)</label>
+      <input type="number" id="bonus" placeholder="0" value="0" oninput="calc()">
+    </div>
+  </div>
+
+  <div class="section-title">For Old-Regime Deductions (optional)</div>
+  <div class="row">
+    <div>
+      <label>Monthly Rent Paid (₹)</label>
+      <input type="number" id="rentPaid" placeholder="0" value="0" oninput="calc()">
+    </div>
+    <div>
+      <label>City Type</label>
+      <select id="cityType" onchange="calc()">
+        <option value="metro">Metro</option>
+        <option value="nonmetro">Non-Metro</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Other 80C (LIC/ELSS/etc, ₹/yr)</label>
+      <input type="number" id="other80c" placeholder="0" value="0" oninput="calc()">
+    </div>
+    <div>
+      <label>Own NPS 80CCD(1B) (₹/yr)</label>
+      <input type="number" id="ownNps" placeholder="0" value="0" oninput="calc()">
+    </div>
+  </div>
+</div>
+
+<div id="warnBox"></div>
+
+<div class="compare" id="compareBox"></div>
+
+<div class="breakdown" id="breakdownBox"></div>
+
+<div class="note">Estimates use FY 2025-26/26-27 slab rates (new regime default) — ignores surcharge, professional tax, and assumes full LTA/meal-coupon bills submitted. Not tax advice; verify with a CA before finalizing.</div>
+
+<script>
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+
+function slabTax(income, slabs){
+  let tax = 0, prev = 0;
+  for(const [limit, rate] of slabs){
+    if(income > prev){
+      const taxable = Math.min(income, limit) - prev;
+      tax += taxable * rate;
+      prev = limit;
+    } else break;
+  }
+  return tax;
+}
+
+const NEW_SLABS = [[400000,0],[800000,0.05],[1200000,0.10],[1600000,0.15],[2000000,0.20],[2400000,0.25],[Infinity,0.30]];
+const OLD_SLABS = [[250000,0],[500000,0.05],[1000000,0.20],[Infinity,0.30]];
+
+function taxNew(taxableIncome){
+  if(taxableIncome <= 1200000) return 0;
+  const tax = slabTax(taxableIncome, NEW_SLABS);
+  return tax * 1.04; // 4% cess
+}
+function taxOld(taxableIncome){
+  if(taxableIncome <= 500000) return 0;
+  const tax = slabTax(taxableIncome, OLD_SLABS);
+  return tax * 1.04;
+}
+
+function calc(){
+  const ctc = parseFloat(document.getElementById('ctc').value) || 0;
+  const basicPct = parseFloat(document.getElementById('basicPct').value) || 0;
+  const hraPct = parseFloat(document.getElementById('hraPct').value) || 0;
+  const npsEmployerPct = parseFloat(document.getElementById('npsEmployerPct').value) || 0;
+  const mealCoupons = parseFloat(document.getElementById('mealCoupons').value) || 0;
+  const lta = parseFloat(document.getElementById('lta').value) || 0;
+  const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+  const rentPaidMonthly = parseFloat(document.getElementById('rentPaid').value) || 0;
+  const cityType = document.getElementById('cityType').value;
+  const other80c = parseFloat(document.getElementById('other80c').value) || 0;
+  const ownNps = parseFloat(document.getElementById('ownNps').value) || 0;
+
+  const warnBox = document.getElementById('warnBox');
+  const compareBox = document.getElementById('compareBox');
+  const breakdownBox = document.getElementById('breakdownBox');
+
+  if(ctc <= 0){
+    warnBox.innerHTML = '';
+    compareBox.innerHTML = '';
+    breakdownBox.innerHTML = '<div class="empty" style="color:var(--muted); text-align:center; padding:20px; font-size:13px;">Enter your Annual CTC to see the breakdown.</div>';
+    return;
+  }
+
+  const basic = ctc * basicPct / 100;
+  const hra = basic * hraPct / 100;
+  const employerPF = basic * 0.12;
+  const gratuity = basic * 0.0481;
+  const employerNps = basic * npsEmployerPct / 100;
+  const fixedComponents = employerPF + gratuity + employerNps + mealCoupons + lta + bonus;
+  const specialAllowance = ctc - basic - hra - fixedComponents;
+
+  let warn = '';
+  if(specialAllowance < 0){
+    warn = `<div class="warn">⚠ Components exceed CTC by ${fmt(-specialAllowance)}. Reduce Basic %, HRA %, or other components.</div>`;
+  }
+  warnBox.innerHTML = warn;
+
+  const grossSalary = basic + hra + Math.max(specialAllowance,0) + mealCoupons + lta + bonus;
+  const employeePF = basic * 0.12;
+
+  // Old regime exemptions
+  const rentPaidAnnual = rentPaidMonthly * 12;
+  const hraCityPct = cityType === 'metro' ? 0.50 : 0.40;
+  const hraExemption = rentPaidAnnual > 0
+    ? Math.max(Math.min(hra, rentPaidAnnual - 0.10*basic, basic*hraCityPct), 0)
+    : 0;
+  const mealExemption = Math.min(mealCoupons, 26400);
+  const ltaExemption = lta;
+  const std80c = Math.min(employeePF + other80c, 150000);
+  const nps1B = Math.min(ownNps, 50000);
+  const stdDeductionOld = 50000;
+
+  const taxableOld = Math.max(grossSalary - hraExemption - mealExemption - ltaExemption - stdDeductionOld - std80c - nps1B, 0);
+  const taxDueOld = taxOld(taxableOld);
+  const inHandOld = grossSalary - employeePF - taxDueOld;
+
+  // New regime
+  const stdDeductionNew = 75000;
+  const taxableNew = Math.max(grossSalary - stdDeductionNew, 0);
+  const taxDueNew = taxNew(taxableNew);
+  const inHandNew = grossSalary - employeePF - taxDueNew;
+
+  const oldBetter = inHandOld > inHandNew;
+
+  compareBox.innerHTML = `
+    <div class="regime-card old ${oldBetter ? 'best':''}">
+      <div class="regime-title">Old Regime ${oldBetter ? '<span class=\"badge\">BETTER</span>' : ''}</div>
+      <div class="rline"><span>Taxable Income</span><span class="rv">${fmt(taxableOld)}</span></div>
+      <div class="rline"><span>Tax + Cess</span><span class="rv">${fmt(taxDueOld)}</span></div>
+      <div class="rline hilite"><span>Annual In-Hand</span><span class="rv">${fmt(inHandOld)}</span></div>
+      <div class="rline"><span>Monthly In-Hand</span><span class="rv">${fmt(inHandOld/12)}</span></div>
+    </div>
+    <div class="regime-card new ${!oldBetter ? 'best':''}">
+      <div class="regime-title">New Regime ${!oldBetter ? '<span class=\"badge\">BETTER</span>' : ''}</div>
+      <div class="rline"><span>Taxable Income</span><span class="rv">${fmt(taxableNew)}</span></div>
+      <div class="rline"><span>Tax + Cess</span><span class="rv">${fmt(taxDueNew)}</span></div>
+      <div class="rline hilite"><span>Annual In-Hand</span><span class="rv">${fmt(inHandNew)}</span></div>
+      <div class="rline"><span>Monthly In-Hand</span><span class="rv">${fmt(inHandNew/12)}</span></div>
+    </div>
+  `;
+
+  breakdownBox.innerHTML = `
+    <div class="section-title" style="margin-top:0;">CTC Breakdown</div>
+    <div class="bd-row"><span>Basic</span><span class="bv">${fmt(basic)}</span></div>
+    <div class="bd-row"><span>HRA</span><span class="bv">${fmt(hra)}</span></div>
+    <div class="bd-row"><span>Special Allowance</span><span class="bv">${fmt(Math.max(specialAllowance,0))}</span></div>
+    <div class="bd-row"><span>Meal Coupons</span><span class="bv">${fmt(mealCoupons)}</span></div>
+    <div class="bd-row"><span>LTA</span><span class="bv">${fmt(lta)}</span></div>
+    <div class="bd-row"><span>Bonus/Variable</span><span class="bv">${fmt(bonus)}</span></div>
+    <div class="bd-row"><span>Employer PF (12% of Basic)</span><span class="bv">${fmt(employerPF)}</span></div>
+    <div class="bd-row"><span>Gratuity (4.81% of Basic)</span><span class="bv">${fmt(gratuity)}</span></div>
+    <div class="bd-row"><span>Employer NPS</span><span class="bv">${fmt(employerNps)}</span></div>
+    <div class="bd-row" style="border-top:1px solid var(--border); padding-top:8px; margin-top:4px;"><span>Gross Salary (taxable base)</span><span class="bv" style="color:var(--accent);">${fmt(grossSalary)}</span></div>
+    <div class="bd-row"><span>Employee PF (deducted)</span><span class="bv">−${fmt(employeePF)}</span></div>
+  `;
+}
+
+(function(){
+  const K='as_salaryctc';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+calc();
+</script>
+</body>
+</html>

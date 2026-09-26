@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Recharge Strategy Calculator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px 20px 90px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;}
+  p.sub{color:var(--sub);font-size:13px;margin:0 0 16px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input,select{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--acc);}
+  button{font:inherit;cursor:pointer;}
+  .row{display:flex;gap:8px;margin-bottom:8px;align-items:flex-end;}
+  .field{flex:1;min-width:0;}
+  .head{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+  .head input{font-weight:700;font-size:15px;}
+  .x{background:none;border:1px solid var(--line);color:var(--bad);border-radius:6px;padding:6px 10px;font-size:13px;flex:0 0 auto;}
+  .x.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .btn-sm{background:none;border:1px solid var(--line);color:var(--acc);border-radius:6px;padding:6px 12px;font-size:13px;flex:0 0 auto;}
+  .btn-add{flex:1;padding:10px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:13px;}
+  .btn-add.danger{color:var(--bad);}
+  .btn-add.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .btn-main{padding:9px 12px;border:none;border-radius:8px;background:var(--acc);color:#052e16;font-weight:700;font-size:13px;white-space:nowrap;}
+  .btn-main.wide{width:100%;padding:12px;font-size:14px;margin-top:10px;border-radius:10px;}
+
+  .summary{text-align:center;padding:20px 16px;}
+  .sum-tag{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;}
+  .sum-num{font-size:34px;font-weight:800;color:var(--acc);margin-top:2px;}
+  .sum-label{color:var(--sub);font-size:12px;min-height:16px;}
+  .stats{display:flex;gap:8px;margin-top:14px;}
+  .stat{flex:1;text-align:center;background:var(--bg);border-radius:10px;padding:10px 4px;}
+  .stat .n{font-size:15px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
+  .rank{text-align:left;margin-top:14px;border-top:1px solid var(--line);padding-top:8px;}
+  .rk{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:4px 0;color:var(--sub);}
+  .rk.best{color:var(--txt);font-weight:700;}
+  .rk span:last-child{text-align:right;}
+
+  .qf{background:var(--bg);border-radius:10px;padding:10px;margin:4px 0 12px;}
+  .qf .row{margin-bottom:0;}
+  .mhead,.mrow{display:grid;grid-template-columns:78px 1fr 1fr 82px;gap:8px;align-items:center;}
+  .mhead{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .mhead span:last-child,.pd{text-align:right;}
+  .mrow{padding:6px 0;border-top:1px solid var(--line);}
+  .mrow.beyond{opacity:.45;}
+  .mlabel{font-size:12px;font-weight:600;}
+  .mrow input{padding:8px;}
+  .pd{font-size:12px;font-weight:700;color:var(--acc);}
+  .cum{grid-column:1 / -1;font-size:10px;color:var(--sub);margin-top:-2px;min-height:12px;}
+  .cum.met{color:var(--acc);font-weight:700;}
+  .actions{display:flex;gap:8px;margin-top:10px;}
+  .res{background:var(--bg);border-radius:10px;padding:12px;margin-top:12px;font-size:13px;line-height:1.6;}
+  .line{display:flex;justify-content:space-between;gap:10px;padding:2px 0;}
+  .line b{color:var(--acc);}
+  .ok{color:var(--acc);}
+  .warn{color:var(--warn);}
+  .hint{font-size:11px;color:var(--sub);line-height:1.5;margin-top:4px;}
+  .tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.15);color:var(--acc);font-weight:700;margin-left:6px;vertical-align:middle;}
+  .tag.draft{background:rgba(148,163,184,.15);color:var(--sub);}
+  .saved-name{flex:1;font-weight:700;font-size:15px;}
+  .sched{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔋 Recharge Strategy Calculator</h1>
+  <p class="sub">Build a plan for managing dual SIM, try different RCs, and see which plan costs the least over 365 days.</p>
+
+  <div class="card summary">
+    <div class="sum-tag" id="bestTag">Best strategy</div>
+    <div class="sum-num" id="bestName">—</div>
+    <div class="sum-label" id="bestSub">Add RC and validity to a plan to compare.</div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="bestDay">₹0.00</div><div class="l">Per day</div></div>
+      <div class="stat"><div class="n" id="bestMonth">₹0</div><div class="l">Monthly</div></div>
+      <div class="stat"><div class="n" id="bestYear">₹0</div><div class="l">Yearly</div></div>
+    </div>
+    <div class="rank" id="ranking" hidden></div>
+  </div>
+
+  <div id="plans"></div>
+  <div class="row"><button class="btn-add" id="addPlan" type="button">+ Add plan</button></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const KEY = 'recharge_strategy_v2';
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const YEAR_DAYS = 365;
+
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const esc = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
+const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const rs2 = n => '₹' + Number(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function ord(n){ const v = n % 100; if(v >= 11 && v <= 13) return n + 'th'; return n + (['th','st','nd','rd'][n % 10] || 'th'); }
+function fmtDate(d){ return ord(d.getDate()) + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
+function toISO(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function parseISO(s){ const p = String(s||'').split('-').map(Number); if(p.length !== 3 || p.some(isNaN)) return null; return new Date(p[0], p[1]-1, p[2]); }
+function addDays(d,n){ return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+
+// ---------- State ----------
+function newRow(){ return { id:uid(), rc:'', days:'' }; }
+function newPlan(name){
+  return { id:uid(), name, start:toISO(new Date()), qfRc:'', qfDays:'', saved:false, rows:Array.from({length:12}, () => newRow()) };
+}
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.plans) && s.plans.length) return s;
+  }catch(e){}
+  try{   // migrate the earlier version
+    const o = JSON.parse(localStorage.getItem('recharge_strategy_v1'));
+    if(o && Array.isArray(o.users) && o.users.length) return { plans:o.users.map(u => ({
+      id:u.id, name:/^User \d+$/.test(u.name) ? u.name.replace('User','Plan') : u.name,
+      start:toISO(new Date(parseInt(u.year,10) || new Date().getFullYear(), Number(u.startMonth) || 0, 1)),
+      qfRc:u.qfRc || '', qfDays:u.qfDays || '', saved:false, rows:u.rows })) };
+  }catch(e){}
+  return { plans:[newPlan('Plan 1')] };
+}
+let state = load();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2000);
+}
+const pending = {};
+function confirmTap(key, btn, action){
+  if(pending[key]){ clearTimeout(pending[key].timer); btn.textContent = pending[key].text; btn.classList.remove('confirming'); delete pending[key]; action(); return; }
+  const text = btn.textContent;
+  btn.textContent = '✔ Tap again'; btn.classList.add('confirming');
+  toast('Tap again to confirm delete');
+  pending[key] = { text, timer:setTimeout(() => { btn.textContent = text; btn.classList.remove('confirming'); delete pending[key]; }, 2500) };
+}
+
+// ---------- Calculation (pure) ----------
+function compute(p){
+  const first = parseISO(p.start) || parseISO(toISO(new Date()));
+  let pos = 0, cum = 0, reached = -1;
+  const valid = [], rows = [];
+  p.rows.forEach(r => {
+    const rc = parseFloat(r.rc), days = Math.round(parseFloat(r.days));
+    const ok = rc > 0 && days > 0;
+    const date = addDays(first, pos);                 // month follows the validity of earlier rows
+    const before = cum;
+    if(ok){ cum += days; valid.push({ rc, days, date }); if(reached < 0 && cum >= YEAR_DAYS) reached = valid.length - 1; }
+    rows.push({ id:r.id, ok, rc, days, date, cum, beyond:ok && before >= YEAR_DAYS, met:ok && valid.length - 1 === reached });
+    pos += ok ? days : 30;                            // empty rows advance one month for labelling only
+  });
+  const m = { first, rows, valid, reached, counted:[], has:valid.length > 0 };
+  if(!m.has) return m;
+  m.counted = reached >= 0 ? valid.slice(0, reached + 1) : valid;   // only the recharges needed to reach 365 days
+  m.totalRC = m.counted.reduce((a,v) => a + v.rc, 0);
+  m.totalDays = m.counted.reduce((a,v) => a + v.days, 0);
+  m.perDay = m.totalRC / m.totalDays;
+  m.yearly = m.perDay * YEAR_DAYS;
+  m.monthly = m.yearly / 12;
+  m.complete = reached >= 0;
+  return m;
+}
+function resultHTML(m){
+  if(!m.has) return '<span class="warn">Enter RC and validity for at least one recharge.</span>';
+  let status;
+  if(m.complete) status = `<div class="ok">✓ 365 days met by ${m.counted.length} recharge${m.counted.length === 1 ? '' : 's'} (last one starts ${fmtDate(m.counted[m.counted.length - 1].date)})</div>`;
+  else {
+    const short = YEAR_DAYS - m.totalDays, more = Math.ceil(short / (m.totalDays / m.counted.length));
+    status = `<div class="warn">⚠ ${m.totalDays} of 365 days covered. Short by ${short} day${short === 1 ? '' : 's'}. Add about ${more} more recharge${more === 1 ? '' : 's'}.</div>`;
+  }
+  return `<div class="line"><span>Per day</span><b>${rs2(m.perDay)}</b></div>` +
+    `<div class="line"><span>Monthly (yearly ÷ 12)</span><b>${rs(m.monthly)}</b></div>` +
+    `<div class="line"><span>Yearly (per day × 365)</span><b>${rs(m.yearly)}</b></div>` +
+    `<div class="line"><span>Recharges counted</span><span>${m.counted.length} · ${rs(m.totalRC)} for ${m.totalDays} days</span></div>` +
+    status +
+    `<div class="hint">Starts ${fmtDate(m.first)}. Each recharge begins when the previous validity ends.</div>`;
+}
+
+// ---------- Render ----------
+function rowHTML(p, r){
+  const a = `data-plan="${p.id}" data-row="${r.id}"`;
+  return `
+    <div class="mrow" ${a}>
+      <div class="mlabel" data-role="ml" ${a}></div>
+      <input type="number" min="0" inputmode="decimal" placeholder="₹" aria-label="RC amount" value="${esc(r.rc)}" ${a} data-field="rc">
+      <input type="number" min="1" inputmode="numeric" placeholder="days" aria-label="Validity in days" value="${esc(r.days)}" ${a} data-field="days">
+      <div class="pd" data-role="pd" ${a}>—</div>
+      <div class="cum" data-role="cum" ${a}></div>
+    </div>`;
+}
+function editHTML(p){
+  return `
+    <div class="card">
+      <div class="head">
+        <input type="text" value="${esc(p.name)}" placeholder="Plan name" aria-label="Plan name" data-plan="${p.id}" data-field="name">
+        <button class="x" type="button" data-act="del-plan" data-plan="${p.id}" aria-label="Delete ${esc(p.name)}">✕</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Start date (first recharge)</label><input type="date" value="${esc(p.start)}" data-plan="${p.id}" data-field="start"></div>
+      </div>
+      <div class="qf">
+        <label>Try one RC until 365 days are met</label>
+        <div class="row">
+          <div class="field"><input type="number" min="0" inputmode="decimal" placeholder="RC ₹" aria-label="RC to repeat" value="${esc(p.qfRc)}" data-plan="${p.id}" data-field="qfRc"></div>
+          <div class="field"><input type="number" min="1" inputmode="numeric" placeholder="Validity days" aria-label="Validity to repeat" value="${esc(p.qfDays)}" data-plan="${p.id}" data-field="qfDays"></div>
+          <button class="btn-main" type="button" data-act="fill-all" data-plan="${p.id}">Fill</button>
+        </div>
+      </div>
+      <div class="mhead"><span>Month</span><span>RC (₹)</span><span>Validity</span><span>Per day</span></div>
+      ${p.rows.map(r => rowHTML(p, r)).join('')}
+      <div class="actions">
+        <button class="btn-add" type="button" data-act="add-row" data-plan="${p.id}">+ Add recharge</button>
+        <button class="btn-add danger" type="button" data-act="del-row" data-plan="${p.id}">− Remove last</button>
+      </div>
+      <div class="res" data-role="ures" data-plan="${p.id}"></div>
+      <button class="btn-main wide" type="button" data-act="save-plan" data-plan="${p.id}">Save plan</button>
+    </div>`;
+}
+function savedHTML(p, m){
+  const sched = m.counted.map(v => `<div class="line hint"><span>${fmtDate(v.date)}</span><span>${rs(v.rc)} · ${v.days} days</span></div>`).join('');
+  return `
+    <div class="card">
+      <div class="head">
+        <div class="saved-name">${esc(p.name)}<span class="tag">Saved</span></div>
+        <button class="btn-sm" type="button" data-act="edit-plan" data-plan="${p.id}">Edit</button>
+        <button class="x" type="button" data-act="del-plan" data-plan="${p.id}" aria-label="Delete ${esc(p.name)}">✕</button>
+      </div>
+      <div class="res" style="margin-top:0;">${resultHTML(m)}</div>
+      ${sched ? `<div class="sched">${sched}</div>` : ''}
+    </div>`;
+}
+function render(){
+  $('plans').innerHTML = state.plans.map(p => p.saved ? savedHTML(p, compute(p)) : editHTML(p)).join('');
+  recalc();
+}
+
+// ---------- In-place updates (keeps input focus while typing) ----------
+function q(role, attr, id){ return document.querySelector(`[data-role="${role}"][${attr}="${id}"]`); }
+function paintEdit(p, m){
+  m.rows.forEach(r => {
+    const ml = q('ml', 'data-row', r.id); if(ml) ml.textContent = MON[r.date.getMonth()] + ' ' + r.date.getFullYear();
+    const pd = q('pd', 'data-row', r.id); if(pd) pd.textContent = r.ok ? rs2(r.rc / r.days) : '—';
+    const cu = q('cum', 'data-row', r.id);
+    if(cu){
+      cu.textContent = !r.ok ? '' : r.beyond ? `Starts ${fmtDate(r.date)} · not needed, 365 days already met`
+        : `Starts ${fmtDate(r.date)} · total ${r.cum} day${r.cum === 1 ? '' : 's'}${r.met ? ' · 365 days met ✓' : ''}`;
+      cu.classList.toggle('met', r.ok && !r.beyond && r.met);
+    }
+    const rowEl = document.querySelector(`.mrow[data-row="${r.id}"]`); if(rowEl) rowEl.classList.toggle('beyond', r.beyond);
+  });
+  const el = q('ures', 'data-plan', p.id); if(el) el.innerHTML = resultHTML(m);
+}
+function paintSummary(list){
+  const withData = list.filter(x => x.m.has);
+  const eligible = withData.filter(x => x.m.complete).sort((a,b) => a.m.yearly - b.m.yearly);
+  const short = withData.filter(x => !x.m.complete).sort((a,b) => a.m.yearly - b.m.yearly);
+  const best = eligible[0] || short[0];
+  const rank = $('ranking');
+  if(!best){
+    $('bestTag').textContent = 'Best strategy'; $('bestName').textContent = '—';
+    $('bestSub').textContent = 'Add RC and validity to a plan to compare.';
+    $('bestDay').textContent = rs2(0); $('bestMonth').textContent = rs(0); $('bestYear').textContent = rs(0);
+    rank.hidden = true; return;
+  }
+  const isBest = eligible.length > 0;
+  $('bestTag').textContent = isBest ? '🏆 Best strategy' : 'Best so far';
+  $('bestName').textContent = best.p.name || 'Plan';
+  const worst = eligible[eligible.length - 1];
+  $('bestSub').textContent = !isBest ? 'No plan reaches 365 days yet. Add more recharges.'
+    : eligible.length > 1 ? `Saves ${rs(worst.m.yearly - best.m.yearly)} a year vs ${worst.p.name || 'Plan'}`
+    : 'Only plan that reaches 365 days.';
+  $('bestDay').textContent = rs2(best.m.perDay);
+  $('bestMonth').textContent = rs(best.m.monthly);
+  $('bestYear').textContent = rs(best.m.yearly);
+
+  if(withData.length < 2){ rank.hidden = true; return; }
+  rank.hidden = false;
+  rank.innerHTML = [...eligible, ...short].map((x, i) => {
+    const draft = x.p.saved ? '' : ' (draft)';
+    const diff = x === best ? '' : ` · +${rs(x.m.yearly - best.m.yearly)}`;
+    const warn = x.m.complete ? '' : ' · ⚠ short of 365 days';
+    return `<div class="rk${x === best && isBest ? ' best' : ''}"><span>${x === best && isBest ? '🏆' : (i + 1) + '.'} ${esc(x.p.name || 'Plan')}${draft}</span><span>${rs(x.m.yearly)}/yr · ${rs2(x.m.perDay)}/day${diff}${warn}</span></div>`;
+  }).join('');
+}
+function recalc(){
+  const list = state.plans.map(p => ({ p, m:compute(p) }));
+  list.forEach(x => { if(!x.p.saved) paintEdit(x.p, x.m); });
+  paintSummary(list);
+}
+
+// ---------- Events ----------
+function locate(t){
+  const p = state.plans.find(x => x.id === t.dataset.plan); if(!p) return {};
+  const r = t.dataset.row ? p.rows.find(x => x.id === t.dataset.row) : null;
+  return { p, r };
+}
+function onField(e){
+  const t = e.target, f = t.dataset.field; if(!f) return;
+  const { p, r } = locate(t);
+  const obj = r || p; if(!obj) return;
+  obj[f] = t.value;
+  save(); recalc();
+}
+$('plans').addEventListener('input', onField);
+$('plans').addEventListener('change', onField);
+$('plans').addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]'); if(!btn) return;
+  const { p } = locate(btn); if(!p) return;
+  const act = btn.dataset.act;
+  if(act === 'add-row'){ p.rows.push(newRow()); save(); render(); }
+  else if(act === 'fill-all'){
+    const rc = parseFloat(p.qfRc), days = Math.round(parseFloat(p.qfDays));
+    if(!(rc > 0 && days > 0)){ toast('Enter RC and validity first'); return; }
+    const needed = Math.ceil(YEAR_DAYS / days);
+    while(p.rows.length < needed) p.rows.push(newRow());
+    p.rows.forEach((r, i) => { r.rc = i < needed ? String(rc) : ''; r.days = i < needed ? String(days) : ''; });
+    save(); render(); toast('Filled ' + needed + ' recharge' + (needed === 1 ? '' : 's') + ' to reach 365 days');
+  }
+  else if(act === 'del-row'){
+    if(p.rows.length <= 1){ toast('At least one recharge is needed'); return; }
+    confirmTap('r' + p.id, btn, () => { p.rows.pop(); save(); render(); toast('Last recharge removed'); });
+  }
+  else if(act === 'save-plan'){
+    if(!compute(p).has){ toast('Enter RC and validity first'); return; }
+    p.saved = true; save(); render(); toast('Plan saved');
+  }
+  else if(act === 'edit-plan'){ p.saved = false; save(); render(); }
+  else if(act === 'del-plan'){
+    confirmTap('p' + p.id, btn, () => {
+      state.plans = state.plans.filter(x => x.id !== p.id);
+      if(!state.plans.length) state.plans.push(newPlan('Plan 1'));
+      save(); render(); toast('Plan deleted');
+    });
+  }
+});
+$('addPlan').addEventListener('click', () => { state.plans.push(newPlan('Plan ' + (state.plans.length + 1))); save(); render(); });
+
+render();
+</script>
+</body>
+</html>

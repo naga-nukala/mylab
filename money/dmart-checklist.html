@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>DMart Shopping Checklist</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:14px;margin-bottom:6px;font-weight:600;}
+  .hint{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
+  input:focus{outline:2px solid var(--acc);}
+
+  .budget-box{text-align:center;padding:20px 16px;}
+  .budget-num{font-size:32px;font-weight:800;}
+  .budget-label{color:var(--sub);font-size:12px;}
+  .bar{height:10px;border-radius:6px;background:#334155;overflow:hidden;margin-top:10px;}
+  .bar-fill{height:100%;background:var(--acc);transition:width .3s;}
+
+  .item-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .item-row input{flex:1;}
+  .item-row input.price{max-width:90px;}
+  .item-row button{background:none;border:none;color:var(--bad);font-size:16px;cursor:pointer;padding:2px 8px;}
+  .items-list{margin-top:10px;}
+  .item-line{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid #334155;}
+  .item-line button{background:none;border:none;color:var(--bad);cursor:pointer;font-size:13px;}
+  .add-row{display:flex;gap:8px;margin-top:10px;}
+  .add-row button{padding:10px 16px;border:none;border-radius:8px;background:var(--acc);color:#052e16;font-weight:700;cursor:pointer;}
+
+  .tip{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #334155;}
+  .tip:last-child{border-bottom:none;}
+  .tip input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:2px;}
+  .tip label{font-size:13px;font-weight:400;margin:0;line-height:1.4;}
+  .tip.checked label{color:var(--sub);text-decoration:line-through;}
+
+  .familysize{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+  .familysize input{width:70px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛒 DMart Shopping Checklist</h1>
+  <p class="sub">Set a target, track spend live, tick off money-saving reminders before billing.</p>
+
+  <div class="card">
+    <label>Target Budget (₹)</label>
+    <div class="hint">Go with a fixed target or cash amount — avoids overspending</div>
+    <input type="number" id="budget" placeholder="e.g. 3000" oninput="render()">
+  </div>
+
+  <div class="card budget-box">
+    <div class="budget-num" id="spentNum">₹0</div>
+    <div class="budget-label" id="budgetLabel">spent of ₹0 budget</div>
+    <div class="bar"><div class="bar-fill" id="barFill" style="width:0%;"></div></div>
+  </div>
+
+  <div class="card">
+    <label>Cart Items</label>
+    <div class="add-row">
+      <input type="text" id="itemName" placeholder="Item name">
+      <input type="number" id="itemPrice" placeholder="₹" class="price">
+      <button onclick="addItem()">Add</button>
+    </div>
+    <div class="items-list" id="itemsList"></div>
+  </div>
+
+  <div class="card">
+    <label>Family Size (for veggie bulk-buy tip)</label>
+    <div class="familysize">
+      <input type="number" id="familySize" value="4" oninput="updateVeggieTip()">
+      <span class="hint" id="veggieTip" style="margin:0;"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Money-Saving Checklist</label>
+    <div id="tipsList"></div>
+  </div>
+</div>
+
+<script>
+let items = [];
+const tips = [
+  "Checked list before entering — no impulse buys",
+  "Reviewed cart for unneeded items before billing",
+  "Bought rice bag from wholesale merchant, not DMart",
+  "Booked gas cylinder with 5% cashback card",
+  "Set only one non-veg/eggs day this week",
+  "Checked per-kg price across veggie varieties before buying",
+  "Considered online filters for water purifier (cheaper than AMC)"
+];
+
+function render(){
+  const budget = parseFloat(document.getElementById('budget').value) || 0;
+  const spent = items.reduce((s,i)=>s+i.price, 0);
+  const pct = budget > 0 ? Math.min(100, (spent/budget)*100) : 0;
+
+  document.getElementById('spentNum').textContent = '₹' + spent.toFixed(0);
+  document.getElementById('budgetLabel').textContent = `spent of ₹${budget.toFixed(0)} budget`;
+  const barFill = document.getElementById('barFill');
+  barFill.style.width = pct + '%';
+  barFill.style.background = pct >= 100 ? 'var(--bad)' : pct >= 80 ? 'var(--warn)' : 'var(--acc)';
+
+  const list = document.getElementById('itemsList');
+  list.innerHTML = items.map((item, i) => `
+    <div class="item-line">
+      <span>${item.name}</span>
+      <span>₹${item.price.toFixed(0)} <button onclick="removeItem(${i})">✕</button></span>
+    </div>
+  `).join('');
+}
+
+function addItem(){
+  const nameEl = document.getElementById('itemName');
+  const priceEl = document.getElementById('itemPrice');
+  const name = nameEl.value.trim();
+  const price = parseFloat(priceEl.value) || 0;
+  if(!name) return;
+  items.push({name, price});
+  nameEl.value = '';
+  priceEl.value = '';
+  nameEl.focus();
+  render();
+}
+
+function removeItem(i){
+  items.splice(i,1);
+  render();
+}
+
+function updateVeggieTip(){
+  const size = parseFloat(document.getElementById('familySize').value) || 0;
+  const tipEl = document.getElementById('veggieTip');
+  if(size >= 6){
+    tipEl.textContent = 'Bulk-buy veggies weekly — cheaper per kg for your family size.';
+  } else {
+    tipEl.textContent = 'Buy veggies daily/every 2-3 days — bulk may spoil before use.';
+  }
+}
+
+function renderTips(){
+  const container = document.getElementById('tipsList');
+  container.innerHTML = tips.map((t,i) => `
+    <div class="tip" id="tip-${i}">
+      <input type="checkbox" id="chk-${i}" onchange="toggleTip(${i})">
+      <label for="chk-${i}">${t}</label>
+    </div>
+  `).join('');
+}
+
+function toggleTip(i){
+  const row = document.getElementById('tip-'+i);
+  const chk = document.getElementById('chk-'+i);
+  row.classList.toggle('checked', chk.checked);
+}
+
+renderTips();
+updateVeggieTip();
+render();
+</script>
+</body>
+</html>

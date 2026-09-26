@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>House Expenses Cashback Tracker</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --edit:#60a5fa;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:90px;
+  }
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .total-card{
+    background:linear-gradient(135deg,#1a2e22,#132018);
+    border:1px solid #2d5a3d; border-radius:14px; padding:18px; text-align:center; margin-bottom:16px;
+  }
+  .total-card .label{color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em;}
+  .total-card .amount{color:var(--accent); font-size:32px; font-weight:700; margin-top:4px;}
+  .total-card .count{color:var(--muted); font-size:12px; margin-top:4px;}
+  .form-card{
+    background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;
+  }
+  .row{display:flex; gap:8px; margin-bottom:8px;}
+  .row > *{flex:1;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input, select{
+    width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px;
+  }
+  input:focus, select:focus{outline:none; border-color:var(--accent);}
+  .btn{
+    width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600;
+    cursor:pointer; margin-top:4px;
+  }
+  .btn-primary{background:var(--accent2); color:#08170e;}
+  .btn-primary:active{opacity:.85;}
+  .list-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .list-header h2{font-size:14px; margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .filter-select{width:auto; padding:6px 10px; font-size:12px;}
+  .entry{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px;
+  }
+  .entry-info{flex:1; min-width:0;}
+  .entry-place{font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .entry-meta{font-size:12px; color:var(--muted); margin-top:2px;}
+  .entry-card-tag{
+    display:inline-block; background:#1f2937; color:var(--edit); font-size:11px;
+    padding:1px 7px; border-radius:6px; margin-right:6px;
+  }
+  .entry-amount{color:var(--accent); font-weight:700; font-size:15px; white-space:nowrap;}
+  .entry-actions{display:flex; gap:6px;}
+  .icon-btn{
+    background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 9px; font-size:13px; cursor:pointer;
+  }
+  .icon-btn.del{color:var(--danger);}
+  .icon-btn.edit{color:var(--edit);}
+  .empty{color:var(--muted); text-align:center; padding:30px 10px; font-size:13px;}
+  .card-breakdown{
+    background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;
+  }
+  .cb-row{display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);}
+  .cb-row:last-child{border-bottom:none;}
+  .cb-row .amt{color:var(--accent); font-weight:600;}
+</style>
+</head>
+<body>
+
+<h1>🏠 House Expenses Cashback Tracker</h1>
+<div class="sub">Log cashback earned on bills, groceries & recharges. Track by card.</div>
+
+<div class="total-card">
+  <div class="label">Total Saved</div>
+  <div class="amount" id="totalAmount">₹0</div>
+  <div class="count" id="entryCount">0 entries</div>
+</div>
+
+<div class="form-card">
+  <div class="row">
+    <div>
+      <label>Cashback Placeholder (Bill/Purchase)</label>
+      <input type="text" id="placeName" placeholder="e.g. Gas Booking, Dmart, Electricity">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Card Name</label>
+      <input type="text" id="cardName" placeholder="e.g. Amazon ICICI">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Actual Bill (₹)</label>
+      <input type="number" id="billAmount" placeholder="0" step="0.01" oninput="updatePreview()">
+    </div>
+    <div>
+      <label>Cashback %</label>
+      <input type="number" id="cashbackPct" placeholder="0" step="0.01" oninput="updatePreview()">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>Date</label>
+      <input type="date" id="entryDate">
+    </div>
+  </div>
+  <div class="row" id="previewRow" style="display:none;">
+    <div style="font-size:13px; color:var(--muted);">Amount Saved: <span id="previewAmount" style="color:var(--accent); font-weight:700;">₹0</span></div>
+  </div>
+  <button class="btn btn-primary" id="saveBtn" onclick="saveEntry()">+ Add Entry</button>
+</div>
+
+<div class="card-breakdown" id="breakdownCard" style="display:none;">
+  <div class="list-header" style="margin-bottom:8px;">
+    <h2>By Card</h2>
+  </div>
+  <div id="breakdownList"></div>
+</div>
+
+<div class="list-header">
+  <h2>Entries</h2>
+  <select class="filter-select" id="cardFilter" onchange="renderList()">
+    <option value="">All Cards</option>
+  </select>
+</div>
+<div id="entryList"></div>
+
+<script>
+const STORAGE_KEY = 'houseExpCashback_v1';
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let editingId = null;
+
+document.getElementById('entryDate').valueAsDate = new Date();
+
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+
+function updatePreview(){
+  const bill = parseFloat(document.getElementById('billAmount').value);
+  const pct = parseFloat(document.getElementById('cashbackPct').value);
+  const row = document.getElementById('previewRow');
+  if(isNaN(bill) || isNaN(pct) || bill <= 0 || pct < 0){
+    row.style.display = 'none';
+    return;
+  }
+  row.style.display = 'block';
+  document.getElementById('previewAmount').textContent = fmt(Math.floor(bill * pct / 100));
+}
+
+function saveEntry(){
+  const place = document.getElementById('placeName').value.trim();
+  const card = document.getElementById('cardName').value.trim();
+  const bill = parseFloat(document.getElementById('billAmount').value);
+  const pct = parseFloat(document.getElementById('cashbackPct').value);
+  const date = document.getElementById('entryDate').value;
+
+  if(!place || !card || isNaN(bill) || bill <= 0 || isNaN(pct) || pct < 0){
+    alert('Enter placeholder, card name, actual bill, and cashback %.');
+    return;
+  }
+
+  const amount = Math.floor(bill * pct / 100);
+
+  if(editingId){
+    const e = entries.find(x => x.id === editingId);
+    e.place = place; e.card = card; e.bill = bill; e.pct = pct; e.amount = amount; e.date = date;
+    editingId = null;
+    document.getElementById('saveBtn').textContent = '+ Add Entry';
+  } else {
+    entries.push({ id: uid(), place, card, bill, pct, amount, date });
+  }
+
+  save();
+  clearForm();
+  renderAll();
+}
+
+function clearForm(){
+  document.getElementById('placeName').value = '';
+  document.getElementById('cardName').value = '';
+  document.getElementById('billAmount').value = '';
+  document.getElementById('cashbackPct').value = '';
+  document.getElementById('entryDate').valueAsDate = new Date();
+  document.getElementById('previewRow').style.display = 'none';
+}
+
+function editEntry(id){
+  const e = entries.find(x => x.id === id);
+  if(!e) return;
+  document.getElementById('placeName').value = e.place;
+  document.getElementById('cardName').value = e.card;
+  document.getElementById('billAmount').value = e.bill;
+  document.getElementById('cashbackPct').value = e.pct;
+  document.getElementById('entryDate').value = e.date;
+  editingId = id;
+  document.getElementById('saveBtn').textContent = '✓ Update Entry';
+  updatePreview();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function deleteEntry(id){
+  if(!confirm('Delete this entry?')) return;
+  entries = entries.filter(x => x.id !== id);
+  save();
+  renderAll();
+}
+
+function renderAll(){
+  updateTotal();
+  updateCardFilter();
+  updateBreakdown();
+  renderList();
+}
+
+function updateTotal(){
+  const total = entries.reduce((s,e) => s + e.amount, 0);
+  document.getElementById('totalAmount').textContent = fmt(total);
+  document.getElementById('entryCount').textContent = entries.length + ' entr' + (entries.length===1?'y':'ies');
+}
+
+function updateCardFilter(){
+  const sel = document.getElementById('cardFilter');
+  const current = sel.value;
+  const cards = [...new Set(entries.map(e => e.card))].sort();
+  sel.innerHTML = '<option value="">All Cards</option>' +
+    cards.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  sel.value = cards.includes(current) ? current : '';
+}
+
+function updateBreakdown(){
+  const byCard = {};
+  entries.forEach(e => { byCard[e.card] = (byCard[e.card]||0) + e.amount; });
+  const cards = Object.keys(byCard).sort((a,b) => byCard[b]-byCard[a]);
+  const box = document.getElementById('breakdownCard');
+  if(cards.length === 0){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  document.getElementById('breakdownList').innerHTML = cards.map(c =>
+    `<div class="cb-row"><span>${escapeHtml(c)}</span><span class="amt">${fmt(byCard[c])}</span></div>`
+  ).join('');
+}
+
+function renderList(){
+  const filter = document.getElementById('cardFilter').value;
+  const list = document.getElementById('entryList');
+  let filtered = filter ? entries.filter(e => e.card === filter) : entries;
+  filtered = [...filtered].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="empty">No entries yet. Add your first cashback above.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => `
+    <div class="entry">
+      <div class="entry-info">
+        <div class="entry-place">${escapeHtml(e.place)}</div>
+        <div class="entry-meta"><span class="entry-card-tag">${escapeHtml(e.card)}</span>Bill ${fmt(e.bill)} @ ${e.pct}%${e.date ? ' · ' + formatDate(e.date) : ''}</div>
+      </div>
+      <div class="entry-amount">${fmt(e.amount)}</div>
+      <div class="entry-actions">
+        <button class="icon-btn edit" onclick="editEntry('${e.id}')">✎</button>
+        <button class="icon-btn del" onclick="deleteEntry('${e.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function formatDate(d){
+  const dt = new Date(d);
+  if(isNaN(dt)) return '';
+  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+renderAll();
+</script>
+</body>
+</html>

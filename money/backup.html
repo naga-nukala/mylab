@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Backup & Restore</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px 20px 90px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;}
+  h2{font-size:14px;margin:0 0 10px;}
+  p.sub{color:var(--sub);font-size:13px;margin:0 0 20px;line-height:1.5;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .hint{font-size:12px;color:var(--sub);line-height:1.5;margin:0 0 10px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  textarea,input[type=file]{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--txt);font-size:13px;}
+  textarea{min-height:70px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;}
+  textarea:focus,input:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{flex:1;min-width:120px;padding:12px;border:1px solid #475569;border-radius:10px;background:#0f172a;color:var(--txt);font-size:14px;font-weight:600;cursor:pointer;}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#052e16;font-weight:700;}
+  .btn.danger.confirming{background:var(--bad);border-color:var(--bad);color:#fff;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .status{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .status-main{font-size:15px;font-weight:700;}
+  .status-sub{font-size:12px;color:var(--sub);margin-top:3px;}
+  .badge{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;white-space:nowrap;}
+  .badge.good{background:rgba(34,197,94,.15);color:var(--acc);}
+  .badge.mid{background:rgba(245,158,11,.15);color:var(--warn);}
+  .badge.bad{background:rgba(239,68,68,.15);color:var(--bad);}
+  .row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .row .meta{color:var(--sub);font-size:12px;white-space:nowrap;}
+  .row.total{font-weight:700;}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:16px;}
+  .radio{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:13px;color:var(--txt);margin:0;cursor:pointer;}
+  .radio input{margin-top:3px;accent-color:var(--acc);}
+  .radio small{display:block;color:var(--sub);font-size:11px;margin-top:2px;}
+  .preview{background:#0f172a;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;margin:10px 0;font-size:12px;line-height:1.6;}
+  .preview.error{border-color:var(--bad);color:var(--bad);}
+  .divider{text-align:center;color:var(--sub);font-size:11px;margin:10px 0;}
+  .note{font-size:11px;color:var(--sub);line-height:1.6;text-align:center;margin-top:14px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;max-width:92vw;text-align:center;display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💾 Backup &amp; Restore</h1>
+  <p class="sub">All tools save data only in this browser. Download a backup file, keep it in Google Drive or send it to yourself, and restore it on any device.</p>
+
+  <div class="card">
+    <div class="status">
+      <div>
+        <div class="status-main" id="lastBackup">Last backup: never</div>
+        <div class="status-sub" id="dataSummary"></div>
+      </div>
+      <span class="badge bad" id="badge">Never backed up</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>1. Back up</h2>
+    <p class="hint">Creates one JSON file with the data of every tool on this device. It contains your financial details, so store it somewhere private.</p>
+    <div class="btn-row">
+      <button class="btn primary" data-action="download">Download backup</button>
+      <button class="btn" data-action="share" id="shareBtn" hidden>Share / save to Drive</button>
+      <button class="btn" data-action="copy">Copy as text</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Data on this device</h2>
+    <div id="dataList"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Restore</h2>
+    <label for="fileInput">Choose a backup file</label>
+    <input type="file" id="fileInput" accept=".json,application/json">
+    <div class="divider">or paste the copied text</div>
+    <textarea id="pasteBox" placeholder="Paste backup text here" aria-label="Paste backup text"></textarea>
+    <div id="importPreview" aria-live="polite"></div>
+
+    <label class="radio"><input type="radio" name="mode" value="merge" checked><span>Merge<small>Overwrites tools present in the backup. Keeps other tools untouched.</small></span></label>
+    <label class="radio"><input type="radio" name="mode" value="replace"><span>Replace everything<small>Clears all data on this device first, then loads the backup.</small></span></label>
+
+    <button class="btn danger" data-action="restore" id="restoreBtn" disabled style="width:100%;margin-top:8px;">Restore data</button>
+  </div>
+
+  <div class="card">
+    <h2>3. Protect from auto-clean</h2>
+    <p class="hint" id="persistText">Checking storage protection…</p>
+    <div class="btn-row"><button class="btn" data-action="persist" id="persistBtn">Ask browser to protect data</button></div>
+  </div>
+
+  <div class="note">Backups do not sync automatically. Back up after every monthly review, and before changing phone or clearing browser data.</div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const APP_ID = 'savings-lab';
+const FORMAT_VERSION = 1;
+const META_KEY = 'as_backup_meta';
+const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_KEYS = 500;
+const STALE_DAYS = 30;
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Key prefix -> tool name
+const LABELS = [
+  ['perday_cost','Per-Day Cost'],['sim_tracker','SIM Tracker'],['goalSavingsPlanner','Goal Savings Planner'],
+  ['lrc_','Layered Return Calculator'],['financial_life_plan','Financial Life Plan'],['yield-stack','Yield Stack'],
+  ['medicine_comparator','Medicine & Lab Comparator'],['micro_invest','Micro-Investment Redirect'],
+  ['price_comparator','Price Comparator'],['autodebit_tracker','Auto-Debit Tracker'],['nwt_','Net Worth Tracker'],
+  ['investment_appreciation','Investment Appreciation Tracker'],['mobile-cost-calculator','Mobile Cost & RC'],
+  ['childCorpus','Children Corpus Planner'],['emergencyFundCalculator','Emergency Fund'],
+  ['debt_dashboard','Debt Dashboard'],['fuelCostPerKm','Fuel Cost per KM'],['houseExpCashback','House Cashback Tracker'],
+  ['travel_comparisons','Travel Mode Comparator'],['savings-tools-','Index preferences'],['as_','Other calculators']
+];
+
+let pending = null;        // parsed backup waiting to be restored
+let confirmTimers = new WeakMap();
+let toastTimer;
+
+/* ---------- formatting ---------- */
+function ordinal(n){
+  const v = n % 100;
+  if(v >= 11 && v <= 13) return n + 'th';
+  return n + ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th');
+}
+function fmtDate(value){
+  const d = new Date(value);
+  if(isNaN(d)) return '—';
+  return ordinal(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function fmtNum(n){ return Number(n).toLocaleString('en-IN'); }
+function fmtSize(bytes){
+  if(bytes < 1024) return fmtNum(bytes) + ' B';
+  if(bytes < 1048576) return (bytes / 1024).toLocaleString('en-IN', {maximumFractionDigits:1}) + ' KB';
+  return (bytes / 1048576).toLocaleString('en-IN', {maximumFractionDigits:1}) + ' MB';
+}
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function isoDay(d){ return d.toISOString().slice(0,10); }
+function byteLen(s){ return new TextEncoder().encode(s).length; }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2800);
+}
+
+/* ---------- storage helpers ---------- */
+function labelFor(key){
+  const hit = LABELS.find(([prefix]) => key.startsWith(prefix));
+  return hit ? hit[1] : 'Other';
+}
+function readAll(){
+  const data = {};
+  try{
+    for(let i = 0; i < localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(key === META_KEY) continue;
+      data[key] = localStorage.getItem(key);
+    }
+  }catch(e){}
+  return data;
+}
+function clearAllExceptMeta(){
+  Object.keys(readAll()).forEach(k => localStorage.removeItem(k));
+}
+function countItems(value){
+  try{
+    const parsed = JSON.parse(value);
+    if(Array.isArray(parsed)) return parsed.length;
+    if(parsed && typeof parsed === 'object') return Object.keys(parsed).length;
+  }catch(e){}
+  return 1;
+}
+function groupByTool(data){
+  const groups = {};
+  Object.keys(data).forEach(key => {
+    const name = labelFor(key);
+    const g = groups[name] || (groups[name] = {name, keys:0, items:0, bytes:0});
+    g.keys++;
+    g.items += countItems(data[key]);
+    g.bytes += byteLen(key) + byteLen(data[key]);
+  });
+  return Object.values(groups).sort((a,b) => b.bytes - a.bytes);
+}
+function getMeta(){
+  try{ return JSON.parse(localStorage.getItem(META_KEY)) || null; }catch(e){ return null; }
+}
+function setMeta(count){
+  try{ localStorage.setItem(META_KEY, JSON.stringify({at:new Date().toISOString(), keys:count})); }catch(e){}
+}
+
+/* ---------- render ---------- */
+function render(){
+  const data = readAll();
+  const groups = groupByTool(data);
+  const totalBytes = groups.reduce((s,g) => s + g.bytes, 0);
+  const keyCount = Object.keys(data).length;
+
+  document.getElementById('dataSummary').textContent = keyCount
+    ? fmtNum(groups.length) + ' tools · ' + fmtNum(keyCount) + ' saved items · ' + fmtSize(totalBytes)
+    : 'No saved data on this device yet';
+
+  const list = document.getElementById('dataList');
+  list.innerHTML = groups.length
+    ? groups.map(g => '<div class="row"><span>' + escapeHtml(g.name) + '</span><span class="meta">' + fmtNum(g.items) + ' entries · ' + fmtSize(g.bytes) + '</span></div>').join('')
+      + '<div class="row total"><span>Total</span><span class="meta">' + fmtSize(totalBytes) + '</span></div>'
+    : '<div class="empty">Nothing saved yet. Use any tool and it will appear here.</div>';
+
+  const meta = getMeta();
+  const lastEl = document.getElementById('lastBackup');
+  const badge = document.getElementById('badge');
+  badge.className = 'badge';
+  if(!meta || !meta.at){
+    lastEl.textContent = 'Last backup: never';
+    badge.classList.add('bad'); badge.textContent = keyCount ? 'Not backed up' : 'Nothing to back up';
+  } else {
+    const days = Math.floor((Date.now() - new Date(meta.at)) / 86400000);
+    lastEl.textContent = 'Last backup: ' + fmtDate(meta.at) + (days <= 0 ? ' (today)' : ' (' + fmtNum(days) + ' day' + (days === 1 ? '' : 's') + ' ago)');
+    if(days > STALE_DAYS){ badge.classList.add('mid'); badge.textContent = 'Overdue'; }
+    else { badge.classList.add('good'); badge.textContent = 'Recent'; }
+  }
+}
+
+/* ---------- export ---------- */
+function buildPayload(){
+  const data = readAll();
+  return {app:APP_ID, version:FORMAT_VERSION, exportedAt:new Date().toISOString(), keyCount:Object.keys(data).length, data};
+}
+function payloadText(payload){ return JSON.stringify(payload, null, 1); }
+function fileName(){ return 'savings-lab-backup-' + isoDay(new Date()) + '.json'; }
+
+function doDownload(){
+  const payload = buildPayload();
+  if(!payload.keyCount){ showToast('Nothing to back up yet.'); return; }
+  const blob = new Blob([payloadText(payload)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  setMeta(payload.keyCount); render();
+  showToast('Backup downloaded. Keep the file safe.');
+}
+async function doShare(){
+  const payload = buildPayload();
+  if(!payload.keyCount){ showToast('Nothing to back up yet.'); return; }
+  try{
+    const file = new File([payloadText(payload)], fileName(), {type:'application/json'});
+    await navigator.share({files:[file], title:'Savings Lab backup'});
+    setMeta(payload.keyCount); render();
+    showToast('Backup shared.');
+  }catch(e){
+    if(e && e.name !== 'AbortError') showToast('Sharing failed. Use Download instead.');
+  }
+}
+async function doCopy(){
+  const payload = buildPayload();
+  if(!payload.keyCount){ showToast('Nothing to back up yet.'); return; }
+  try{
+    await navigator.clipboard.writeText(payloadText(payload));
+    setMeta(payload.keyCount); render();
+    showToast('Copied. Paste it into a note or message to yourself.');
+  }catch(e){
+    showToast('Copy blocked by browser. Use Download instead.');
+  }
+}
+
+/* ---------- import ---------- */
+function parseBackup(text){
+  if(!text || !text.trim()) return {ok:false, error:''};
+  if(text.length > MAX_BYTES) return {ok:false, error:'File is too large (over 10 MB). This is not a Savings Lab backup.'};
+  let obj;
+  try{ obj = JSON.parse(text); }
+  catch(e){ return {ok:false, error:'Could not read this as a backup. Choose the .json file you downloaded from this page.'}; }
+  if(!obj || obj.app !== APP_ID || typeof obj.data !== 'object' || obj.data === null || Array.isArray(obj.data))
+    return {ok:false, error:'This file is not a Savings Lab backup.'};
+  const keys = Object.keys(obj.data);
+  if(!keys.length) return {ok:false, error:'This backup is empty.'};
+  if(keys.length > MAX_KEYS) return {ok:false, error:'This backup has too many items to be valid.'};
+  if(keys.some(k => typeof obj.data[k] !== 'string' || k === META_KEY))
+    return {ok:false, error:'This backup has invalid entries and was not loaded.'};
+  return {ok:true, payload:obj};
+}
+function setPending(result){
+  const box = document.getElementById('importPreview');
+  const btn = document.getElementById('restoreBtn');
+  resetConfirm(btn);
+  if(!result.ok){
+    pending = null; btn.disabled = true;
+    box.innerHTML = result.error ? '<div class="preview error">' + escapeHtml(result.error) + '</div>' : '';
+    return;
+  }
+  pending = result.payload;
+  btn.disabled = false;
+  const groups = groupByTool(pending.data);
+  box.innerHTML = '<div class="preview"><strong>Backup from ' + escapeHtml(fmtDate(pending.exportedAt)) + '</strong><br>'
+    + fmtNum(groups.length) + ' tools · ' + fmtNum(Object.keys(pending.data).length) + ' saved items<br>'
+    + groups.map(g => escapeHtml(g.name)).join(', ') + '</div>';
+}
+function selectedMode(){ return document.querySelector('input[name="mode"]:checked').value; }
+
+function doRestore(){
+  if(!pending) return;
+  const mode = selectedMode();
+  const snapshot = readAll();
+  try{
+    if(mode === 'replace') clearAllExceptMeta();
+    Object.keys(pending.data).forEach(k => localStorage.setItem(k, pending.data[k]));
+  }catch(e){
+    // roll back to what was there before
+    try{ clearAllExceptMeta(); Object.keys(snapshot).forEach(k => localStorage.setItem(k, snapshot[k])); }catch(_){}
+    showToast('Restore failed (storage full?). Your existing data is unchanged.');
+    render();
+    return;
+  }
+  const count = Object.keys(pending.data).length;
+  pending = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('pasteBox').value = '';
+  setPending({ok:false, error:''});
+  render();
+  showToast('Restored ' + fmtNum(count) + ' items. Open any tool to see your data.');
+}
+
+/* ---------- tap-twice confirm ---------- */
+function resetConfirm(btn){
+  clearTimeout(confirmTimers.get(btn));
+  btn.classList.remove('confirming');
+  btn.textContent = 'Restore data';
+}
+function confirmTap(btn, action){
+  if(btn.classList.contains('confirming')){ resetConfirm(btn); action(); return; }
+  btn.classList.add('confirming');
+  btn.textContent = selectedMode() === 'replace' ? 'Tap again: erase all & restore' : 'Tap again to confirm';
+  showToast('Tap the button again to confirm.');
+  confirmTimers.set(btn, setTimeout(() => resetConfirm(btn), 3000));
+}
+
+/* ---------- storage protection ---------- */
+async function refreshPersist(){
+  const text = document.getElementById('persistText');
+  const btn = document.getElementById('persistBtn');
+  if(!(navigator.storage && navigator.storage.persisted)){
+    text.textContent = 'This browser cannot protect storage. Rely on your backup file.';
+    btn.disabled = true; return;
+  }
+  const persisted = await navigator.storage.persisted();
+  let usage = '';
+  try{
+    const est = await navigator.storage.estimate();
+    if(est && est.usage != null) usage = ' Site storage used: ' + fmtSize(est.usage) + '.';
+  }catch(e){}
+  text.textContent = (persisted
+    ? 'Protected. The browser will not auto-delete this data when the device runs low on space.'
+    : 'Not protected. The browser may delete this data if the device runs low on space.') + usage
+    + ' Clearing site data or uninstalling the app still erases it.';
+  btn.disabled = persisted;
+  btn.textContent = persisted ? 'Protection is on' : 'Ask browser to protect data';
+}
+async function doPersist(){
+  try{
+    const granted = await navigator.storage.persist();
+    showToast(granted ? 'Storage protected.' : 'Browser declined. Installing the app or using it more often can help.');
+  }catch(e){ showToast('Could not request protection.'); }
+  refreshPersist();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const action = btn.dataset.action;
+  if(action === 'download') doDownload();
+  else if(action === 'share') doShare();
+  else if(action === 'copy') doCopy();
+  else if(action === 'restore') confirmTap(btn, doRestore);
+  else if(action === 'persist') doPersist();
+});
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > MAX_BYTES){ setPending({ok:false, error:'File is too large (over 10 MB). This is not a Savings Lab backup.'}); return; }
+  document.getElementById('pasteBox').value = '';
+  const reader = new FileReader();
+  reader.onload = () => setPending(parseBackup(String(reader.result)));
+  reader.onerror = () => setPending({ok:false, error:'Could not read the file. Try again.'});
+  reader.readAsText(file);
+});
+document.getElementById('pasteBox').addEventListener('input', e => {
+  document.getElementById('fileInput').value = '';
+  setPending(parseBackup(e.target.value));
+});
+document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => resetConfirm(document.getElementById('restoreBtn'))));
+
+// Share button only where the browser can share files
+try{
+  const probe = new File(['{}'], 'x.json', {type:'application/json'});
+  if(navigator.canShare && navigator.canShare({files:[probe]})) document.getElementById('shareBtn').hidden = false;
+}catch(e){}
+
+render();
+refreshPersist();
+</script>
+</body>
+</html>

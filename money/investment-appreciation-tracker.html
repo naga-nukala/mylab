@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Investment Appreciation Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;padding-bottom:70px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:130px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+
+  .mode-toggle{display:flex;gap:6px;margin-bottom:12px;}
+  .mode-toggle button{flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--acc);color:var(--acc);background:rgba(34,197,94,.08);}
+  .sip-row{border:1px solid #334155;border-radius:10px;padding:10px;margin-bottom:8px;position:relative;}
+  .sip-row .row{margin-bottom:0;}
+  .sip-row .step-title{font-size:11px;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .sip-row .rm{background:none;border:none;color:var(--bad);font-size:12px;cursor:pointer;padding:0;}
+  .step-btn{width:100%;padding:9px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:12px;cursor:pointer;margin-bottom:8px;}
+  .sip-preview{font-size:12px;color:var(--acc);margin:2px 0 10px;min-height:16px;}
+  .hint{font-size:11px;color:var(--sub);margin-top:4px;}
+
+  .summary-box{text-align:center;padding:20px 16px;}
+  .summary-num{font-size:34px;font-weight:800;line-height:1.1;}
+  .summary-label{color:var(--sub);font-size:12px;margin-top:2px;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;}
+  .stat{background:#0f172a;border-radius:10px;padding:12px 8px;text-align:center;min-width:0;}
+  .stat.wide{grid-column:1 / -1;}
+  .stat .n{font-size:17px;font-weight:700;white-space:nowrap;}
+  .stat .l{font-size:11px;color:var(--sub);margin-top:2px;}
+  .pos{color:var(--acc);} .neg{color:var(--bad);}
+
+  .inv-item{border-bottom:1px solid #334155;padding:14px 0;}
+  .inv-item:last-child{border-bottom:none;padding-bottom:0;}
+  .inv-item:first-child{padding-top:0;}
+  .inv-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .inv-name{font-weight:700;font-size:15px;word-break:break-word;}
+  .type-tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:#60a5fa;font-weight:700;margin-top:4px;margin-right:4px;}
+  .type-tag.sip{background:rgba(34,197,94,.15);color:var(--acc);}
+  .inv-actions{display:flex;gap:6px;flex-shrink:0;}
+  .inv-actions button{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--acc);}
+  .inv-actions button.del{color:var(--bad);}
+  .inv-actions button.confirming{background:var(--bad);border-color:var(--bad);color:#fff;}
+  .inv-value{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .inv-now{font-size:22px;font-weight:800;}
+  .gain-pill{font-size:13px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .gain-pill.pos{background:rgba(34,197,94,.15);}
+  .gain-pill.neg{background:rgba(239,68,68,.15);}
+  .inv-meta{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6;}
+  .inv-meta b{color:var(--txt);font-weight:600;}
+  .plan-line{padding-left:10px;border-left:2px solid #334155;margin:2px 0;}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #475569;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;max-width:90%;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📈 Investment Appreciation Tracker</h1>
+  <p class="sub">Track invested amount vs current value for each investment — see real gains, not just balances.</p>
+
+  <div class="card summary-box">
+    <div class="summary-num" id="totalGainPct">0%</div>
+    <div class="summary-label">Overall Portfolio Gain</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="n" id="totalInvested">₹0</div><div class="l">Total Invested</div></div>
+      <div class="stat"><div class="n" id="totalCurrent">₹0</div><div class="l">Current Value</div></div>
+      <div class="stat wide"><div class="n" id="totalGainAmt">₹0</div><div class="l">Absolute Gain</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="invName">Investment Name</label><input type="text" id="invName" placeholder="e.g. Axis Bluechip"></div>
+      <div class="field"><label for="invType">Type</label>
+        <select id="invType">
+          <option value="SIP/Mutual Fund">Mutual Fund</option>
+          <option value="Stocks">Stocks</option>
+          <option value="FD">Fixed Deposit</option>
+          <option value="RD">Recurring Deposit</option>
+          <option value="PPF/EPF">PPF/EPF</option>
+          <option value="Gold">Gold</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <label>How did you invest?</label>
+    <div class="mode-toggle" role="group" aria-label="Investment mode">
+      <button type="button" id="modeLump" class="active">One-time (lump sum)</button>
+      <button type="button" id="modeSip">Monthly SIP</button>
+    </div>
+
+    <div id="lumpFields">
+      <div class="row">
+        <div class="field"><label for="investedAmt">Invested Amount (₹)</label><input type="number" id="investedAmt" placeholder="e.g. 50000" inputmode="decimal"></div>
+        <div class="field"><label for="investedDate">Investment Date</label><input type="date" id="investedDate"></div>
+      </div>
+    </div>
+
+    <div id="sipFields" style="display:none;">
+      <div id="sipRows"></div>
+      <button type="button" class="step-btn" id="addStepBtn">+ Monthly amount changed? Add a step</button>
+      <div class="sip-preview" id="sipPreview"></div>
+    </div>
+
+    <div class="row">
+      <div class="field"><label for="currentVal">Current Value (₹)</label><input type="number" id="currentVal" placeholder="e.g. 58000" inputmode="decimal"></div>
+    </div>
+    <button class="add" id="addBtn" type="button">+ Add Investment</button>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Your Investments</label>
+    <div id="invList"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const STORAGE_KEY = 'investment_appreciation_entries';
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let investments = [];
+try { investments = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { investments = []; }
+let editingId = null;
+let mode = 'lump';
+let sipRows = [{amount:'', start:'', count:''}];
+
+/* ---------- helpers ---------- */
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(investments)); }catch(e){} }
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function fmt(n){ return (n<0?'-':'') + '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN'); }
+function fmtSigned(n){ return (n>=0?'+':'-') + '₹' + Math.round(Math.abs(n)).toLocaleString('en-IN'); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function parseLocal(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function formatDate(s){
+  const d = parseLocal(s); if(isNaN(d)) return s;
+  const day = d.getDate();
+  const suffix = (day%100>=11 && day%100<=13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[day%10] || 'th');
+  return day + suffix + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+}
+function addMonths(s, k){
+  const [y,m,d] = s.split('-').map(Number);
+  const idx = (m-1) + k, ny = y + Math.floor(idx/12), nm = ((idx%12)+12)%12;
+  const last = new Date(ny, nm+1, 0).getDate();
+  return ny + '-' + pad(nm+1) + '-' + pad(Math.min(d,last));
+}
+function daysBetween(a, b){ return Math.round((parseLocal(b) - parseLocal(a)) / 86400000); }
+function heldLabel(days){
+  if(days < 1) return 'today';
+  if(days < 30) return days + (days===1?' day':' days');
+  if(days < 365){ const m=Math.floor(days/30); return m + (m===1?' month':' months'); }
+  const y=Math.floor(days/365), m=Math.floor((days%365)/30);
+  return y + (y===1?' yr':' yrs') + (m ? ' ' + m + ' mo' : '');
+}
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.style.display='none'; }, 2400);
+}
+const pending = {};
+function confirmTwice(key, btn, action){
+  if(pending[key]){ clearTimeout(pending[key]); delete pending[key]; action(); return; }
+  btn.classList.add('confirming'); btn.textContent='Sure?';
+  showToast('Tap again to delete');
+  pending[key]=setTimeout(()=>{ delete pending[key]; btn.classList.remove('confirming'); btn.textContent='✕'; }, 2500);
+}
+
+/* ---------- cash-flow engine ---------- */
+// SIP plans -> installments due up to today. A plan with blank count runs until the next step starts (or today).
+function installmentsOf(plans){
+  const today = todayStr();
+  const sorted = [...plans].sort((a,b)=>a.start.localeCompare(b.start));
+  const out = [];
+  sorted.forEach((p, idx)=>{
+    const next = sorted[idx+1];
+    const limit = p.count > 0 ? p.count : 1200;
+    for(let k=0; k<limit; k++){
+      const d = addMonths(p.start, k);
+      if(d > today) break;
+      if(!(p.count > 0) && next && d >= next.start) break;
+      out.push({date:d, amount:p.amount});
+    }
+  });
+  return out;
+}
+function flowsOf(e){
+  if(e.mode === 'sip') return installmentsOf(e.plans || []);
+  return [{date:e.date, amount:e.invested}];
+}
+function investedOf(e){ return flowsOf(e).reduce((s,f)=>s+f.amount, 0); }
+
+// XIRR (annualised, dates-weighted). Returns % or null.
+function xirr(flows, current){
+  if(!flows.length || current <= 0) return null;
+  const sorted = [...flows].sort((a,b)=>a.date.localeCompare(b.date));
+  const t0 = parseLocal(sorted[0].date), tEnd = parseLocal(todayStr());
+  const cfs = sorted.map(f=>({t:(parseLocal(f.date)-t0)/86400000/365, v:-f.amount}));
+  cfs.push({t:(tEnd-t0)/86400000/365, v:current});
+  const f = r => cfs.reduce((s,c)=>s + c.v/Math.pow(1+r, c.t), 0);
+  let lo=-0.99, hi=10;
+  if(f(lo)*f(hi) > 0) return null;
+  for(let i=0;i<200;i++){ const mid=(lo+hi)/2; if(f(lo)*f(mid) <= 0) hi=mid; else lo=mid; }
+  const r = ((lo+hi)/2)*100;
+  return isFinite(r) && Math.abs(r) < 1000 ? r : null;
+}
+
+/* ---------- form: mode + SIP rows ---------- */
+function setMode(m){
+  mode = m;
+  document.getElementById('modeLump').classList.toggle('active', m==='lump');
+  document.getElementById('modeSip').classList.toggle('active', m==='sip');
+  document.getElementById('lumpFields').style.display = m==='lump' ? 'block' : 'none';
+  document.getElementById('sipFields').style.display = m==='sip' ? 'block' : 'none';
+  if(m==='sip'){ renderSipRows(); updateSipPreview(); }
+}
+
+function renderSipRows(){
+  const today = todayStr();
+  document.getElementById('sipRows').innerHTML = sipRows.map((r,i)=>`
+    <div class="sip-row">
+      <div class="step-title"><span>${i===0 ? 'SIP details' : 'Step ' + (i+1) + ' — new amount from a later month'}</span>${sipRows.length>1 ? `<button type="button" class="rm" data-remove="${i}">Remove</button>` : ''}</div>
+      <div class="row">
+        <div class="field"><label>${i===0 ? 'Monthly amount (₹)' : 'New monthly amount (₹)'}</label><input type="number" inputmode="decimal" data-i="${i}" data-f="amount" value="${esc(String(r.amount))}" placeholder="e.g. 5000"></div>
+        <div class="field"><label>${i===0 ? 'Start date' : 'First month at this amount'}</label><input type="date" max="${today}" data-i="${i}" data-f="start" value="${esc(String(r.start))}"></div>
+        <div class="field"><label>No. of installments</label><input type="number" inputmode="numeric" min="1" data-i="${i}" data-f="count" value="${esc(String(r.count))}" placeholder="Blank = ongoing"></div>
+      </div>
+    </div>`).join('');
+}
+
+function cleanPlans(rows){
+  return rows.filter(r=>parseFloat(r.amount)>0 && r.start).map(r=>({amount:parseFloat(r.amount), start:r.start, count:parseInt(r.count,10)>0 ? parseInt(r.count,10) : 0}));
+}
+function updateSipPreview(){
+  const el = document.getElementById('sipPreview');
+  const plans = cleanPlans(sipRows);
+  if(!plans.length){ el.textContent = ''; return; }
+  const inst = installmentsOf(plans);
+  const total = inst.reduce((s,f)=>s+f.amount,0);
+  el.textContent = inst.length + (inst.length===1?' installment':' installments') + ' due so far · ' + fmt(total) + ' invested';
+}
+
+/* ---------- save / edit / delete ---------- */
+function clearForm(){
+  ['invName','investedAmt','investedDate','currentVal'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('invType').selectedIndex = 0;
+  sipRows = [{amount:'', start:'', count:''}];
+  setMode('lump');
+}
+
+function addInvestment(){
+  const name = document.getElementById('invName').value.trim();
+  const type = document.getElementById('invType').value;
+  const current = parseFloat(document.getElementById('currentVal').value) || 0;
+  const today = todayStr();
+
+  if(!name){ showToast('Enter an investment name.'); return; }
+  let entry = { name, type, mode, current };
+
+  if(mode === 'lump'){
+    const invested = parseFloat(document.getElementById('investedAmt').value) || 0;
+    const date = document.getElementById('investedDate').value;
+    if(invested <= 0){ showToast('Invested amount must be above ₹0.'); return; }
+    if(!date){ showToast('Pick the investment date. For monthly investing, choose Monthly SIP.'); return; }
+    if(date > today){ showToast('Investment date cannot be in the future.'); return; }
+    entry.invested = invested; entry.date = date;
+  } else {
+    for(let i=0;i<sipRows.length;i++){
+      const r = sipRows[i], any = r.amount!=='' || r.start!=='' || r.count!=='';
+      if(!any && sipRows.length>1){ showToast('Step ' + (i+1) + ' is empty. Fill it or remove it.'); return; }
+      if(!(parseFloat(r.amount)>0)){ showToast((i===0?'SIP':'Step '+(i+1)) + ': enter a monthly amount above ₹0.'); return; }
+      if(!r.start){ showToast((i===0?'SIP':'Step '+(i+1)) + ': pick a start date.'); return; }
+      if(r.start > today){ showToast((i===0?'SIP':'Step '+(i+1)) + ': start date cannot be in the future.'); return; }
+      if(r.count!=='' && !(parseInt(r.count,10)>=1)){ showToast((i===0?'SIP':'Step '+(i+1)) + ': installments must be 1 or more.'); return; }
+    }
+    entry.plans = cleanPlans(sipRows);
+  }
+  if(current <= 0){ showToast('Enter the current value.'); return; }
+
+  if(editingId !== null){
+    const idx = investments.findIndex(i=>i.id===editingId);
+    if(idx > -1){
+      const old = investments[idx];
+      investments[idx] = { id:old.id, ...entry };
+    }
+    editingId = null;
+    document.getElementById('addBtn').textContent = '+ Add Investment';
+    showToast('Investment updated');
+  } else {
+    investments.push({ id: Date.now(), ...entry });
+    showToast('Investment added');
+  }
+  save(); clearForm(); render();
+}
+
+function editInvestment(id){
+  const i = investments.find(x=>x.id===id); if(!i) return;
+  document.getElementById('invName').value = i.name;
+  document.getElementById('invType').value = i.type;
+  document.getElementById('currentVal').value = i.current;
+  if(i.mode === 'sip'){
+    sipRows = (i.plans||[]).map(p=>({amount:String(p.amount), start:p.start, count:p.count>0?String(p.count):''}));
+    if(!sipRows.length) sipRows = [{amount:'', start:'', count:''}];
+    setMode('sip');
+  } else {
+    document.getElementById('investedAmt').value = i.invested;
+    document.getElementById('investedDate').value = i.date || '';
+    setMode('lump');
+  }
+  editingId = id;
+  document.getElementById('addBtn').textContent = '✓ Update Investment';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function removeInvestment(id){
+  investments = investments.filter(i=>i.id!==id);
+  if(editingId===id){ editingId=null; document.getElementById('addBtn').textContent='+ Add Investment'; clearForm(); }
+  save(); render(); showToast('Investment deleted');
+}
+
+/* ---------- render ---------- */
+function planLine(p){
+  const amt = fmt(p.amount) + '/mo';
+  return p.count > 0
+    ? amt + ' × ' + p.count + ' from ' + formatDate(p.start)
+    : amt + ' from ' + formatDate(p.start) + ' (ongoing)';
+}
+
+function render(){
+  const container = document.getElementById('invList');
+  const pctEl = document.getElementById('totalGainPct');
+  const gainEl = document.getElementById('totalGainAmt');
+
+  if(investments.length===0){
+    container.innerHTML = '<div class="empty">No investments tracked yet. Add your first one above.</div>';
+    document.getElementById('totalInvested').textContent = '₹0';
+    document.getElementById('totalCurrent').textContent = '₹0';
+    gainEl.textContent = '₹0'; gainEl.className = 'n';
+    pctEl.textContent = '0%'; pctEl.className = 'summary-num';
+    return;
+  }
+
+  let totalInvested = 0, totalCurrent = 0;
+  container.innerHTML = investments.map(i=>{
+    const flows = flowsOf(i);
+    const invested = flows.reduce((s,f)=>s+f.amount, 0);
+    totalInvested += invested; totalCurrent += i.current;
+    const gainAmt = i.current - invested;
+    const gainPct = invested > 0 ? (gainAmt / invested) * 100 : 0;
+    const cls = gainAmt >= 0 ? 'pos' : 'neg';
+    const firstDate = flows.map(f=>f.date).sort()[0];
+    const days = firstDate ? Math.max(0, daysBetween(firstDate, todayStr())) : 0;
+    const ann = days >= 365 ? xirr(flows, i.current) : null;
+    const annText = ann === null
+      ? 'Annualized return shows after 1 year'
+      : '<b class="'+(ann>=0?'pos':'neg')+'">' + (ann>=0?'+':'') + ann.toFixed(1) + '% per year' + (i.mode==='sip' ? ' (XIRR)' : '') + '</b>';
+
+    let detail;
+    if(i.mode === 'sip'){
+      const plans = [...(i.plans||[])].sort((a,b)=>a.start.localeCompare(b.start));
+      detail = `Invested <b>${fmt(invested)}</b> in <b>${flows.length}</b> installment${flows.length===1?'':'s'}<br>` +
+        plans.map(p=>`<div class="plan-line">${planLine(p)}</div>`).join('') +
+        `Held <b>${heldLabel(days)}</b> · ${annText}`;
+    } else {
+      detail = `Invested <b>${fmt(invested)}</b> on <b>${formatDate(i.date)}</b><br>Held <b>${heldLabel(days)}</b> · ${annText}`;
+    }
+
+    return `
+      <div class="inv-item">
+        <div class="inv-head">
+          <div><div class="inv-name">${esc(i.name)}</div><span class="type-tag">${esc(i.type)}</span>${i.mode==='sip' ? '<span class="type-tag sip">SIP</span>' : ''}</div>
+          <div class="inv-actions">
+            <button type="button" data-action="edit" data-id="${i.id}">Edit</button>
+            <button type="button" class="del" data-action="del" data-id="${i.id}" aria-label="Delete ${esc(i.name)}">✕</button>
+          </div>
+        </div>
+        <div class="inv-value">
+          <span class="inv-now">${fmt(i.current)}</span>
+          <span class="gain-pill ${cls}">${fmtSigned(gainAmt)} (${gainPct>=0?'+':''}${gainPct.toFixed(1)}%)</span>
+        </div>
+        <div class="inv-meta">${detail}</div>
+      </div>`;
+  }).join('');
+
+  const totalGain = totalCurrent - totalInvested;
+  const totalPct = totalInvested>0 ? (totalGain/totalInvested)*100 : 0;
+  const cls = totalGain >= 0 ? 'pos' : 'neg';
+  document.getElementById('totalInvested').textContent = fmt(totalInvested);
+  document.getElementById('totalCurrent').textContent = fmt(totalCurrent);
+  gainEl.textContent = fmtSigned(totalGain); gainEl.className = 'n ' + cls;
+  pctEl.textContent = (totalPct>=0?'+':'') + totalPct.toFixed(1) + '%'; pctEl.className = 'summary-num ' + cls;
+}
+
+/* ---------- events ---------- */
+document.getElementById('invList').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-action]'); if(!btn) return;
+  const id = Number(btn.dataset.id);
+  if(btn.dataset.action==='edit') editInvestment(id);
+  else confirmTwice('del-'+id, btn, ()=>removeInvestment(id));
+});
+document.getElementById('sipRows').addEventListener('input', e=>{
+  const t = e.target; if(!t.dataset.f) return;
+  sipRows[Number(t.dataset.i)][t.dataset.f] = t.value;
+  updateSipPreview();
+});
+document.getElementById('sipRows').addEventListener('click', e=>{
+  const b = e.target.closest('[data-remove]'); if(!b) return;
+  sipRows.splice(Number(b.dataset.remove), 1);
+  renderSipRows(); updateSipPreview();
+});
+document.getElementById('addStepBtn').addEventListener('click', ()=>{
+  sipRows.push({amount:'', start:'', count:''});
+  renderSipRows(); updateSipPreview();
+});
+document.getElementById('modeLump').addEventListener('click', ()=>setMode('lump'));
+document.getElementById('modeSip').addEventListener('click', ()=>setMode('sip'));
+document.getElementById('addBtn').addEventListener('click', addInvestment);
+document.getElementById('investedDate').max = todayStr();
+render();
+</script>
+</body>
+</html>

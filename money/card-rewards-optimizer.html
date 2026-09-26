@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Credit Card Rewards Optimizer</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1e2229;--border:#2a2f3a;--text:#e8eaed;--muted:#9aa3af;--accent:#4ade80;--accent2:#22c55e;--gold:#fbbf24;--danger:#f87171}
+  *{box-sizing:border-box}body{margin:0;padding:16px 16px 70px;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}.wrap{max-width:620px;margin:auto}h1{font-size:19px;margin:0 0 4px}.sub{font-size:13px;color:var(--muted);margin:0 0 16px}.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}.section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:2px 0 9px}.row{display:flex;gap:8px;margin-bottom:9px}.field{flex:1;min-width:0}label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}input,select{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);color:var(--text);font-size:14px}input:focus,select:focus{outline:none;border-color:var(--accent)}.hint{font-size:11px;color:var(--muted);line-height:1.4;margin-top:2px}.primary{width:100%;padding:12px;border:0;border-radius:8px;background:var(--accent2);color:#08170e;font-weight:700;cursor:pointer}.results-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 9px}.result{position:relative;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:9px}.result.best{border-color:#2d5a3d;background:linear-gradient(135deg,#17251c,#171a21)}.badge{position:absolute;top:11px;right:12px;color:#10160f;background:var(--gold);font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px}.result-head{display:flex;justify-content:space-between;gap:10px;padding-right:70px;margin-bottom:8px}.card-name{font-weight:700}.card-type{font-size:11px;color:var(--muted);margin-top:2px}.net{font-size:20px;font-weight:800;color:var(--accent);white-space:nowrap}.net-label{font-size:10px;color:var(--muted);text-align:right;margin-top:2px}.detail{border-top:1px solid var(--border);padding-top:7px}.detail-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted)}.detail-row strong{color:var(--text)}.detail-row.total strong{color:var(--accent);font-size:14px}.remove{float:right;border:0;background:none;color:var(--danger);cursor:pointer;font-size:12px;padding:0}.empty{text-align:center;color:var(--muted);font-size:13px;padding:18px}.note{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;margin-top:14px}.error{color:var(--danger);font-size:12px;margin-top:8px}@media(max-width:440px){.row{gap:6px}input,select{padding:9px 8px}.result-head{display:block}.net{text-align:left;margin-top:7px}.net-label{text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💳 Credit Card Rewards Optimizer</h1>
+  <p class="sub">Compare cards for one planned purchase after rewards, fees, redemption value, and welcome bonuses.</p>
+
+  <div class="card">
+    <div class="section-title">Planned purchase</div>
+    <div class="row">
+      <div class="field"><label>Purchase Amount (₹)</label><input type="number" id="purchase" value="50000" min="1" oninput="update()"></div>
+      <div class="field"><label>Spend Category</label><select id="category" onchange="update()"><option value="online">Online</option><option value="offline">Offline</option><option value="travel">Travel</option><option value="utility">Utilities</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Purchase Months</label><input type="number" id="months" value="1" min="1" max="12" oninput="update()"></div>
+      <div class="field"><label>Tax / Surcharge %</label><input type="number" id="surcharge" value="0" min="0" step="0.1" oninput="update()"></div>
+    </div>
+    <div class="hint">Enter the number of months if the purchase is split across a predictable monthly spend. Fees are amortized over that period.</div>
+  </div>
+
+  <div class="card" id="cardForm">
+    <div class="section-title">Card 1</div>
+    <div class="row"><div class="field"><label>Card Name</label><input data-field="name" value="Everyday Card" oninput="update()"></div><div class="field"><label>Reward Type</label><select data-field="type" onchange="update()"><option>Cashback</option><option>Points</option><option>Miles</option></select></div></div>
+    <div class="row"><div class="field"><label>Reward Rate (%)</label><input type="number" data-field="rate" value="5" step="0.1" min="0" oninput="update()"></div><div class="field"><label>Reward Value (₹ per ₹1)</label><input type="number" data-field="value" value="1" step="0.01" min="0" oninput="update()"></div></div>
+    <div class="row"><div class="field"><label>Annual Fee (₹)</label><input type="number" data-field="fee" value="999" min="0" oninput="update()"></div><div class="field"><label>Welcome Bonus Value (₹)</label><input type="number" data-field="bonus" value="0" min="0" oninput="update()"></div></div>
+    <div class="row"><div class="field"><label>Reward Cap (₹)</label><input type="number" data-field="cap" value="0" min="0" oninput="update()"></div><div class="field"><label>Bonus Eligible?</label><select data-field="eligible" onchange="update()"><option value="yes">Yes</option><option value="no">No</option></select></div></div>
+    <div class="hint">Set Reward Cap to 0 for no cap. Reward Value is 1 for cashback, or the rupee value of one point/mile.</div>
+  </div>
+  <button class="primary" onclick="addCard()">+ Add Another Card</button>
+  <div class="error" id="error"></div>
+
+  <div class="results-title">Best value first</div>
+  <div id="results"></div>
+  <div class="note">Estimates only. Check merchant exclusions, reward caps, taxes, redemption rules, and welcome-bonus terms before paying.</div>
+</div>
+<script>
+let cardCount=1;
+const categoryRates={online:5,offline:1,travel:3,utility:2};
+function money(value){return '₹'+Math.round(value).toLocaleString('en-IN');}
+function cardData(element){const get=field=>element.querySelector(`[data-field="${field}"]`).value;return{name:get('name').trim()||'Unnamed card',type:get('type'),rate:parseFloat(get('rate'))||0,value:parseFloat(get('value'))||0,fee:parseFloat(get('fee'))||0,bonus:parseFloat(get('bonus'))||0,cap:parseFloat(get('cap'))||0,eligible:get('eligible')==='yes'};}
+function addCard(){if(cardCount>=5)return;cardCount++;const section=document.createElement('div');section.className='card';section.dataset.card='true';section.innerHTML=`<div class="section-title">Card ${cardCount}<button class="remove" onclick="this.closest('.card').remove();update()">Remove</button></div><div class="row"><div class="field"><label>Card Name</label><input data-field="name" value="Card ${cardCount}" oninput="update()"></div><div class="field"><label>Reward Type</label><select data-field="type" onchange="update()"><option>Cashback</option><option>Points</option><option>Miles</option></select></div></div><div class="row"><div class="field"><label>Reward Rate (%)</label><input type="number" data-field="rate" value="1" step="0.1" min="0" oninput="update()"></div><div class="field"><label>Reward Value (₹ per ₹1)</label><input type="number" data-field="value" value="1" step="0.01" min="0" oninput="update()"></div></div><div class="row"><div class="field"><label>Annual Fee (₹)</label><input type="number" data-field="fee" value="0" min="0" oninput="update()"></div><div class="field"><label>Welcome Bonus Value (₹)</label><input type="number" data-field="bonus" value="0" min="0" oninput="update()"></div></div><div class="row"><div class="field"><label>Reward Cap (₹)</label><input type="number" data-field="cap" value="0" min="0" oninput="update()"></div><div class="field"><label>Bonus Eligible?</label><select data-field="eligible" onchange="update()"><option value="yes">Yes</option><option value="no">No</option></select></div></div><div class="hint">Set Reward Cap to 0 for no cap. Reward Value is 1 for cashback, or the rupee value of one point/mile.</div>`;document.getElementById('cardForm').after(section);update();}
+function update(){const purchase=parseFloat(document.getElementById('purchase').value)||0;const months=Math.max(parseFloat(document.getElementById('months').value)||1,1);const surcharge=(parseFloat(document.getElementById('surcharge').value)||0)/100;const spend=purchase*(1+surcharge);const category=document.getElementById('category').value;const cards=[...document.querySelectorAll('[data-field="name"]')].map(input=>cardData(input.closest('.card')));const results=cards.map(card=>{const uncapped=spend*(card.rate/100)*card.value;const rewards=card.cap>0?Math.min(uncapped,card.cap):uncapped;const fee=card.fee/months;const bonus=card.eligible?card.bonus:0;return{...card,spend,rewards,fee,bonus,net:rewards+bonus-fee};}).sort((a,b)=>b.net-a.net);const error=document.getElementById('error');error.textContent=purchase<=0?'Enter a purchase amount greater than zero.':categoryRates[category]&&results.some(card=>card.rate>categoryRates[category])?'Typical '+category+' reward rates are around '+categoryRates[category]+'%; verify higher rates in the card terms.':'';document.getElementById('results').innerHTML=results.map((card,index)=>`<div class="result ${index===0?'best':''}">${index===0?'<div class="badge">BEST VALUE</div>':''}<div class="result-head"><div><div class="card-name">${escapeHtml(card.name)}</div><div class="card-type">${card.type} · ${card.rate}% reward rate</div></div><div><div class="net">${money(card.net)}</div><div class="net-label">net value</div></div></div><div class="detail"><div class="detail-row"><span>Rewards earned</span><strong>${money(card.rewards)}</strong></div><div class="detail-row"><span>Welcome bonus</span><strong>+${money(card.bonus)}</strong></div><div class="detail-row"><span>Fee for ${months} month${months===1?'':'s'}</span><strong>-${money(card.fee)}</strong></div><div class="detail-row total"><span>Effective return on spend</span><strong>${spend?((card.net/spend)*100).toFixed(2):'0.00'}%</strong></div></div></div>`).join('');}
+function escapeHtml(value){const element=document.createElement('div');element.textContent=value;return element.innerHTML;}
+update();
+</script>
+</body>
+</html>

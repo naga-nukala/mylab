@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Internet Cost Comparator</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:100px;}
+
+  .item{border-bottom:1px solid #334155;padding-bottom:12px;margin-bottom:12px;}
+  .item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .item-name-row{display:flex;gap:8px;margin-bottom:8px;}
+  .item-name-row input{flex:1;font-weight:700;}
+  .remove-btn{background:none;border:none;color:var(--bad);font-size:14px;cursor:pointer;}
+  button.add{width:100%;padding:10px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:13px;cursor:pointer;margin-top:4px;}
+
+  .plan-line{padding:12px 0;border-bottom:1px solid #334155;}
+  .plan-line:last-child{border-bottom:none;}
+  .plan-head{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;}
+  .plan-sub{font-size:11px;color:var(--sub);margin-top:2px;}
+  .best-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.15);color:var(--acc);font-weight:700;margin-left:6px;}
+  .cost-val{font-weight:800;font-size:16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📡 Internet Cost Comparator</h1>
+  <p class="sub">Compare data plans / broadband / router options by effective monthly cost, including one-time router cost and bill-payment cashback.</p>
+
+  <div class="card">
+    <label>Internet Options</label>
+    <div id="plansList"></div>
+    <button class="add" onclick="addPlan()">+ Add Option</button>
+  </div>
+
+  <div class="card">
+    <label style="color:var(--txt);font-weight:700;">Effective Monthly Cost Comparison</label>
+    <div id="comparisonList"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'internet_cost_plans_v1';
+function inr(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+function loadPlans(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(Array.isArray(saved) && saved.length) return saved;
+  }catch(e){}
+  return [
+    {name:'Fiber Broadband', monthly:0, routerCost:0, routerLifeMonths:24, cashbackPct:0},
+    {name:'Mobile Data / Dongle', monthly:0, routerCost:0, routerLifeMonths:24, cashbackPct:0}
+  ];
+}
+let plans = loadPlans();
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(plans)); }
+
+function addPlan(){ plans.push({name:'', monthly:0, routerCost:0, routerLifeMonths:24, cashbackPct:0}); save(); renderPlans(); }
+function removePlan(i){ plans.splice(i,1); save(); renderPlans(); }
+function updatePlan(i, field, val){
+  plans[i][field] = field==='name' ? val : (parseFloat(val)||0);
+  save();
+  calc();
+}
+
+function renderPlans(){
+  const c = document.getElementById('plansList');
+  c.innerHTML = plans.map((p,i)=>`
+    <div class="item">
+      <div class="item-name-row">
+        <input placeholder="Provider/Plan name" value="${p.name}" oninput="updatePlan(${i},'name',this.value)">
+        <button class="remove-btn" onclick="removePlan(${i})">✕</button>
+      </div>
+      <div class="row">
+        <div class="field"><label>Monthly Plan Cost (₹)</label><input type="number" value="${p.monthly}" oninput="updatePlan(${i},'monthly',this.value)"></div>
+        <div class="field"><label>Router/Device Cost (₹, one-time)</label><input type="number" value="${p.routerCost}" oninput="updatePlan(${i},'routerCost',this.value)"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Router Lifespan (months)</label><input type="number" value="${p.routerLifeMonths}" oninput="updatePlan(${i},'routerLifeMonths',this.value)"></div>
+        <div class="field"><label>Bill Payment Cashback (%)</label><input type="number" value="${p.cashbackPct}" oninput="updatePlan(${i},'cashbackPct',this.value)"></div>
+      </div>
+    </div>
+  `).join('');
+  calc();
+}
+
+function calc(){
+  const valid = plans.filter(p=>p.name && p.monthly>0);
+  const computed = valid.map(p=>{
+    const routerAmort = p.routerLifeMonths>0 ? p.routerCost / p.routerLifeMonths : 0;
+    const cashback = p.monthly * (p.cashbackPct/100);
+    const effective = p.monthly + routerAmort - cashback;
+    return {...p, routerAmort, cashback, effective};
+  });
+  computed.sort((a,b)=>a.effective-b.effective);
+
+  const list = document.getElementById('comparisonList');
+  if(computed.length===0){
+    list.innerHTML = '<div style="color:var(--sub);font-size:13px;text-align:center;padding:12px;">Add options with monthly cost to compare.</div>';
+    return;
+  }
+
+  list.innerHTML = computed.map((p,i)=>`
+    <div class="plan-line">
+      <div class="plan-head">
+        <span>${p.name}${i===0?'<span class="best-tag">CHEAPEST</span>':''}</span>
+        <span class="cost-val" style="color:${i===0?'var(--acc)':'var(--txt)'};">${inr(p.effective)}/mo</span>
+      </div>
+      <div class="plan-sub">Plan ${inr(p.monthly)}${p.routerAmort>0?` + ${inr(p.routerAmort)} router (amortized)`:''}${p.cashback>0?` − ${inr(p.cashback)} cashback`:''}</div>
+    </div>
+  `).join('');
+}
+
+renderPlans();
+</script>
+</body>
+</html>

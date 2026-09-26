@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Flat Buying Scorecard</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:14px;margin-bottom:6px;font-weight:600;}
+  .hint{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  input, select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
+  input:focus,select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;justify-content:space-between;align-items:center;}
+  .badge{font-size:12px;padding:3px 8px;border-radius:20px;font-weight:700;}
+  .good{background:rgba(34,197,94,.15);color:var(--acc);}
+  .mid{background:rgba(245,158,11,.15);color:var(--warn);}
+  .bad{background:rgba(239,68,68,.15);color:var(--bad);}
+  .score-box{text-align:center;padding:24px 16px;}
+  .score-num{font-size:48px;font-weight:800;}
+  .score-label{color:var(--sub);font-size:14px;}
+  .bar{height:10px;border-radius:6px;background:#334155;overflow:hidden;margin-top:10px;}
+  .bar-fill{height:100%;transition:width .3s;}
+  .breakdown{color:var(--sub);font-size:12px;line-height:1.7;margin-top:12px;text-align:left;}
+  button{width:100%;padding:14px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:15px;cursor:pointer;margin-top:4px;}
+  .verdict{text-align:center;font-size:14px;margin-top:8px;color:var(--sub);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏠 Flat Buying Scorecard</h1>
+  <p class="sub">Score a flat before you commit — lower maintenance & better resale factors.</p>
+
+  <div class="card score-box">
+    <div class="score-num" id="scoreNum">--</div>
+    <div class="score-label">out of 100</div>
+    <div class="bar"><div class="bar-fill" id="barFill" style="width:0%;background:var(--acc);"></div></div>
+    <div class="verdict" id="verdict">Fill details below</div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="card">
+    <label for="sqft">Carpet Area (sq ft)</label>
+    <div class="hint">Ideal for this score model: 850–950 sq ft</div>
+    <input type="number" id="sqft" min="1" placeholder="e.g. 900" required>
+  </div>
+
+  <div class="card">
+    <label for="numFlats">Total No. of Flats in Project</label>
+    <div class="hint">Ideal: 10 or more (shared maintenance cost)</div>
+    <input type="number" id="numFlats" min="1" placeholder="e.g. 24" required>
+  </div>
+
+  <div class="card">
+    <label for="uds">UDS (sq ft)</label>
+    <div class="hint">Ideal: more than 40 sq ft</div>
+    <input type="number" id="uds" min="0" placeholder="e.g. 41" required>
+  </div>
+
+  <div class="card">
+    <label for="landPct">Land Cost as % of Total Price</label>
+    <div class="hint">Ideal: 40–45%</div>
+    <input type="number" id="landPct" min="0" max="100" placeholder="e.g. 42" required>
+  </div>
+
+  <div class="card">
+    <label for="road">Road Width (ft)</label>
+    <div class="hint">Ideal: 30–40 ft</div>
+    <input type="number" id="road" min="1" placeholder="e.g. 35" required>
+  </div>
+
+  <div class="card">
+    <label for="lift">Lift Available?</label>
+    <div class="hint">A lift improves accessibility but may increase maintenance.</div>
+    <select id="lift">
+      <option value="no">No Lift</option>
+      <option value="yes">Has Lift</option>
+    </select>
+  </div>
+
+  <button onclick="calcScore()">Calculate Score</button>
+</div>
+
+<script>
+function scoreRange(val, min, max, weight){
+  if(isNaN(val)) return 0;
+  if(val>=min && val<=max) return weight;
+  const dist = val<min ? min-val : val-max;
+  const range = max-min || 1;
+  const penalty = Math.min(1, dist/range);
+  return Math.max(0, weight*(1-penalty));
+}
+
+function calcScore(){
+  const sqft = parseFloat(document.getElementById('sqft').value);
+  const numFlats = parseFloat(document.getElementById('numFlats').value);
+  const uds = parseFloat(document.getElementById('uds').value);
+  const landPct = parseFloat(document.getElementById('landPct').value);
+  const road = parseFloat(document.getElementById('road').value);
+  const lift = document.getElementById('lift').value;
+  const verdictEl = document.getElementById('verdict');
+
+  if (!Number.isFinite(sqft) || sqft <= 0 ||
+      !Number.isFinite(numFlats) || numFlats <= 0 ||
+      !Number.isFinite(uds) || uds < 0 ||
+      !Number.isFinite(landPct) || landPct < 0 || landPct > 100 ||
+      !Number.isFinite(road) || road <= 0) {
+    verdictEl.textContent = 'Enter valid values in every field';
+    return;
+  }
+
+  const areaScore = scoreRange(sqft, 850, 950, 20);
+  const flatsScore = Math.min(20, (numFlats / 10) * 20);
+  const udsScore = Math.min(20, (uds / 40) * 20);
+  const landScore = scoreRange(landPct, 40, 45, 20);
+  const roadScore = scoreRange(road, 30, 40, 15);
+  const liftScore = lift === 'yes' ? 5 : 3;
+  const score = areaScore + flatsScore + udsScore + landScore + roadScore + liftScore;
+
+  const roundedScore = Math.round(Math.min(100, score));
+
+  const numEl = document.getElementById('scoreNum');
+  const barEl = document.getElementById('barFill');
+  const breakdownEl = document.getElementById('breakdown');
+
+  numEl.textContent = roundedScore;
+  barEl.style.width = roundedScore+'%';
+  breakdownEl.innerHTML = `
+    Area: ${Math.round(areaScore)}/20<br>
+    Project size: ${Math.round(flatsScore)}/20<br>
+    UDS: ${Math.round(udsScore)}/20<br>
+    Land value: ${Math.round(landScore)}/20<br>
+    Road access: ${Math.round(roadScore)}/15<br>
+    Lift/accessibility: ${liftScore}/5`;
+
+  let color, verdict;
+  if(roundedScore>=75){color='var(--acc)';verdict='Strong initial score — verify documents and records';}
+  else if(roundedScore>=50){color='var(--warn)';verdict='Average — negotiate or verify further';}
+  else{color='var(--bad)';verdict='Risky — high maintenance/low resale likely';}
+
+  barEl.style.background = color;
+  numEl.style.color = color;
+  verdictEl.textContent = verdict;
+}
+
+(function(){
+  const K='as_flatscorecard';
+  try{
+    const d=JSON.parse(localStorage.getItem(K)||'{}');
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+  }catch(e){}
+  document.addEventListener('input',()=>{
+    const d={};
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

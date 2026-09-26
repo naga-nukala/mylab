@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layered Return Calculator</title>
+<style>
+  :root{
+    --bg:#0f0f14;
+    --card:#181820;
+    --border:#2a2a35;
+    --text:#e8e8ec;
+    --muted:#8a8a96;
+    --accent:#6c5ce7;
+    --green:#2ecc71;
+    --red:#ff5c5c;
+    --blue:#4da6ff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:20px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:22px;margin-bottom:4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
+  input, select{
+    width:100%;
+    background:#0f0f14;
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px;
+    border-radius:8px;
+    font-size:15px;
+  }
+  input:focus, select:focus{outline:none;border-color:var(--accent);}
+  .row{display:flex;gap:10px;margin-bottom:10px;}
+  .row > div{flex:1;}
+  .layer{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    background:#0f0f14;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:8px;
+  }
+  .layer input[type="text"]{flex:2;}
+  .layer input[type="number"]{flex:1;}
+  .layer select{flex:1;}
+  .layer .del{
+    flex:0 0 auto;
+    background:none;
+    border:none;
+    color:var(--red);
+    font-size:18px;
+    cursor:pointer;
+    padding:0 6px;
+  }
+  .add-btn{
+    width:100%;
+    background:transparent;
+    border:1px dashed var(--border);
+    color:var(--muted);
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .add-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .result-card{
+    background:linear-gradient(135deg,#1a1730,#181820);
+    border:1px solid var(--accent);
+    text-align:center;
+    padding:24px 16px;
+  }
+  .result-yield{
+    font-size:38px;
+    font-weight:700;
+  }
+  .result-yield.positive{color:var(--green);}
+  .result-yield.negative{color:var(--red);}
+  .result-amt{font-size:20px;margin-top:6px;}
+  .result-amt.positive{color:var(--green);}
+  .result-amt.negative{color:var(--red);}
+  .result-sub{color:var(--muted);font-size:12px;margin-top:8px;}
+  .breakdown{margin-top:16px;text-align:left;}
+  .breakdown-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    padding:6px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .breakdown-row:last-child{border-bottom:none;}
+  .breakdown-row .val.pos{color:var(--green);}
+  .breakdown-row .val.neg{color:var(--red);}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .preset-chip{
+    background:var(--card);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 12px;
+    border-radius:20px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .preset-chip:hover{border-color:var(--accent);}
+  .save-row{display:flex;gap:8px;}
+  .save-row input{flex:1;}
+  .save-btn{
+    background:var(--accent);
+    border:none;
+    color:#fff;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .saved-list{margin-top:10px;}
+  .saved-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 10px;
+    background:#0f0f14;
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .saved-item button{
+    background:none;border:none;color:var(--blue);cursor:pointer;font-size:12px;margin-left:8px;
+  }
+  .saved-item .del-saved{color:var(--red);}
+  .tax-hint{font-size:11px;color:var(--muted);margin-top:-2px;margin-bottom:8px;}
+  h2{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 12px;}
+  @media (max-width:480px){
+    .layer{gap:6px;padding:8px;}
+    .layer input[type="text"]{flex:1 1 auto;min-width:0;}
+    .layer select{flex:0 0 92px;min-width:92px;padding-left:6px;padding-right:6px;}
+    .layer input[type="number"]{flex:0 0 58px;min-width:0;padding-left:7px;padding-right:7px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Layered Return Calculator</h1>
+  <div class="sub">Stack tax, cashback, and idle interest on one principal to see your real effective yield.</div>
+
+  <div class="presets" id="presets"></div>
+
+  <div class="card">
+    <h2>Principal</h2>
+    <div class="row">
+      <div>
+        <label>Amount (₹)</label>
+        <input type="number" id="principal" value="10000" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Layers</h2>
+    <div id="layers"></div>
+    <button class="add-btn" onclick="addLayer()">+ Add Layer</button>
+  </div>
+
+  <div class="card result-card">
+    <div class="result-yield" id="resultYield">0.0%</div>
+    <div class="result-amt" id="resultAmt">₹0</div>
+    <div class="result-sub" id="resultSub">vs Principal ₹0</div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="card">
+    <h2>Save Scenario</h2>
+    <div class="save-row">
+      <input type="text" id="scenarioName" placeholder="e.g. FD + Tax + UPI stack">
+      <button class="save-btn" onclick="saveScenario()">Save</button>
+    </div>
+    <div class="saved-list" id="savedList"></div>
+  </div>
+</div>
+
+<script>
+const TAX_SLABS = [0,5,10,15,20,25,30];
+let layers = [];
+let layerId = 0;
+
+function newLayer(label, type, value){
+  layerId++;
+  return {id: layerId, label: label||'', type: type||'add', value: value ?? 0};
+}
+
+function addLayer(label, type, value){
+  layers.push(newLayer(label, type, value));
+  renderLayers();
+  calculate();
+}
+
+function removeLayer(id){
+  layers = layers.filter(l=>l.id!==id);
+  renderLayers();
+  calculate();
+}
+
+function updateLayer(id, field, val){
+  const l = layers.find(l=>l.id===id);
+  if(!l) return;
+  l[field] = (field==='value') ? parseFloat(val)||0 : val;
+  calculate();
+}
+
+function layerTypeLabel(type){
+  if(window.matchMedia('(max-width:480px)').matches){
+    return type === 'add' ? '+' : type === 'subtract' ? '−' : 'Tax';
+  }
+  return type === 'add' ? 'Add %' : type === 'subtract' ? 'Subtract %' : 'Tax (Auto)';
+}
+
+function renderLayers(){
+  const container = document.getElementById('layers');
+  container.innerHTML = '';
+  layers.forEach(l=>{
+    const div = document.createElement('div');
+    if(l.type === 'tax'){
+      div.className = 'layer';
+      div.style.flexDirection = 'column';
+      div.style.alignItems = 'stretch';
+      div.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" placeholder="Label" value="${escapeHtml(l.label)}" oninput="updateLayer(${l.id},'label',this.value)" style="flex:2;">
+          <select onchange="updateLayer(${l.id},'type',this.value); renderLayers();" style="flex:1;">
+            <option value="add">${layerTypeLabel('add')}</option>
+            <option value="subtract">${layerTypeLabel('subtract')}</option>
+            <option value="tax" selected>${layerTypeLabel('tax')}</option>
+          </select>
+          <button class="del" onclick="removeLayer(${l.id})">×</button>
+        </div>
+        <div style="margin-top:8px;">
+          <select onchange="updateLayer(${l.id},'value',this.value)">
+            ${TAX_SLABS.map(s=>`<option value="${s}" ${s===l.value?'selected':''}>${s}% slab</option>`).join('')}
+          </select>
+        </div>
+        <div class="tax-hint" id="taxhint-${l.id}"></div>
+      `;
+    } else {
+      div.className = 'layer';
+      div.innerHTML = `
+        <input type="text" placeholder="Label (e.g. UPI Cashback)" value="${escapeHtml(l.label)}" oninput="updateLayer(${l.id},'label',this.value)">
+        <select onchange="updateLayer(${l.id},'type',this.value); renderLayers();">
+          <option value="add" ${l.type==='add'?'selected':''}>${layerTypeLabel('add')}</option>
+          <option value="subtract" ${l.type==='subtract'?'selected':''}>${layerTypeLabel('subtract')}</option>
+          <option value="tax" ${l.type==='tax'?'selected':''}>${layerTypeLabel('tax')}</option>
+        </select>
+        <input type="number" value="${l.value}" step="0.1" oninput="updateLayer(${l.id},'value',this.value)">
+        <button class="del" onclick="removeLayer(${l.id})">×</button>
+      `;
+    }
+    container.appendChild(div);
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+window.matchMedia('(max-width:480px)').addEventListener('change', () => renderLayers());
+
+function calculate(){
+  const principal = parseFloat(document.getElementById('principal').value) || 0;
+  let runningPct = 0; // cumulative % change from principal
+  let breakdownRows = [];
+
+  layers.forEach(l=>{
+    if(l.type === 'add'){
+      runningPct += l.value;
+      breakdownRows.push({label: l.label || 'Layer', pct: l.value});
+    } else if(l.type === 'subtract'){
+      runningPct -= l.value;
+      breakdownRows.push({label: l.label || 'Layer', pct: -l.value});
+    } else if(l.type === 'tax'){
+      // tax applies to the base rate layer immediately preceding it in the stack,
+      // approximated here as tax on the cumulative running % so far
+      const taxDrag = (runningPct * l.value) / 100;
+      runningPct -= taxDrag;
+      breakdownRows.push({label: (l.label||'Tax') + ` (${l.value}% slab)`, pct: -taxDrag});
+    }
+  });
+
+  const finalAmt = principal * (1 + runningPct/100);
+  const yieldEl = document.getElementById('resultYield');
+  const amtEl = document.getElementById('resultAmt');
+  const subEl = document.getElementById('resultSub');
+
+  yieldEl.textContent = (runningPct>=0?'+':'') + runningPct.toFixed(2) + '%';
+  yieldEl.className = 'result-yield ' + (runningPct>=0 ? 'positive':'negative');
+
+  amtEl.textContent = '₹' + finalAmt.toLocaleString('en-IN', {maximumFractionDigits:0});
+  amtEl.className = 'result-amt ' + (finalAmt>=principal ? 'positive':'negative');
+
+  subEl.textContent = 'vs Principal ₹' + principal.toLocaleString('en-IN');
+
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = breakdownRows.map(r=>`
+    <div class="breakdown-row">
+      <span>${escapeHtml(r.label)}</span>
+      <span class="val ${r.pct>=0?'pos':'neg'}">${r.pct>=0?'+':''}${r.pct.toFixed(2)}%</span>
+    </div>
+  `).join('');
+
+  // update tax hints
+  layers.forEach(l=>{
+    const hint = document.getElementById('taxhint-'+l.id);
+    if(hint){
+      hint.textContent = `Tax @ ${l.value}% slab applied on cumulative rate so far.`;
+    }
+  });
+
+  autoSaveState();
+}
+
+// Presets
+const PRESETS = {
+  'FD + Tax + UPI': [
+    {label:'FD 7%', type:'add', value:7},
+    {label:'Tax', type:'tax', value:30},
+    {label:'UPI Cashback', type:'add', value:1},
+  ],
+  'Credit Card Float': [
+    {label:'Card Reward 2%', type:'add', value:2},
+    {label:'FD Float 1%', type:'add', value:1},
+  ],
+  'Loan Arbitrage': [
+    {label:'Loan Cost', type:'subtract', value:8},
+    {label:'FD Return', type:'add', value:7.5},
+  ]
+};
+
+function loadPreset(name){
+  layers = PRESETS[name].map(p=>newLayer(p.label,p.type,p.value));
+  renderLayers();
+  calculate();
+}
+
+function renderPresets(){
+  const container = document.getElementById('presets');
+  container.innerHTML = Object.keys(PRESETS).map(name=>
+    `<button class="preset-chip" onclick="loadPreset('${name}')">${name}</button>`
+  ).join('');
+}
+
+// Save / Load scenarios
+function saveScenario(){
+  const nameInput = document.getElementById('scenarioName');
+  const name = nameInput.value.trim();
+  if(!name){ alert('Enter a scenario name'); return; }
+  const principal = parseFloat(document.getElementById('principal').value)||0;
+  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
+  scenarios.push({name, principal, layers: JSON.parse(JSON.stringify(layers)), savedAt: Date.now()});
+  localStorage.setItem('lrc_scenarios', JSON.stringify(scenarios));
+  nameInput.value = '';
+  renderSaved();
+}
+
+function loadScenario(idx){
+  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
+  const s = scenarios[idx];
+  if(!s) return;
+  document.getElementById('principal').value = s.principal;
+  layers = s.layers.map(l=>newLayer(l.label,l.type,l.value));
+  renderLayers();
+  calculate();
+}
+
+function deleteScenario(idx){
+  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
+  scenarios.splice(idx,1);
+  localStorage.setItem('lrc_scenarios', JSON.stringify(scenarios));
+  renderSaved();
+}
+
+function renderSaved(){
+  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
+  const list = document.getElementById('savedList');
+  if(scenarios.length===0){ list.innerHTML=''; return; }
+  list.innerHTML = scenarios.map((s,i)=>`
+    <div class="saved-item">
+      <span>${escapeHtml(s.name)}</span>
+      <span>
+        <button onclick="loadScenario(${i})">Load</button>
+        <button class="del-saved" onclick="deleteScenario(${i})">Delete</button>
+      </span>
+    </div>
+  `).join('');
+}
+
+// Auto-save current working state (not named scenarios)
+function autoSaveState(){
+  const principal = document.getElementById('principal').value;
+  localStorage.setItem('lrc_current', JSON.stringify({principal, layers}));
+}
+
+function restoreState(){
+  const raw = localStorage.getItem('lrc_current');
+  if(!raw) return false;
+  try{
+    const state = JSON.parse(raw);
+    document.getElementById('principal').value = state.principal;
+    layers = (state.layers||[]).map(l=>newLayer(l.label,l.type,l.value));
+    return true;
+  }catch(e){ return false; }
+}
+
+document.getElementById('principal').addEventListener('input', calculate);
+
+// init
+renderPresets();
+if(!restoreState()){
+  loadPreset('FD + Tax + UPI');
+} else {
+  renderLayers();
+  calculate();
+}
+renderSaved();
+</script>
+</body>
+</html>
