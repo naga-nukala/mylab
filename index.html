@@ -16,7 +16,7 @@
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   @media(min-width:520px){.grid{grid-template-columns:repeat(4,1fr);}}
 
-  .flip{perspective:1200px;height:210px;}
+  .flip{perspective:1200px;height:230px;}
   .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d;}
   .flip.open .flip-inner{transform:rotateY(180deg);}
   .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;display:flex;flex-direction:column;}
@@ -43,10 +43,16 @@
   .ib.del{color:var(--coral);}
   .ib.del.confirming{background:var(--coral);color:#2b0d05;border-radius:4px;}
 
-  details.addbox{flex:0 0 auto;margin-top:6px;}
+  details.addbox{flex:0 0 auto;margin-top:6px;max-height:120px;overflow-y:auto;}
   details.addbox summary{color:var(--mint);font-size:11px;cursor:pointer;list-style:none;}
   details.addbox summary::-webkit-details-marker{display:none;}
-  .af-row{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+  .af-pick{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
+  .pick-note{color:var(--sub);font-size:10px;}
+  .pick-btn{border:1px solid var(--mint);background:transparent;color:var(--mint);border-radius:6px;padding:3px 6px;font-size:10px;cursor:pointer;}
+  .pick-btn:focus-visible{outline:2px solid var(--mint);}
+  .af-manual{color:var(--sub);font-size:10px;cursor:pointer;background:none;border:none;padding:4px 0;text-decoration:underline;}
+  .af-row{display:none;flex-direction:column;gap:4px;margin-top:6px;}
+  .af-row.show{display:flex;}
   .af-row input{width:100%;padding:6px 7px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:12px;}
   .af-row input:focus{outline:2px solid var(--mint);}
   .af-err{color:var(--coral);font-size:10px;min-height:12px;margin-top:3px;}
@@ -78,7 +84,9 @@
           <ul class="plist" data-role="list"></ul>
           <details class="addbox">
             <summary>+ Add page</summary>
-            <div class="af-row">
+            <div class="af-pick" data-role="pick"></div>
+            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
+            <div class="af-row" data-role="manual-row">
               <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
               <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
             </div>
@@ -97,7 +105,9 @@
           <ul class="plist" data-role="list"></ul>
           <details class="addbox">
             <summary>+ Add page</summary>
-            <div class="af-row">
+            <div class="af-pick" data-role="pick"></div>
+            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
+            <div class="af-row" data-role="manual-row">
               <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
               <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
             </div>
@@ -116,7 +126,9 @@
           <ul class="plist" data-role="list"></ul>
           <details class="addbox">
             <summary>+ Add page</summary>
-            <div class="af-row">
+            <div class="af-pick" data-role="pick"></div>
+            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
+            <div class="af-row" data-role="manual-row">
               <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
               <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
             </div>
@@ -135,7 +147,9 @@
           <ul class="plist" data-role="list"></ul>
           <details class="addbox">
             <summary>+ Add page</summary>
-            <div class="af-row">
+            <div class="af-pick" data-role="pick"></div>
+            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
+            <div class="af-row" data-role="manual-row">
               <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
               <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
             </div>
@@ -156,6 +170,11 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script>
+// Edit these if the repo is ever renamed/forked/moved to a different default branch.
+const REPO_OWNER = 'naga-nukala';
+const REPO_NAME = 'mylab';
+const REPO_BRANCH = 'main';
+
 const KEY = 'mylab_index_v1';
 const CATS = ['money','health','career','passions'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -213,6 +232,17 @@ async function fetchManifest(){
   }catch(e){}
   return null;
 }
+// Live directory listing via GitHub's public contents API (read-only, no token needed for a public repo).
+async function fetchFolderFiles(cat){
+  try{
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${cat}?ref=${REPO_BRANCH}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!Array.isArray(data)) return null;
+    return data.filter(f => f.type === 'file' && /\.html?$/i.test(f.name)).map(f => f.name);
+  }catch(e){ return null; }
+}
 
 let state = loadLocal();
 
@@ -237,7 +267,25 @@ function renderList(cat){
 }
 function renderAll(){ CATS.forEach(renderList); }
 
-// Flip open/close + row actions (event delegation)
+// Populate the "+ Add page" picker with files that exist in the folder but aren't listed yet
+async function loadPicker(cat, box){
+  const pick = box.querySelector('[data-role="pick"]');
+  pick.innerHTML = '<div class="pick-note">Checking /' + cat + ' on GitHub…</div>';
+  const files = await fetchFolderFiles(cat);
+  if(files === null){
+    pick.innerHTML = '<div class="pick-note">Couldn\'t reach GitHub — use "Type filename manually" below.</div>';
+    return;
+  }
+  const have = new Set(state.categories[cat].map(p => p.file.toLowerCase()));
+  const avail = files.filter(f => !have.has(f.toLowerCase()));
+  if(!avail.length){
+    pick.innerHTML = '<div class="pick-note">Every .html file in /' + cat + ' is already listed.</div>';
+    return;
+  }
+  pick.innerHTML = avail.map(f => `<button type="button" class="pick-btn" data-file="${esc(f)}">${esc(titleCase(f))}</button>`).join('');
+}
+
+// Flip open/close, picker, and row actions (event delegation)
 const editing = {}; // cat -> id being edited, or null
 const pendingDel = {}; // "cat:id" -> timer
 
@@ -247,6 +295,24 @@ grid.addEventListener('click', e => {
 
   const close = e.target.closest('[data-role="close"]');
   if(close){ close.closest('.flip').classList.remove('open'); return; }
+
+  const pickBtn = e.target.closest('.pick-btn');
+  if(pickBtn){
+    const box = pickBtn.closest('details.addbox');
+    const file = pickBtn.dataset.file;
+    box.querySelector('.af-file').value = file;
+    box.querySelector('.af-name').value = titleCase(file);
+    box.querySelector('.af-err').textContent = '';
+    box.querySelector('[data-role="manual-row"]').classList.add('show');
+    box.querySelector('.af-name').focus();
+    return;
+  }
+
+  const manualToggle = e.target.closest('[data-role="manual-toggle"]');
+  if(manualToggle){
+    manualToggle.closest('details.addbox').querySelector('[data-role="manual-row"]').classList.toggle('show');
+    return;
+  }
 
   const btn = e.target.closest('[data-act]');
   if(btn){
@@ -261,6 +327,7 @@ grid.addEventListener('click', e => {
       box.querySelector('.af-file').value = p.file;
       box.querySelector('.af-name').value = p.name;
       box.querySelector('.af-err').textContent = '';
+      box.querySelector('[data-role="manual-row"]').classList.add('show');
       box.open = true;
       editing[cat] = id;
       box.querySelector('.af-file').focus();
@@ -281,7 +348,8 @@ grid.addEventListener('click', e => {
     const flip = cancel.closest('.flip'); const cat = flip.dataset.cat;
     const box = cancel.closest('details.addbox');
     box.querySelector('.af-file').value = ''; box.querySelector('.af-name').value = '';
-    box.querySelector('.af-err').textContent = ''; box.open = false;
+    box.querySelector('.af-err').textContent = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
+    box.open = false;
     editing[cat] = null;
     return;
   }
@@ -293,7 +361,7 @@ grid.addEventListener('click', e => {
     const fileIn = box.querySelector('.af-file'); const nameIn = box.querySelector('.af-name');
     const errBox = box.querySelector('.af-err');
     let file = fileIn.value.trim();
-    if(!file){ errBox.textContent = 'Enter a filename.'; fileIn.focus(); return; }
+    if(!file){ errBox.textContent = 'Pick a file above, or type one below.'; return; }
     if(!/\.html?$/i.test(file)) file += '.html';
     const name = nameIn.value.trim() || titleCase(file);
     const arr = state.categories[cat];
@@ -309,9 +377,16 @@ grid.addEventListener('click', e => {
       toast('Page added');
     }
     editing[cat] = null;
-    fileIn.value = ''; nameIn.value = ''; box.open = false;
-    save(); renderList(cat);
+    fileIn.value = ''; nameIn.value = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
+    box.open = false;
+    save(); renderList(cat); loadPicker(cat, box);
   }
+});
+
+// Fetch the folder listing each time an Add-page box is opened
+document.querySelectorAll('details.addbox').forEach(box => {
+  const cat = box.closest('.flip').dataset.cat;
+  box.addEventListener('toggle', () => { if(box.open) loadPicker(cat, box); });
 });
 
 // Sync from pages.json (tap-twice, destructive)
