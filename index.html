@@ -193,7 +193,7 @@
   </div>
 
   <div class="tools">
-    <button class="ghost" id="syncBtn" type="button">↻ Reload from pages.json</button>
+    <button class="ghost" id="syncBtn" type="button" title="New pages sync automatically. Use this only to also remove pages that were deleted from pages.json.">↻ Full resync</button>
     <button class="ghost" id="exportBtn" type="button">⬇ Export pages.json</button>
   </div>
   <div class="foot" id="savedFoot"></div>
@@ -262,6 +262,28 @@ async function fetchManifest(){
     if(res.ok) return await res.json();
   }catch(e){}
   return null;
+}
+// Non-destructive: adds any pages present in pages.json but missing locally.
+// Never removes or overwrites local entries — that's what the "Full resync" button is for.
+async function mergeFromManifest(){
+  const raw = await fetchManifest();
+  if(!raw) return false;
+  let added = false;
+  CATS.forEach(k => {
+    const arr = raw[k];
+    if(!Array.isArray(arr)) return;
+    const localArr = state.categories[k];
+    const have = new Set(localArr.map(p => p.file.toLowerCase()));
+    arr.forEach(p => {
+      const file = typeof p === 'string' ? p : p.file;
+      if(!file || have.has(file.toLowerCase())) return;
+      const name = typeof p === 'string' ? titleCase(p) : (p.name || titleCase(p.file));
+      localArr.push({ id: (p && p.id) || uid(), name, file });
+      have.add(file.toLowerCase());
+      added = true;
+    });
+  });
+  return added;
 }
 // Live directory listing via GitHub's public contents API (read-only, no token needed for a public repo).
 // Unauthenticated requests are capped at 60/hour per IP — this only fires when an Add-page box opens.
@@ -448,14 +470,14 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
   const btn = document.getElementById('syncBtn');
   if(syncPending){
     clearTimeout(syncPending); syncPending = null;
-    btn.textContent = '↻ Reload from pages.json'; btn.classList.remove('confirming');
+    btn.textContent = '↻ Full resync'; btn.classList.remove('confirming');
     const raw = await fetchManifest();
     if(!raw){ toast('Could not load pages.json'); return; }
     state.categories = normalizeManifest(raw);
     save(); renderAll(); toast('Reloaded from pages.json');
   } else {
     btn.textContent = 'Tap again to overwrite local edits'; btn.classList.add('confirming');
-    syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Reload from pages.json'; btn.classList.remove('confirming'); }, 2500);
+    syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Full resync'; btn.classList.remove('confirming'); }, 2500);
   }
 });
 
@@ -478,6 +500,9 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     state = seedDefault();
     if(raw) state.categories = normalizeManifest(raw);
     save();
+  } else {
+    const added = await mergeFromManifest();
+    if(added){ save(); toast('Picked up new pages from pages.json'); }
   }
   if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
   renderAll();
