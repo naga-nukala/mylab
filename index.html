@@ -53,6 +53,7 @@
   .ib:focus-visible{outline:2px solid var(--mint);}
   .ib.del{color:var(--coral);}
   .ib.del.confirming{background:var(--coral);color:#2b0d05;border-radius:4px;}
+  .ib.clr{color:var(--mint);}
 
   details.addbox{flex:0 0 auto;margin-top:6px;max-height:130px;overflow-y:auto;}
   details.addbox summary{color:var(--mint);font-size:11px;cursor:pointer;list-style:none;}
@@ -329,6 +330,7 @@ function renderList(cat){
     ul.innerHTML = arr.map(p => `
       <li data-id="${p.id}">
         <a href="${cat}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
+        <button class="ib clr" type="button" data-act="clearcache" title="Clear cached copy" aria-label="Clear cached copy of ${esc(p.name)}">⟳</button>
         <button class="ib edit" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
         <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
       </li>`).join('');
@@ -408,6 +410,14 @@ grid.addEventListener('click', e => {
       } else {
         btn.textContent = '✔'; btn.classList.add('confirming'); toast('Tap ✔ again to delete');
         pendingDel[key] = setTimeout(() => { delete pendingDel[key]; btn.textContent = '✕'; btn.classList.remove('confirming'); }, 2500);
+      }
+    } else if(btn.dataset.act === 'clearcache'){
+      const p = arr[i];
+      const pageUrl = new URL(cat + '/' + p.file, location.href).href;
+      if(navigator.serviceWorker && navigator.serviceWorker.controller){
+        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ONE', url: pageUrl });
+      } else {
+        toast('Offline caching isn\'t active yet — reload this page once, then try again.');
       }
     }
     return;
@@ -507,6 +517,15 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
   renderAll();
 })();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => {
+    const d = e.data || {};
+    if(d.type === 'CLEAR_ONE_RESULT') toast(d.ok ? 'Cleared the cached copy — next open fetches the latest version.' : 'That page had no cached copy yet.');
+    if(d.type === 'CLEAR_ALL_RESULT') toast(d.ok ? 'Offline cache cleared.' : 'Nothing to clear.');
+  });
+}
 </script>
 </body>
 </html>
