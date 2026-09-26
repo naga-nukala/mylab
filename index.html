@@ -8,42 +8,53 @@
 <style>
   :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--coral:#ff8c70;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:16px 16px 80px;}
-  .wrap{max-width:720px;margin:0 auto;}
-  h1{font-size:20px;margin:0 0 2px;}
-  p.sub{color:var(--sub);font-size:12px;margin:0 0 16px;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:
+    radial-gradient(1200px 500px at 50% -120px, rgba(167,232,197,.08), transparent),
+    var(--bg);
+    color:var(--txt);padding:28px 16px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
 
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  @media(min-width:520px){.grid{grid-template-columns:repeat(4,1fr);}}
+  header{text-align:center;margin-bottom:26px;}
+  .logo{font-size:34px;line-height:1;}
+  h1{font-size:24px;margin:8px 0 4px;letter-spacing:.2px;}
+  .tag{color:var(--sub);font-size:13px;margin:0 0 10px;}
+  .stat-line{display:inline-block;font-size:11px;color:var(--mint);background:rgba(167,232,197,.1);border:1px solid rgba(167,232,197,.25);padding:4px 12px;border-radius:20px;}
 
-  .flip{perspective:1200px;height:230px;}
-  .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d;}
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:480px){.grid{grid-template-columns:1fr 1fr;}}
+  @media(min-width:760px){.grid{grid-template-columns:repeat(4,1fr);gap:16px;}}
+
+  .flip{perspective:1200px;height:190px;}
+  @media(min-width:480px){.flip{height:220px;}}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;}
   .flip.open .flip-inner{transform:rotateY(180deg);}
-  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;display:flex;flex-direction:column;}
+  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;display:flex;flex-direction:column;}
 
-  .front{background:var(--card);align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid var(--line);padding:12px;}
+  .front{background:linear-gradient(160deg,var(--card),#182335);align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid var(--line);padding:16px;transition:border-color .2s,transform .15s;}
+  .front:active{transform:scale(.98);}
   @media (hover:hover) and (pointer:fine){.front:hover{border-color:var(--mint);}}
-  .front .ic{font-size:30px;margin-bottom:6px;}
-  .front .nm{font-weight:700;font-size:15px;}
-  .front .ct{color:var(--sub);font-size:11px;margin-top:2px;}
+  .badge{width:48px;height:48px;border-radius:50%;background:rgba(167,232,197,.12);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:10px;}
+  .front .nm{font-weight:700;font-size:16px;}
+  .front .desc{color:var(--sub);font-size:11px;margin-top:3px;max-width:150px;}
+  .front .ct{color:var(--mint);font-size:11px;margin-top:8px;font-weight:600;}
 
-  .back{background:var(--card);transform:rotateY(180deg);border:1px solid var(--mint);padding:10px;}
+  .back{background:linear-gradient(160deg,var(--card),#182335);transform:rotateY(180deg);border:1px solid var(--mint);padding:12px;}
   .back-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex:0 0 auto;}
   .back-head b{font-size:13px;}
   .closeb{background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;}
   .closeb:focus-visible{outline:2px solid var(--mint);}
 
   .plist{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0;}
-  .plist li{display:flex;align-items:center;gap:2px;padding:4px 2px;border-bottom:1px solid var(--line);}
-  .plist li.empty{border:none;color:var(--sub);font-size:11px;justify-content:center;padding:10px 0;}
+  .plist li{display:flex;align-items:center;gap:2px;padding:5px 2px;border-bottom:1px solid var(--line);}
+  .plist li.empty{border:none;color:var(--sub);font-size:11px;justify-content:center;padding:12px 0;}
   .plist a{flex:1;min-width:0;color:var(--txt);text-decoration:none;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .plist a:active{color:var(--mint);}
-  .ib{flex:0 0 auto;width:20px;height:20px;border:none;background:none;color:var(--sub);font-size:12px;padding:0;cursor:pointer;}
+  .ib{flex:0 0 auto;width:22px;height:22px;border:none;background:none;color:var(--sub);font-size:12px;padding:0;cursor:pointer;}
   .ib:focus-visible{outline:2px solid var(--mint);}
   .ib.del{color:var(--coral);}
   .ib.del.confirming{background:var(--coral);color:#2b0d05;border-radius:4px;}
 
-  details.addbox{flex:0 0 auto;margin-top:6px;max-height:120px;overflow-y:auto;}
+  details.addbox{flex:0 0 auto;margin-top:6px;max-height:130px;overflow-y:auto;}
   details.addbox summary{color:var(--mint);font-size:11px;cursor:pointer;list-style:none;}
   details.addbox summary::-webkit-details-marker{display:none;}
   .af-pick{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
@@ -61,7 +72,7 @@
   .af-save{border:none;background:var(--mint);color:#052e16;font-weight:700;}
   .af-cancel{border:1px solid var(--line);background:transparent;color:var(--txt);}
 
-  .tools{display:flex;gap:8px;margin-top:22px;}
+  .tools{display:flex;gap:8px;margin-top:26px;}
   button.ghost{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--txt);font-size:12px;cursor:pointer;}
   button.ghost:focus-visible{outline:2px solid var(--mint);}
   button.ghost.confirming{border-color:var(--coral);color:var(--coral);}
@@ -72,13 +83,21 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🧪 My Lab</h1>
-  <p class="sub">Tap a category to open it. Add or remove pages from inside each card.</p>
+  <header>
+    <div class="logo">🧪</div>
+    <h1>My Lab</h1>
+    <p class="tag">Personal tools, organised by category. Tap a card to open it.</p>
+    <span class="stat-line" id="statLine">0 tools across 4 categories</span>
+  </header>
 
   <div class="grid" id="grid">
     <div class="flip" data-cat="money" id="card-money">
       <div class="flip-inner">
-        <div class="face front" data-role="front"><div class="ic">💰</div><div class="nm">Money</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face front" data-role="front">
+          <div class="badge">💰</div><div class="nm">Money</div>
+          <div class="desc">Budgets, calculators &amp; planning</div>
+          <div class="ct" data-role="count">0 tools</div>
+        </div>
         <div class="face back">
           <div class="back-head"><b>💰 Money</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
           <ul class="plist" data-role="list"></ul>
@@ -99,7 +118,11 @@
 
     <div class="flip" data-cat="health" id="card-health">
       <div class="flip-inner">
-        <div class="face front" data-role="front"><div class="ic">🩺</div><div class="nm">Health</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face front" data-role="front">
+          <div class="badge">🩺</div><div class="nm">Health</div>
+          <div class="desc">Fitness &amp; wellness tools</div>
+          <div class="ct" data-role="count">0 tools</div>
+        </div>
         <div class="face back">
           <div class="back-head"><b>🩺 Health</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
           <ul class="plist" data-role="list"></ul>
@@ -120,7 +143,11 @@
 
     <div class="flip" data-cat="career" id="card-career">
       <div class="flip-inner">
-        <div class="face front" data-role="front"><div class="ic">💼</div><div class="nm">Career</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face front" data-role="front">
+          <div class="badge">💼</div><div class="nm">Career</div>
+          <div class="desc">Growth &amp; productivity</div>
+          <div class="ct" data-role="count">0 tools</div>
+        </div>
         <div class="face back">
           <div class="back-head"><b>💼 Career</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
           <ul class="plist" data-role="list"></ul>
@@ -141,7 +168,11 @@
 
     <div class="flip" data-cat="passions" id="card-passions">
       <div class="flip-inner">
-        <div class="face front" data-role="front"><div class="ic">🎨</div><div class="nm">Passions</div><div class="ct" data-role="count">0 tools</div></div>
+        <div class="face front" data-role="front">
+          <div class="badge">🎨</div><div class="nm">Passions</div>
+          <div class="desc">Hobbies &amp; side projects</div>
+          <div class="ct" data-role="count">0 tools</div>
+        </div>
         <div class="face back">
           <div class="back-head"><b>🎨 Passions</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
           <ul class="plist" data-role="list"></ul>
@@ -196,7 +227,7 @@ function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2200);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2400);
 }
 
 function seedDefault(){
@@ -233,6 +264,7 @@ async function fetchManifest(){
   return null;
 }
 // Live directory listing via GitHub's public contents API (read-only, no token needed for a public repo).
+// Unauthenticated requests are capped at 60/hour per IP — this only fires when an Add-page box opens.
 async function fetchFolderFiles(cat){
   try{
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${cat}?ref=${REPO_BRANCH}`;
@@ -241,6 +273,14 @@ async function fetchFolderFiles(cat){
     const data = await res.json();
     if(!Array.isArray(data)) return null;
     return data.filter(f => f.type === 'file' && /\.html?$/i.test(f.name)).map(f => f.name);
+  }catch(e){ return null; }
+}
+// Confirms a linked page actually resolves on the live site (same-origin, so no CORS issue).
+// Catches typos and files added manually that don't exist / haven't deployed yet.
+async function checkFileExists(cat, file){
+  try{
+    const res = await fetch(`${cat}/${encodeURIComponent(file)}`, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
   }catch(e){ return null; }
 }
 
@@ -252,18 +292,26 @@ function save(){
   document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
 }
 
+function updateStatLine(){
+  const total = CATS.reduce((s, k) => s + state.categories[k].length, 0);
+  document.getElementById('statLine').textContent = total + (total === 1 ? ' tool across ' : ' tools across ') + CATS.length + ' categories';
+}
+
 function renderList(cat){
   const arr = state.categories[cat];
   const card = document.getElementById('card-' + cat);
   card.querySelector('[data-role="count"]').textContent = arr.length + (arr.length === 1 ? ' tool' : ' tools');
   const ul = card.querySelector('[data-role="list"]');
-  if(!arr.length){ ul.innerHTML = '<li class="empty">No pages yet</li>'; return; }
-  ul.innerHTML = arr.map(p => `
-    <li data-id="${p.id}">
-      <a href="${cat}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
-      <button class="ib edit" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
-      <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
-    </li>`).join('');
+  if(!arr.length){ ul.innerHTML = '<li class="empty">No pages yet</li>'; }
+  else{
+    ul.innerHTML = arr.map(p => `
+      <li data-id="${p.id}">
+        <a href="${cat}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
+        <button class="ib edit" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
+        <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
+      </li>`).join('');
+  }
+  updateStatLine();
 }
 function renderAll(){ CATS.forEach(renderList); }
 
@@ -380,6 +428,11 @@ grid.addEventListener('click', e => {
     fileIn.value = ''; nameIn.value = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
     box.open = false;
     save(); renderList(cat); loadPicker(cat, box);
+    // Confirm the link actually resolves on the live site; warn (don't block) if not.
+    setTimeout(async () => {
+      const ok = await checkFileExists(cat, file);
+      if(ok === false) toast('Heads up: /' + cat + '/' + file + ' isn\'t live yet — check the name or wait for Pages to deploy.');
+    }, 2600);
   }
 });
 
