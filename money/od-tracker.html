@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>OD Tracker</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
+    --danger:#f87171; --edit:#60a5fa; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:16px; padding-bottom:90px;}
+  h1{font-size:19px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#2a2f3a;
+    color:var(--text); padding:10px 18px; border-radius:20px; font-size:13px; border:1px solid var(--border);
+    box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:100; white-space:nowrap; display:none;}
+
+  .summary-row{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .sum-box{flex:1; min-width:130px; background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
+    border-radius:12px; padding:12px; text-align:center;}
+  .sum-box .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .sum-box .val{font-size:17px; font-weight:700; color:var(--accent); margin-top:4px;}
+  .sum-box.drawn .val{color:var(--warn);}
+
+  .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;}
+  .section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:12px 0 8px;}
+  .section-title:first-child{margin-top:0;}
+  .row{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+  .row > *{flex:1; min-width:110px;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  input, select, textarea{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card2); color:var(--text); font-size:14px; font-family:inherit;}
+  input[type=date]{color-scheme:dark;}
+  textarea{resize:vertical; min-height:44px;}
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  .hint{font-size:11px; color:var(--muted); margin-top:-4px; margin-bottom:8px;}
+  .btn{width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; margin-top:4px;}
+  .btn-primary{background:var(--accent2); color:#08170e;}
+  .preview-box{background:var(--card2); border:1px dashed var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px;}
+  .preview-row{display:flex; justify-content:space-between; font-size:12px; padding:3px 0; color:var(--muted);}
+  .preview-row .pv{color:var(--text); font-weight:600;}
+
+  .list-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;}
+  .list-header h2{font-size:14px; margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+  .filter-select{width:auto; padding:6px 10px; font-size:12px;}
+
+  .od-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px;}
+  .od-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .od-name{font-size:15px; font-weight:700;}
+  .od-owner{font-size:11px; color:var(--muted); margin-top:2px;}
+  .od-actions{display:flex; gap:6px; flex-shrink:0;}
+  .icon-btn{background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 9px; font-size:13px; cursor:pointer;}
+  .icon-btn.del{color:var(--danger);}
+  .icon-btn.edit{color:var(--edit);}
+  .icon-btn.del.confirming{background:var(--danger); color:#fff; border-color:var(--danger);}
+  .badges{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0;}
+  .badge{font-size:10px; padding:3px 9px; border-radius:10px; font-weight:700;}
+  .badge.status-active{background:rgba(74,222,128,.15); color:var(--accent);}
+  .badge.status-closed{background:rgba(148,163,184,.15); color:var(--muted);}
+  .badge.util-unused{background:rgba(96,165,250,.15); color:var(--edit);}
+  .badge.util-maxed{background:rgba(248,113,113,.15); color:var(--danger);}
+  .util-bar{height:8px; border-radius:4px; background:#334155; overflow:hidden; margin:8px 0 4px;}
+  .util-fill{height:100%; background:var(--accent);}
+  .util-text{display:flex; justify-content:space-between; font-size:11px; color:var(--muted);}
+  .od-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+  .stat{background:var(--card2); border-radius:8px; padding:8px 10px;}
+  .stat .slbl{font-size:10px; color:var(--muted); text-transform:uppercase;}
+  .stat .sval{font-size:14px; font-weight:700; margin-top:2px;}
+  .stat.hilite .sval{color:var(--warn);}
+  .od-meta{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.6;}
+  .od-meta b{color:var(--text); font-weight:600;}
+  .od-btns{display:flex; gap:6px; margin-top:10px;}
+  .od-btns button{flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--card2); color:var(--text); font-size:12px; cursor:pointer;}
+  .od-btns button.primary{border-color:var(--accent); color:var(--accent);}
+
+  .txn-panel{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:10px;}
+  .txn-title{font-size:12px; font-weight:700; margin-bottom:8px; color:var(--text);}
+  .txn-add-row{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .txn-add-row select, .txn-add-row input{flex:1; min-width:90px; padding:8px; font-size:13px;}
+  .txn-add-row button{flex:0 0 auto; padding:8px 12px; border:none; border-radius:8px; background:var(--accent2); color:#08170e; font-weight:700; font-size:13px; cursor:pointer;}
+  .txn-mini-stats{display:flex; gap:6px; margin-bottom:10px;}
+  .txn-mini{flex:1; background:var(--card); border-radius:8px; padding:6px 8px; text-align:center;}
+  .txn-mini .l{font-size:9px; color:var(--muted); text-transform:uppercase;}
+  .txn-mini .v{font-size:13px; font-weight:700; margin-top:2px;}
+  .txn-row{display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:7px 0; border-top:1px solid var(--border);}
+  .txn-row:first-of-type{border-top:none;}
+  .txn-tag{font-size:10px; padding:2px 7px; border-radius:6px; font-weight:700; margin-right:6px;}
+  .txn-tag.draw{background:rgba(251,191,36,.15); color:var(--warn);}
+  .txn-tag.repay{background:rgba(74,222,128,.15); color:var(--accent);}
+  .txn-empty{color:var(--muted); font-size:12px; text-align:center; padding:8px 0;}
+  .txn-del{background:none; border:none; color:var(--danger); cursor:pointer; font-size:12px;}
+
+  .empty{color:var(--muted); text-align:center; padding:30px 10px; font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<h1>🔓 OD Tracker</h1>
+<div class="sub">Overdraft-against-FD accounts — limit, utilization, and a full draw/repay ledger so principal paydowns are tracked.</div>
+
+<div class="summary-row">
+  <div class="sum-box"><div class="lbl">Total OD Limit</div><div class="val" id="sumLimit">₹0</div></div>
+  <div class="sum-box drawn"><div class="lbl">Total Outstanding</div><div class="val" id="sumDrawn">₹0</div></div>
+  <div class="sum-box"><div class="lbl">Available</div><div class="val" id="sumAvailable">₹0</div></div>
+  <div class="sum-box drawn"><div class="lbl">Interest Accrued</div><div class="val" id="sumInterest">₹0</div></div>
+</div>
+
+<div class="form-card">
+  <div class="section-title">OD Account</div>
+  <div class="row">
+    <div><label>Owner</label><input type="text" id="owner" placeholder="e.g. Myself, Spouse"></div>
+    <div><label>Bank / OD Account</label><input type="text" id="bankAccount" placeholder="e.g. SBI OD ••1234"></div>
+  </div>
+  <div class="row">
+    <div><label>Linked FD Reference</label><input type="text" id="linkedFD" placeholder="e.g. SBI FD ••5678"></div>
+    <div><label>Linked FD Amount (₹)</label><input type="number" id="linkedFDAmount" placeholder="e.g. 100000" oninput="updatePreview()"></div>
+  </div>
+  <div class="row">
+    <div><label>OD Limit % of FD</label><input type="number" id="limitPct" value="90" step="1" oninput="updatePreview()"></div>
+    <div>
+      <label>OD Limit (₹)</label>
+      <input type="number" id="odLimit" placeholder="auto-calculated" oninput="onLimitOverride()">
+    </div>
+    <div><label>Interest Rate (% p.a.)</label><input type="number" id="rate" step="0.01" placeholder="e.g. 8.5" oninput="updatePreview()"></div>
+  </div>
+  <div class="hint">OD Limit auto-fills at the % above once you enter the linked FD amount — edit it directly if your bank quoted a different figure.</div>
+
+  <div class="section-title">Opening Balance (optional)</div>
+  <div class="row">
+    <div><label>Already Drawn (₹)</label><input type="number" id="openingAmount" placeholder="0" oninput="updatePreview()"></div>
+    <div><label>As Of Date</label><input type="date" id="openingDate"></div>
+  </div>
+  <div class="hint">If this OD already has an outstanding balance, log it here as the first entry in its ledger — you can add draws and repayments afterward from the account card.</div>
+
+  <div class="preview-box" id="previewBox" style="display:none;">
+    <div class="preview-row"><span>Available Limit</span><span class="pv" id="pvAvailable">-</span></div>
+    <div class="preview-row"><span>Utilization</span><span class="pv" id="pvUtil">-</span></div>
+  </div>
+
+  <div class="section-title">Status &amp; Purpose</div>
+  <div class="row">
+    <div>
+      <label>Status</label>
+      <select id="status">
+        <option value="Active">Active</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </div>
+    <div><label>Purpose</label><input type="text" id="purpose" placeholder="e.g. Bridge funding, avoided FD break"></div>
+  </div>
+  <div class="row">
+    <div><label>Comments</label><textarea id="comments" placeholder="Any notes"></textarea></div>
+  </div>
+
+  <button class="btn btn-primary" id="saveBtn" onclick="saveOD()">+ Add OD Account</button>
+</div>
+
+<div class="list-header">
+  <h2>Your OD Accounts</h2>
+  <select class="filter-select" id="statusFilter" onchange="renderList()">
+    <option value="">All Statuses</option>
+    <option value="Active">Active</option>
+    <option value="Closed">Closed</option>
+  </select>
+</div>
+<div id="odList"></div>
+
+<script>
+const KEY = 'od_tracker_v2';
+const OLD_KEY = 'od_tracker_v1';
+let ods = loadData();
+let editingId = null;
+let openTxnId = null;
+let pendingDeletes = {};
+let limitManuallyEdited = false;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(ods)); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+
+function loadData(){
+  let raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if(!raw){
+    // migrate from the older single-balance format, if present
+    const old = JSON.parse(localStorage.getItem(OLD_KEY) || '[]');
+    raw = old.map(f => {
+      const transactions = (f.amountDrawn > 0)
+        ? [{ id: uid(), type:'Draw', amount:f.amountDrawn, date:f.drawDate || todayStr() }]
+        : [];
+      const { amountDrawn, drawDate, ...rest } = f;
+      return { ...rest, transactions };
+    });
+  }
+  return raw.map(f => ({ transactions: [], ...f }));
+}
+
+function ordinal(n){
+  const s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+function fmtDate(dateStr){
+  if(!dateStr) return '-';
+  const d = new Date(dateStr);
+  if(isNaN(d)) return '-';
+  const day = d.getDate();
+  const month = d.toLocaleDateString('en-IN', {month:'short'});
+  const year = d.getFullYear();
+  return `${ordinal(day)} ${month} ${year}`;
+}
+function daysBetweenDates(a, b){
+  return Math.max(0, Math.floor((new Date(b) - new Date(a)) / (1000*60*60*24)));
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  t.textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2000);
+}
+
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key]);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  if(btn){ btn.textContent = '✔'; btn.classList.add('confirming'); }
+  showToast('Tap again to confirm delete');
+  pendingDeletes[key] = setTimeout(() => {
+    delete pendingDeletes[key];
+    if(btn){ btn.textContent = '✕'; btn.classList.remove('confirming'); }
+  }, 2500);
+}
+
+function onLimitOverride(){
+  limitManuallyEdited = true;
+  updatePreview();
+}
+
+function readForm(){
+  return {
+    owner: document.getElementById('owner').value.trim(),
+    bankAccount: document.getElementById('bankAccount').value.trim(),
+    linkedFD: document.getElementById('linkedFD').value.trim(),
+    linkedFDAmount: parseFloat(document.getElementById('linkedFDAmount').value) || 0,
+    limitPct: parseFloat(document.getElementById('limitPct').value) || 90,
+    odLimit: parseFloat(document.getElementById('odLimit').value) || 0,
+    rate: parseFloat(document.getElementById('rate').value),
+    openingAmount: parseFloat(document.getElementById('openingAmount').value) || 0,
+    openingDate: document.getElementById('openingDate').value || todayStr(),
+    status: document.getElementById('status').value,
+    purpose: document.getElementById('purpose').value.trim(),
+    comments: document.getElementById('comments').value.trim()
+  };
+}
+
+function isValid(f){
+  return f.owner && f.bankAccount && f.odLimit > 0 && Number.isFinite(f.rate) && f.rate > 0;
+}
+
+// ---------- Ledger-based computation ----------
+function computeOD(od){
+  const rate = od.rate;
+  const txns = [...(od.transactions||[])].sort((a,b) => a.date.localeCompare(b.date));
+  let balance = 0, interestAccrued = 0, prevDate = null;
+  let lifetimeDrawn = 0, lifetimeRepaid = 0;
+
+  txns.forEach(t => {
+    if(prevDate){
+      const days = daysBetweenDates(prevDate, t.date);
+      interestAccrued += balance * (rate/100/365) * days;
+    }
+    if(t.type === 'Draw'){ balance += t.amount; lifetimeDrawn += t.amount; }
+    else { balance = Math.max(0, balance - t.amount); lifetimeRepaid += t.amount; }
+    prevDate = t.date;
+  });
+
+  if(prevDate){
+    const daysToNow = daysBetweenDates(prevDate, todayStr());
+    interestAccrued += balance * (rate/100/365) * daysToNow;
+  }
+
+  const outstanding = balance;
+  const available = Math.max(0, od.odLimit - outstanding);
+  const utilPct = od.odLimit > 0 ? Math.min(100, (outstanding/od.odLimit)*100) : 0;
+  const dailyCost = outstanding * (rate/100/365);
+  const daysSinceLast = prevDate ? daysBetweenDates(prevDate, todayStr()) : 0;
+
+  return { outstanding, interestAccrued, available, utilPct, dailyCost, daysSinceLast, lastDate: prevDate, lifetimeDrawn, lifetimeRepaid };
+}
+
+function updatePreview(){
+  if(!limitManuallyEdited){
+    const fdAmt = parseFloat(document.getElementById('linkedFDAmount').value) || 0;
+    const pct = parseFloat(document.getElementById('limitPct').value) || 90;
+    if(fdAmt > 0){
+      document.getElementById('odLimit').value = Math.round(fdAmt * pct / 100);
+    }
+  }
+  const f = readForm();
+  const box = document.getElementById('previewBox');
+  if(!f.odLimit){ box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const available = Math.max(0, f.odLimit - f.openingAmount);
+  const utilPct = f.odLimit > 0 ? Math.min(100, (f.openingAmount/f.odLimit)*100) : 0;
+  document.getElementById('pvAvailable').textContent = fmt(available);
+  document.getElementById('pvUtil').textContent = utilPct.toFixed(1) + '%';
+}
+
+function clearForm(){
+  ['owner','bankAccount','linkedFD','linkedFDAmount','odLimit','rate','openingAmount','purpose','comments'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('limitPct').value = '90';
+  document.getElementById('openingDate').value = '';
+  document.getElementById('status').value = 'Active';
+  document.getElementById('previewBox').style.display = 'none';
+  limitManuallyEdited = false;
+  updatePreview();
+}
+
+function saveOD(){
+  const f = readForm();
+  if(!isValid(f)){ showToast('Fill owner, bank, OD limit, and interest rate.'); return; }
+
+  const { openingAmount, openingDate, ...core } = f;
+
+  if(editingId){
+    const idx = ods.findIndex(x => x.id === editingId);
+    ods[idx] = { ...ods[idx], ...core };
+    editingId = null;
+    document.getElementById('saveBtn').textContent = '+ Add OD Account';
+  } else {
+    const transactions = openingAmount > 0 ? [{ id: uid(), type:'Draw', amount:openingAmount, date:openingDate }] : [];
+    ods.push({ id: uid(), ...core, transactions });
+  }
+  save();
+  clearForm();
+  renderAll();
+}
+
+function editOD(id){
+  const f = ods.find(x => x.id === id);
+  if(!f) return;
+  document.getElementById('owner').value = f.owner;
+  document.getElementById('bankAccount').value = f.bankAccount;
+  document.getElementById('linkedFD').value = f.linkedFD || '';
+  document.getElementById('linkedFDAmount').value = f.linkedFDAmount || '';
+  document.getElementById('limitPct').value = f.limitPct || 90;
+  document.getElementById('odLimit').value = f.odLimit;
+  document.getElementById('rate').value = f.rate;
+  document.getElementById('openingAmount').value = '';
+  document.getElementById('openingDate').value = '';
+  document.getElementById('status').value = f.status;
+  document.getElementById('purpose').value = f.purpose || '';
+  document.getElementById('comments').value = f.comments || '';
+  editingId = id;
+  limitManuallyEdited = true;
+  document.getElementById('saveBtn').textContent = '✓ Update OD Account';
+  updatePreview();
+  window.scrollTo({top:0, behavior:'smooth'});
+  showToast('Editing account details — use the card below to log draws/repayments');
+}
+
+function deleteOD(id, btn){
+  confirmDelete('od-'+id, btn, () => {
+    ods = ods.filter(x => x.id !== id);
+    if(openTxnId === id) openTxnId = null;
+    save();
+    renderAll();
+    showToast('OD account deleted');
+  });
+}
+
+// ---------- Transaction ledger ----------
+function toggleTxn(id){
+  openTxnId = openTxnId === id ? null : id;
+  renderList();
+}
+
+function addTransaction(odId){
+  const od = ods.find(x => x.id === odId);
+  if(!od) return;
+  const type = document.getElementById(`txn-type-${odId}`).value;
+  const amount = parseFloat(document.getElementById(`txn-amount-${odId}`).value) || 0;
+  const date = document.getElementById(`txn-date-${odId}`).value || todayStr();
+
+  if(amount <= 0){ showToast('Enter an amount greater than zero.'); return; }
+
+  od.transactions = od.transactions || [];
+  od.transactions.push({ id: uid(), type, amount, date });
+  save();
+  renderAll();
+}
+
+function deleteTransaction(odId, txnId, btn){
+  confirmDelete('txn-'+odId+'-'+txnId, btn, () => {
+    const od = ods.find(x => x.id === odId);
+    if(!od) return;
+    od.transactions = (od.transactions || []).filter(t => t.id !== txnId);
+    save();
+    renderAll();
+    showToast('Entry deleted');
+  });
+}
+
+function renderTxnPanel(od){
+  const r = computeOD(od);
+  const txns = [...(od.transactions||[])].sort((a,b) => b.date.localeCompare(a.date));
+  const rows = txns.length
+    ? txns.map(t => `
+        <div class="txn-row">
+          <span><span class="txn-tag ${t.type==='Draw'?'draw':'repay'}">${t.type.toUpperCase()}</span>${fmtDate(t.date)}</span>
+          <span>${fmt(t.amount)} <button class="txn-del" onclick="deleteTransaction('${od.id}','${t.id}', this)">✕</button></span>
+        </div>`).join('')
+    : '<div class="txn-empty">No entries yet — log a draw or repayment below.</div>';
+
+  return `
+    <div class="txn-panel">
+      <div class="txn-title">📒 Ledger — ${escapeHtml(od.bankAccount)}</div>
+      <div class="txn-mini-stats">
+        <div class="txn-mini"><div class="l">Lifetime Drawn</div><div class="v">${fmt(r.lifetimeDrawn)}</div></div>
+        <div class="txn-mini"><div class="l">Lifetime Repaid</div><div class="v">${fmt(r.lifetimeRepaid)}</div></div>
+        <div class="txn-mini"><div class="l">Outstanding Now</div><div class="v">${fmt(r.outstanding)}</div></div>
+      </div>
+      <div class="txn-add-row">
+        <select id="txn-type-${od.id}">
+          <option value="Draw">Draw</option>
+          <option value="Repay">Repay (backfill)</option>
+        </select>
+        <input type="number" id="txn-amount-${od.id}" placeholder="Amount ₹">
+        <input type="date" id="txn-date-${od.id}" value="${todayStr()}">
+        <button onclick="addTransaction('${od.id}')">+ Add</button>
+      </div>
+      ${rows}
+    </div>
+  `;
+}
+
+function renderList(){
+  const filter = document.getElementById('statusFilter').value;
+  const list = document.getElementById('odList');
+  let filtered = filter ? ods.filter(f => f.status === filter) : ods;
+  filtered = [...filtered].sort((a,b) => computeOD(b).outstanding - computeOD(a).outstanding);
+
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="empty">No OD accounts added yet. Add your first one above.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(f => {
+    const r = computeOD(f);
+    const statusClass = 'status-' + f.status.toLowerCase();
+    let utilBadge = '';
+    if(r.outstanding <= 0) utilBadge = '<span class="badge util-unused">UNUSED</span>';
+    else if(r.utilPct >= 95) utilBadge = '<span class="badge util-maxed">MAXED OUT</span>';
+    const barColor = r.utilPct >= 90 ? 'var(--danger)' : r.utilPct >= 60 ? 'var(--warn)' : 'var(--accent)';
+
+    return `
+      <div class="od-card">
+        <div class="od-top">
+          <div>
+            <span class="od-name">${escapeHtml(f.bankAccount)}</span>
+            <div class="od-owner">${escapeHtml(f.owner)}${f.linkedFD ? ' · against ' + escapeHtml(f.linkedFD) : ''}${f.purpose ? ' · ' + escapeHtml(f.purpose) : ''}</div>
+          </div>
+          <div class="od-actions">
+            <button class="icon-btn edit" onclick="editOD('${f.id}')">✎</button>
+            <button class="icon-btn del" onclick="deleteOD('${f.id}', this)">✕</button>
+          </div>
+        </div>
+        <div class="badges">
+          <span class="badge ${statusClass}">${escapeHtml(f.status).toUpperCase()}</span>
+          ${utilBadge}
+        </div>
+        <div class="util-bar"><div class="util-fill" style="width:${r.utilPct.toFixed(1)}%;background:${barColor};"></div></div>
+        <div class="util-text"><span>${r.utilPct.toFixed(0)}% utilized</span><span>Available ${fmt(r.available)}</span></div>
+        <div class="od-stats">
+          <div class="stat"><div class="slbl">OD Limit</div><div class="sval">${fmt(f.odLimit)}</div></div>
+          <div class="stat hilite"><div class="slbl">Outstanding</div><div class="sval">${fmt(r.outstanding)}</div></div>
+          <div class="stat"><div class="slbl">Rate</div><div class="sval">${f.rate}% p.a.</div></div>
+          <div class="stat hilite"><div class="slbl">Interest Accrued</div><div class="sval">${fmt(r.interestAccrued)}</div></div>
+        </div>
+        <div class="od-meta">
+          ${r.lastDate ? `Last ledger entry <b>${fmtDate(r.lastDate)}</b> (${r.daysSinceLast} days ago) · ~${fmt(r.dailyCost)}/day interest on current balance` : 'No ledger entries yet'}
+          ${f.comments ? '<br>💬 ' + escapeHtml(f.comments) : ''}
+        </div>
+        <div class="od-btns">
+          <button class="primary" onclick="toggleTxn('${f.id}')">${openTxnId===f.id ? 'Hide Ledger' : '📒 Draws / Repayments'}</button>
+        </div>
+        ${openTxnId === f.id ? renderTxnPanel(f) : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderSummary(){
+  let totalLimit = 0, totalOutstanding = 0, totalInterest = 0;
+  ods.forEach(f => {
+    if(f.status === 'Closed') return;
+    const r = computeOD(f);
+    totalLimit += f.odLimit;
+    totalOutstanding += r.outstanding;
+    totalInterest += r.interestAccrued;
+  });
+  document.getElementById('sumLimit').textContent = fmt(totalLimit);
+  document.getElementById('sumDrawn').textContent = fmt(totalOutstanding);
+  document.getElementById('sumAvailable').textContent = fmt(totalLimit - totalOutstanding);
+  document.getElementById('sumInterest').textContent = fmt(totalInterest);
+}
+
+function renderAll(){
+  renderSummary();
+  renderList();
+}
+
+renderAll();
+</script>
+</body>
+</html>

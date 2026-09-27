@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sleep Score — Little Lab</title>
+<style>
+  :root{
+    --bg:#0d0f12;
+    --card:#171a1f;
+    --card-2:#1e2229;
+    --border:#2a2f38;
+    --text:#e9ecef;
+    --text-dim:#9aa3ad;
+    --mint:#a7e8c5;
+    --mint-dim:#7fc9a3;
+    --coral:#ff8c70;
+    --coral-dim:#cc6f59;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px 14px 60px;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1{font-size:1.3rem; margin:0 0 2px;}
+  .sub{color:var(--text-dim); font-size:.82rem; margin-bottom:18px;}
+  .card{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:16px; margin-bottom:16px;
+  }
+  .summary{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+  }
+  .summary .stat{text-align:center;}
+  .summary .stat .num{font-size:1.5rem; font-weight:700; color:var(--mint);}
+  .summary .stat .lbl{font-size:.68rem; color:var(--text-dim); margin-top:2px;}
+  label{display:block; font-size:.78rem; color:var(--text-dim); margin:12px 0 5px;}
+  label:first-of-type{margin-top:0;}
+  .field-hint{font-size:.68rem; color:var(--text-dim); margin-top:5px; line-height:1.3;}
+  input[type=date], input[type=time], input[type=number], select, textarea{
+    width:100%; background:var(--card-2); border:1px solid var(--border);
+    color:var(--text); padding:10px 11px; border-radius:9px; font-size:.92rem;
+    font-family:inherit;
+  }
+  textarea{resize:vertical; min-height:50px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .toggles{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .chip{
+    display:flex; align-items:center; gap:6px;
+    background:var(--card-2); border:1px solid var(--border);
+    padding:8px 12px; border-radius:20px; font-size:.82rem;
+    cursor:pointer; user-select:none; transition:background .15s,border-color .15s;
+  }
+  .chip input{display:none;}
+  .chip.on{background:rgba(167,232,197,.14); border-color:var(--mint-dim); color:var(--mint);}
+  @media (hover:hover) and (pointer:fine){
+    .chip:hover{border-color:var(--mint-dim);}
+    button:hover{filter:brightness(1.08);}
+  }
+  .score-preview{
+    display:flex; align-items:center; gap:16px; margin:16px 0 4px;
+    background:var(--card-2); border:1px solid var(--border);
+    border-radius:12px; padding:14px 16px;
+  }
+  .score-preview .big{font-size:2.4rem; font-weight:800; line-height:1;}
+  .score-preview .meta{font-size:.78rem; color:var(--text-dim);}
+  button.primary{
+    width:100%; margin-top:14px; padding:13px; border:none; border-radius:10px;
+    background:var(--mint); color:#0d0f12; font-weight:700; font-size:.95rem;
+    cursor:pointer;
+  }
+  button.ghost{
+    padding:7px 12px; border-radius:8px; border:1px solid var(--border);
+    background:transparent; color:var(--text-dim); font-size:.75rem; cursor:pointer;
+  }
+  button.ghost.danger{color:var(--coral);}
+  button.ghost.danger.confirm{background:var(--coral); color:#0d0f12; border-color:var(--coral);}
+  .entry{
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:13px 14px; margin-bottom:10px;
+  }
+  .entry-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .entry-date{font-weight:600; font-size:.9rem;}
+  .entry-sub{color:var(--text-dim); font-size:.75rem; margin-top:1px;}
+  .entry-score{font-size:1.4rem; font-weight:800; text-align:right;}
+  .entry-tags{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px;}
+  .tag{
+    font-size:.68rem; padding:3px 8px; border-radius:20px;
+    background:var(--card-2); color:var(--text-dim); border:1px solid var(--border);
+  }
+  .tag.bad{color:var(--coral); border-color:var(--coral-dim);}
+  .tag.good{color:var(--mint); border-color:var(--mint-dim);}
+  .suggestions{margin-top:10px; padding-top:10px; border-top:1px solid var(--border);}
+  .suggestions .tip{font-size:.78rem; color:var(--text-dim); margin-bottom:6px; padding-left:14px; position:relative;}
+  .suggestions .tip:before{content:"→"; position:absolute; left:0; color:var(--mint);}
+  .suggestions .tip.warn:before{color:var(--coral);}
+  .entry-actions{display:flex; gap:8px; margin-top:10px;}
+  .empty{color:var(--text-dim); font-size:.85rem; text-align:center; padding:20px 0;}
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+    background:var(--card-2); border:1px solid var(--border); color:var(--text);
+    padding:10px 18px; border-radius:20px; font-size:.82rem;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+    z-index:50;
+  }
+  .toast.show{opacity:1;}
+  .section-title{font-size:.95rem; font-weight:700; margin:22px 0 10px;}
+</style>
+</head>
+<body>
+
+<h1>Sleep Score</h1>
+<div class="sub">Log last night, get a score, and see what to fix — grounded in Matthew Walker's sleep science.</div>
+
+<div class="card">
+  <div class="summary">
+    <div class="stat"><div class="num" id="statAvg">–</div><div class="lbl">7-night avg</div></div>
+    <div class="stat"><div class="num" id="statLast">–</div><div class="lbl">last night</div></div>
+    <div class="stat"><div class="num" id="statStreak">–</div><div class="lbl">good-sleep streak</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <label>Date</label>
+  <input type="date" id="fDate">
+
+  <div class="row2">
+    <div><label>Bed time</label><input type="time" id="fBed" value="23:00"></div>
+    <div>
+      <label>Wake time</label>
+      <input type="time" id="fWake" value="07:00">
+      <div class="field-hint">Woke up early and fell back asleep? Enter that early wake-up time here, not when you finally got up.</div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div><label>Time to fall asleep (min)</label><input type="number" id="fLatency" min="0" placeholder="e.g. 15"></div>
+    <div><label>Morning/day sunlight (min)</label><input type="number" id="fSunlight" min="0" placeholder="e.g. 20"></div>
+  </div>
+
+  <div class="row2">
+    <div>
+      <label>Stress / cortisol before bed</label>
+      <select id="fStress">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div>
+      <label>Last caffeine / tea time</label>
+      <input type="time" id="fCaffeine">
+    </div>
+  </div>
+
+  <div class="row2">
+    <div>
+      <label>Room temperature</label>
+      <select id="fRoomTemp">
+        <option value="cool">Cool (ideal)</option>
+        <option value="moderate" selected>Moderate</option>
+        <option value="warm">Warm / stuffy</option>
+      </select>
+    </div>
+    <div>
+      <label>Screens before bed</label>
+      <select id="fScreens">
+        <option value="none">None</option>
+        <option value="some">Some</option>
+        <option value="lots">Right up until bed</option>
+      </select>
+    </div>
+  </div>
+
+  <label>Exercise today</label>
+  <select id="fExercise">
+    <option value="none">None</option>
+    <option value="morning">Morning / afternoon</option>
+    <option value="evening_light">Evening — light</option>
+    <option value="evening_intense">Evening — intense, close to bed</option>
+  </select>
+
+  <label>Dreams</label>
+  <select id="fDreams">
+    <option value="yes">Remembered dreams</option>
+    <option value="vague">Vague / partial</option>
+    <option value="no">No recall</option>
+    <option value="none">No dreams</option>
+  </select>
+
+  <label>Tonight's flags</label>
+  <div class="toggles">
+    <label class="chip" data-chip="fWindDown"><input type="checkbox" id="fWindDown"><span>Did a wind-down routine</span></label>
+    <label class="chip" data-chip="fSpicy"><input type="checkbox" id="fSpicy"><span>Spicy food</span></label>
+    <label class="chip" data-chip="fChocolate"><input type="checkbox" id="fChocolate"><span>Chocolate</span></label>
+    <label class="chip" data-chip="fLateMeal"><input type="checkbox" id="fLateMeal"><span>Heavy/late meal</span></label>
+    <label class="chip" data-chip="fAlcohol"><input type="checkbox" id="fAlcohol"><span>Alcohol</span></label>
+    <label class="chip" data-chip="fWater"><input type="checkbox" id="fWater"><span>Water/liquids right before bed</span></label>
+    <label class="chip" data-chip="fRacingThoughts"><input type="checkbox" id="fRacingThoughts"><span>Racing thoughts about the day</span></label>
+    <label class="chip" data-chip="fIntercourse"><input type="checkbox" id="fIntercourse"><span>Intercourse</span></label>
+  </div>
+
+  <label>Notes (optional)</label>
+  <textarea id="fNotes" placeholder="Anything else worth remembering..."></textarea>
+
+  <div class="score-preview">
+    <div class="big" id="previewScore" style="color:var(--mint);">–</div>
+    <div class="meta" id="previewMeta">Fill in the fields to see a live score</div>
+  </div>
+
+  <button class="primary" id="btnSave">Log this night</button>
+</div>
+
+<div class="section-title">History</div>
+<div id="list"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'as_sleepscore_v1';
+let entries = [];
+let editingId = null;
+let pendingDelete = null;
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){ entries = []; }
+}
+function persist(){
+  localStorage.setItem(KEY, JSON.stringify(entries));
+}
+
+function ordinal(d){ return d + 'th'; }
+function fmtDate(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${ordinal(d)} ${months[m-1]} ${y}`;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._h);
+  toast._h = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function toMinutes(hhmm){
+  const [h,m] = hhmm.split(':').map(Number);
+  return h*60+m;
+}
+function durationHours(bed, wake){
+  let b = toMinutes(bed), w = toMinutes(wake);
+  if (w <= b) w += 24*60;
+  return (w-b)/60;
+}
+function gapHours(caffeine, bed){
+  if (!caffeine) return 99;
+  let c = toMinutes(caffeine), b = toMinutes(bed);
+  if (b < c) b += 24*60; // caffeine earlier same day, bed later
+  return (b-c)/60;
+}
+
+function circularDiff(a, b){
+  const d = Math.abs(a-b);
+  return Math.min(d, 1440-d);
+}
+function getRecentNights(dateStr, excludeId){
+  return entries
+    .filter(x => x.id !== excludeId && x.date < dateStr)
+    .sort((a,b) => b.date.localeCompare(a.date))
+    .slice(0, 5)
+    .map(fromStored);
+}
+function consistencyScore(e, excludeId){
+  const hist = e.date ? getRecentNights(e.date, excludeId) : [];
+  if (hist.length < 2) return { points: 12, tip: null }; // not enough data to judge yet
+  const avgBed = hist.reduce((s,h)=>s+toMinutes(h.bedTime),0) / hist.length;
+  const avgWake = hist.reduce((s,h)=>s+toMinutes(h.wakeTime),0) / hist.length;
+  const avgDiff = (circularDiff(toMinutes(e.bedTime), avgBed) + circularDiff(toMinutes(e.wakeTime), avgWake)) / 2;
+  let points;
+  if (avgDiff <= 20) points = 12;
+  else if (avgDiff >= 90) points = 0;
+  else points = 12 * (1 - (avgDiff-20)/70);
+  points = Math.max(0, Math.round(points));
+  const tip = avgDiff > 45
+    ? { warn:true, text:`Your bed/wake time drifted ~${Math.round(avgDiff)} min from your recent average — Walker's research treats a consistent sleep schedule, even on weekends, as being about as important as total sleep duration.` }
+    : null;
+  return { points, tip };
+}
+
+function scoreEntry(e, excludeId){
+  const tips = []; // {text, warn}
+  let score = 0;
+
+  // Duration — 18 pts
+  const dur = durationHours(e.bedTime, e.wakeTime);
+  let durScore;
+  if (dur >= 7 && dur <= 9) durScore = 18;
+  else {
+    const diff = dur < 7 ? (7-dur) : (dur-9);
+    durScore = Math.max(0, 18 - diff*5);
+  }
+  score += durScore;
+  if (dur < 7) tips.push({warn:true, text:`Only ${dur.toFixed(1)}h in bed — Walker's data shows under 7h consistently cuts into REM sleep, hurting memory and emotional regulation. Try shifting bedtime earlier.`});
+  else if (dur > 9.5) tips.push({warn:false, text:`${dur.toFixed(1)}h is on the long side — fine occasionally, but if it's frequent it can signal poor sleep quality driving oversleep.`});
+
+  // Consistency — 12 pts
+  const cons = consistencyScore(e, excludeId);
+  score += cons.points;
+  if (cons.tip) tips.push(cons.tip);
+
+  // Latency — 6 pts
+  const lat = Number(e.latency) || 0;
+  const latScore = lat <= 20 ? 6 : Math.max(0, 6 - (lat-20)/10);
+  score += latScore;
+  if (lat > 20) tips.push({warn:true, text:`${lat} min to fall asleep is high — a consistent wind-down routine and a cool, dark room help lower sleep latency.`});
+
+  // Caffeine — 8 pts
+  const gap = gapHours(e.caffeineTime, e.bedTime);
+  let caffScore = 8;
+  if (e.caffeineTime && gap < 6){ caffScore = Math.max(0, (gap/6)*8); }
+  score += caffScore;
+  if (e.caffeineTime && gap < 6) tips.push({warn:true, text:`Caffeine has a ~5-6 hour half-life — having it ${gap.toFixed(1)}h before bed likely left some still in your system. Try to cut it off earlier.`});
+
+  // Alcohol — 8 pts
+  const alcScore = e.alcohol ? 2 : 8;
+  score += alcScore;
+  if (e.alcohol) tips.push({warn:true, text:`Alcohol can help you fall asleep faster but fragments and suppresses REM sleep in the second half of the night — try skipping it or leaving a bigger gap before bed.`});
+
+  // Food — 5 pts
+  let foodScore = 5;
+  if (e.spicy){ foodScore -= 2; tips.push({warn:true, text:`Spicy food raises core body temperature, which can delay sleep onset — best avoided close to bedtime.`}); }
+  if (e.chocolate){ foodScore -= 2; tips.push({warn:true, text:`Chocolate carries caffeine and theobromine — worth skipping in the evening.`}); }
+  if (e.lateMeal){ foodScore -= 2; tips.push({warn:true, text:`A heavy meal close to bedtime keeps digestion active and can fragment sleep — aim to eat 2-3h before bed.`}); }
+  foodScore = Math.max(0, foodScore);
+  score += foodScore;
+
+  // Water/liquids before bed — 4 pts
+  const waterScore = e.water ? 0 : 4;
+  score += waterScore;
+  if (e.water) tips.push({warn:true, text:`Drinking water or other liquids right before bed raises the odds of waking to use the bathroom, fragmenting sleep — try to finish drinks 1-2h before bed.`});
+
+  // Racing thoughts about the day — 4 pts
+  const thoughtsScore = e.racingThoughts ? 0 : 4;
+  score += thoughtsScore;
+  if (e.racingThoughts) tips.push({warn:true, text:`Ruminating on the day's events keeps the mind aroused right when it needs to quiet down — try a quick brain-dump or worry list on paper before bed to offload those thoughts.`});
+
+  // Sunlight — 8 pts
+  const sun = Number(e.sunlight) || 0;
+  const sunScore = sun >= 30 ? 8 : (sun >= 10 ? 4 : 0);
+  score += sunScore;
+  if (sun < 30) tips.push({warn:true, text:`Only ${sun} min of daylight — get at least 20-30 min of natural sunlight, ideally in the morning. It anchors your circadian rhythm so melatonin releases on schedule at night.`});
+
+  // Wind-down — 5 pts
+  const wdScore = e.windDown ? 5 : 0;
+  score += wdScore;
+  if (!e.windDown) tips.push({warn:true, text:`No wind-down routine logged — dim lights and no screens for ~30 min before bed signals your brain it's time to sleep.`});
+
+  // Screens / blue light — 7 pts
+  const screenScore = e.screens === 'none' ? 7 : (e.screens === 'some' ? 3 : 0);
+  score += screenScore;
+  if (e.screens === 'lots') tips.push({warn:true, text:`Screens right up until bed mean heavy blue-light exposure, which directly suppresses melatonin — try stopping at least 30-60 min before bed, or use night mode.`});
+  else if (e.screens === 'some') tips.push({warn:false, text:`Some screen time before bed still adds blue light — cutting it a bit earlier would help melatonin release on schedule.`});
+
+  // Room temperature — 5 pts
+  const roomScore = e.roomTemp === 'cool' ? 5 : (e.roomTemp === 'moderate' ? 2 : 0);
+  score += roomScore;
+  if (e.roomTemp === 'warm') tips.push({warn:true, text:`A warm room fights the natural drop in core body temperature you need to fall asleep — aim for roughly 65-68°F (18-20°C).`});
+  else if (e.roomTemp === 'moderate') tips.push({warn:false, text:`A slightly cooler room could help you fall asleep a bit faster.`});
+
+  // Exercise timing — 5 pts
+  let exScore, exTip = null;
+  if (e.exercise === 'morning'){ exScore = 5; }
+  else if (e.exercise === 'evening_light'){ exScore = 4; }
+  else if (e.exercise === 'evening_intense'){ exScore = 1; exTip = {warn:true, text:`Vigorous exercise close to bedtime raises cortisol and core temperature, which can delay sleep onset — try to finish intense workouts at least 2-3h before bed.`}; }
+  else { exScore = 2; exTip = {warn:false, text:`Regular exercise, even earlier in the day, is linked to deeper, more efficient sleep — worth building in when you can.`}; }
+  score += exScore;
+  if (exTip) tips.push(exTip);
+
+  // Stress — 5 pts
+  const stressScore = e.stress === 'low' ? 5 : (e.stress === 'medium' ? 2 : 0);
+  score += stressScore;
+  if (e.stress !== 'low') tips.push({warn:true, text:`Elevated stress raises cortisol, which competes directly with melatonin — a short breathing or journaling practice before bed can help.`});
+
+  // Dreams — informational only
+  if (e.dreams === 'yes') tips.push({warn:false, text:`Dream recall is a good sign — it usually means you reached REM sleep, important for emotional processing and memory consolidation.`});
+
+  // Intercourse — small bonus, informational
+  if (e.intercourse){ score += 3; tips.push({warn:false, text:`Intercourse before sleep can release oxytocin and prolactin, both associated with easier sleep onset.`}); }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  if (tips.filter(t=>t.warn).length === 0){
+    tips.unshift({warn:false, text:`Everything lines up — duration, consistency, light, and timing were all in a good range.`});
+  }
+
+  return { score, tips };
+}
+
+function scoreColor(s){
+  if (s >= 80) return 'var(--mint)';
+  if (s >= 60) return '#e8d37a';
+  return 'var(--coral)';
+}
+
+function readForm(){
+  return {
+    date: document.getElementById('fDate').value,
+    bedTime: document.getElementById('fBed').value,
+    wakeTime: document.getElementById('fWake').value,
+    latency: document.getElementById('fLatency').value,
+    sunlight: document.getElementById('fSunlight').value,
+    stress: document.getElementById('fStress').value,
+    caffeineTime: document.getElementById('fCaffeine').value,
+    roomTemp: document.getElementById('fRoomTemp').value,
+    screens: document.getElementById('fScreens').value,
+    exercise: document.getElementById('fExercise').value,
+    dreams: document.getElementById('fDreams').value,
+    windDown: document.getElementById('fWindDown').checked,
+    spicy: document.getElementById('fSpicy').checked,
+    chocolate: document.getElementById('fChocolate').checked,
+    lateMeal: document.getElementById('fLateMeal').checked,
+    alcohol: document.getElementById('fAlcohol').checked,
+    water: document.getElementById('fWater').checked,
+    racingThoughts: document.getElementById('fRacingThoughts').checked,
+    intercourse: document.getElementById('fIntercourse').checked,
+    notes: document.getElementById('fNotes').value.trim()
+  };
+}
+
+function updatePreview(){
+  const data = readForm();
+  if (!data.bedTime || !data.wakeTime){
+    document.getElementById('previewScore').textContent = '–';
+    document.getElementById('previewMeta').textContent = 'Fill in the fields to see a live score';
+    return;
+  }
+  const {score} = scoreEntry(data, editingId);
+  const el = document.getElementById('previewScore');
+  el.textContent = score;
+  el.style.color = scoreColor(score);
+  document.getElementById('previewMeta').textContent = editingId ? 'Updating existing entry' : `${durationHours(data.bedTime,data.wakeTime).toFixed(1)}h in bed`;
+}
+
+function toStr(entry){
+  // convert boolean checkbox fields to string booleans per convention
+  return {
+    ...entry,
+    windDown: String(!!entry.windDown),
+    spicy: String(!!entry.spicy),
+    chocolate: String(!!entry.chocolate),
+    lateMeal: String(!!entry.lateMeal),
+    alcohol: String(!!entry.alcohol),
+    water: String(!!entry.water),
+    racingThoughts: String(!!entry.racingThoughts),
+    intercourse: String(!!entry.intercourse)
+  };
+}
+function fromStored(e){
+  return {
+    ...e,
+    windDown: e.windDown === 'true',
+    spicy: e.spicy === 'true',
+    chocolate: e.chocolate === 'true',
+    lateMeal: e.lateMeal === 'true',
+    alcohol: e.alcohol === 'true',
+    water: e.water === 'true',
+    racingThoughts: e.racingThoughts === 'true',
+    intercourse: e.intercourse === 'true'
+  };
+}
+
+function saveEntry(){
+  const data = readForm();
+  if (!data.date || !data.bedTime || !data.wakeTime){
+    toast('Add date, bed time and wake time');
+    return;
+  }
+  const {score} = scoreEntry(data, editingId);
+  const record = toStr({ id: editingId || Date.now(), ...data, score });
+
+  if (editingId){
+    const idx = entries.findIndex(x=>x.id===editingId);
+    if (idx>-1) entries[idx] = record;
+    toast('Entry updated');
+  } else {
+    entries.unshift(record);
+    toast('Night logged');
+  }
+  persist();
+  editingId = null;
+  resetForm();
+  renderList();
+  renderSummary();
+}
+
+function resetForm(){
+  document.getElementById('fDate').value = todayISO();
+  document.getElementById('fBed').value = '23:00';
+  document.getElementById('fWake').value = '07:00';
+  document.getElementById('fLatency').value = '';
+  document.getElementById('fSunlight').value = '';
+  document.getElementById('fStress').value = 'low';
+  document.getElementById('fCaffeine').value = '';
+  document.getElementById('fRoomTemp').value = 'moderate';
+  document.getElementById('fScreens').value = 'none';
+  document.getElementById('fExercise').value = 'none';
+  document.getElementById('fDreams').value = 'yes';
+  ['fWindDown','fSpicy','fChocolate','fLateMeal','fAlcohol','fWater','fRacingThoughts','fIntercourse'].forEach(id=>{
+    document.getElementById(id).checked = false;
+    document.querySelector(`[data-chip="${id}"]`).classList.remove('on');
+  });
+  document.getElementById('fNotes').value = '';
+  updatePreview();
+}
+
+function todayISO(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function editEntry(id){
+  const e = fromStored(entries.find(x=>x.id===id));
+  if (!e) return;
+  editingId = id;
+  document.getElementById('fDate').value = e.date;
+  document.getElementById('fBed').value = e.bedTime;
+  document.getElementById('fWake').value = e.wakeTime;
+  document.getElementById('fLatency').value = e.latency || '';
+  document.getElementById('fSunlight').value = e.sunlight || '';
+  document.getElementById('fStress').value = e.stress;
+  document.getElementById('fCaffeine').value = e.caffeineTime || '';
+  document.getElementById('fRoomTemp').value = e.roomTemp || 'moderate';
+  document.getElementById('fScreens').value = e.screens || 'none';
+  document.getElementById('fExercise').value = e.exercise || 'none';
+  document.getElementById('fDreams').value = e.dreams;
+  const map = {fWindDown:'windDown', fSpicy:'spicy', fChocolate:'chocolate', fLateMeal:'lateMeal', fAlcohol:'alcohol', fWater:'water', fRacingThoughts:'racingThoughts', fIntercourse:'intercourse'};
+  Object.entries(map).forEach(([id2,key])=>{
+    document.getElementById(id2).checked = !!e[key];
+    document.querySelector(`[data-chip="${id2}"]`).classList.toggle('on', !!e[key]);
+  });
+  document.getElementById('fNotes').value = e.notes || '';
+  updatePreview();
+  window.scrollTo({top:0, behavior:'smooth'});
+  toast('Loaded into form — edit and log to update');
+}
+
+function deleteEntry(id, btn){
+  if (pendingDelete !== id){
+    pendingDelete = id;
+    btn.textContent = 'Tap again';
+    btn.classList.add('confirm');
+    setTimeout(()=>{
+      if (pendingDelete === id){
+        pendingDelete = null;
+        btn.textContent = 'Delete';
+        btn.classList.remove('confirm');
+      }
+    }, 2500);
+    return;
+  }
+  entries = entries.filter(x=>x.id!==id);
+  persist();
+  pendingDelete = null;
+  renderList();
+  renderSummary();
+  toast('Entry deleted');
+}
+
+function renderSummary(){
+  if (entries.length === 0){
+    document.getElementById('statAvg').textContent = '–';
+    document.getElementById('statLast').textContent = '–';
+    document.getElementById('statStreak').textContent = '–';
+    return;
+  }
+  const last7 = entries.slice(0,7);
+  const avg = Math.round(last7.reduce((a,e)=>a+e.score,0)/last7.length);
+  document.getElementById('statAvg').textContent = avg;
+  document.getElementById('statAvg').style.color = scoreColor(avg);
+
+  document.getElementById('statLast').textContent = entries[0].score;
+  document.getElementById('statLast').style.color = scoreColor(entries[0].score);
+
+  let streak = 0;
+  for (const e of entries){
+    if (e.score >= 70) streak++;
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+  document.getElementById('statStreak').style.color = scoreColor(streak>0?80:0);
+}
+
+function renderList(){
+  const list = document.getElementById('list');
+  if (entries.length === 0){
+    list.innerHTML = '<div class="empty">No nights logged yet — fill in the form above.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(raw => {
+    const e = fromStored(raw);
+    const {tips} = scoreEntry(e, raw.id);
+    const dur = durationHours(e.bedTime, e.wakeTime).toFixed(1);
+    const tags = [];
+    if (e.alcohol) tags.push('<span class="tag bad">Alcohol</span>');
+    if (e.water) tags.push('<span class="tag bad">Water before bed</span>');
+    if (e.racingThoughts) tags.push('<span class="tag bad">Racing thoughts</span>');
+    if (e.spicy) tags.push('<span class="tag bad">Spicy</span>');
+    if (e.chocolate) tags.push('<span class="tag bad">Chocolate</span>');
+    if (e.lateMeal) tags.push('<span class="tag bad">Late meal</span>');
+    if (e.screens === 'lots') tags.push('<span class="tag bad">Screens late</span>');
+    if (e.roomTemp === 'warm') tags.push('<span class="tag bad">Warm room</span>');
+    if (e.exercise === 'evening_intense') tags.push('<span class="tag bad">Late intense workout</span>');
+    if (e.windDown) tags.push('<span class="tag good">Wind-down</span>');
+    if (Number(e.sunlight) >= 30) tags.push('<span class="tag good">Sunlight</span>');
+    if (e.roomTemp === 'cool') tags.push('<span class="tag good">Cool room</span>');
+    if (e.exercise === 'morning') tags.push('<span class="tag good">Morning exercise</span>');
+    if (e.intercourse) tags.push('<span class="tag good">Intimacy</span>');
+
+    return `
+      <div class="entry" data-id="${raw.id}">
+        <div class="entry-top">
+          <div>
+            <div class="entry-date">${fmtDate(e.date)}</div>
+            <div class="entry-sub">${e.bedTime} → ${e.wakeTime} · ${dur}h · stress: ${e.stress}</div>
+          </div>
+          <div class="entry-score" style="color:${scoreColor(raw.score)}">${raw.score}</div>
+        </div>
+        ${tags.length ? `<div class="entry-tags">${tags.join('')}</div>` : ''}
+        ${e.notes ? `<div class="entry-sub" style="margin-top:8px;">${escapeHtml(e.notes)}</div>` : ''}
+        <div class="suggestions">
+          ${tips.map(t=>`<div class="tip ${t.warn?'warn':''}">${t.text}</div>`).join('')}
+        </div>
+        <div class="entry-actions">
+          <button class="ghost" data-action="edit">Edit</button>
+          <button class="ghost danger" data-action="delete">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// event delegation for list actions
+document.getElementById('list').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('button[data-action]');
+  if (!btn) return;
+  const card = ev.target.closest('.entry');
+  const id = Number(card.getAttribute('data-id'));
+  if (btn.dataset.action === 'edit') editEntry(id);
+  if (btn.dataset.action === 'delete') deleteEntry(id, btn);
+});
+
+// chip toggles — the checkbox is native inside the <label>, so clicking
+// anywhere in the chip already toggles it; just react to the change.
+document.querySelectorAll('.chip').forEach(chip=>{
+  const id = chip.getAttribute('data-chip');
+  const cb = document.getElementById(id);
+  cb.addEventListener('change', ()=>{
+    chip.classList.toggle('on', cb.checked);
+    updatePreview();
+  });
+});
+
+// live preview on every input change
+document.querySelectorAll('#fDate,#fBed,#fWake,#fLatency,#fSunlight,#fStress,#fCaffeine,#fRoomTemp,#fScreens,#fExercise,#fDreams,#fNotes')
+  .forEach(el => el.addEventListener('input', updatePreview));
+
+document.getElementById('btnSave').addEventListener('click', saveEntry);
+
+// init
+load();
+document.getElementById('fDate').value = todayISO();
+updatePreview();
+renderList();
+renderSummary();
+</script>
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trace-Back Tracker</title>
+<style>
+  :root{
+    --bg:#0f1412; --card:#161d1a; --card2:#1c2420; --border:#273229;
+    --mint:#a7e8c5; --coral:#ff8c70; --text:#e8f0eb; --muted:#8a988f;
+    --danger:#ff8c70;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:16px; max-width:640px; margin:0 auto; padding-bottom:80px;
+  }
+  h1{font-size:1.3rem; margin:0 0 2px;}
+  .tagline{color:var(--muted); font-size:0.85rem; margin:0 0 18px;}
+
+  .summary{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;
+  }
+  .summary .stat{
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:12px 8px; text-align:center;
+  }
+  .summary .stat .num{font-size:1.3rem; font-weight:700; color:var(--mint);}
+  .summary .stat .lbl{font-size:0.68rem; color:var(--muted); margin-top:2px;}
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:16px; margin-bottom:16px;
+  }
+  .card h2{font-size:0.95rem; margin:0 0 12px; color:var(--mint);}
+
+  label{display:block; font-size:0.78rem; color:var(--muted); margin:10px 0 5px;}
+  input[type="text"], input[type="date"], textarea, select{
+    width:100%; background:var(--card2); border:1px solid var(--border);
+    color:var(--text); border-radius:8px; padding:9px 10px; font-size:0.9rem;
+    font-family:inherit;
+  }
+  textarea{resize:vertical; min-height:56px;}
+  input:focus, textarea:focus, select:focus{outline:1px solid var(--mint);}
+
+  .chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;}
+  .chip{
+    border:1px solid var(--border); background:var(--card2); color:var(--text);
+    border-radius:20px; padding:6px 12px; font-size:0.8rem; cursor:pointer;
+    user-select:none;
+  }
+  .chip.selected{background:var(--mint); color:#0f1412; border-color:var(--mint); font-weight:600;}
+  @media (hover:hover) and (pointer:fine){
+    .chip:hover{border-color:var(--mint);}
+  }
+
+  .trigger-notes{margin-top:10px; display:flex; flex-direction:column; gap:8px;}
+  .trigger-note-row{
+    background:var(--card2); border:1px solid var(--border); border-radius:10px;
+    padding:8px 10px;
+  }
+  .trigger-note-row .tn-label{
+    font-size:0.72rem; color:var(--mint); font-weight:600; margin-bottom:5px; display:block;
+  }
+  .trigger-note-row input{
+    background:var(--bg); border:1px solid var(--border); border-radius:6px;
+    padding:7px 9px; font-size:0.85rem; color:var(--text); width:100%; font-family:inherit;
+  }
+
+  .btn{
+    display:inline-block; border:none; border-radius:10px; padding:11px 16px;
+    font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .btn-primary{background:var(--mint); color:#0f1412; width:100%; margin-top:14px;}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--border);}
+  .btn-danger{background:transparent; color:var(--danger); border:1px solid var(--danger);}
+  @media (hover:hover) and (pointer:fine){
+    .btn-primary:hover{opacity:0.9;}
+  }
+
+  .entry{
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:14px; margin-bottom:12px;
+  }
+  .entry-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .entry-top .name{font-weight:700; font-size:1rem;}
+  .entry-top .date{color:var(--muted); font-size:0.75rem; margin-top:2px;}
+  .status-pill{
+    font-size:0.68rem; padding:3px 9px; border-radius:20px; white-space:nowrap;
+    border:1px solid var(--border);
+  }
+  .status-tracking{color:var(--mint); border-color:var(--mint);}
+  .status-better{color:var(--mint); background:rgba(167,232,197,0.12); border-color:var(--mint);}
+  .status-worse{color:var(--coral); background:rgba(255,140,112,0.12); border-color:var(--coral);}
+  .status-same{color:var(--muted);}
+
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0;}
+  .tag{
+    font-size:0.72rem; background:var(--card2); border:1px solid var(--border);
+    color:var(--muted); padding:3px 9px; border-radius:20px;
+  }
+
+  .restore-text{font-size:0.83rem; color:var(--text); margin:8px 0; line-height:1.4;}
+  .restore-text .lbl-inline{color:var(--muted); font-size:0.72rem; display:block; margin-bottom:3px;}
+
+  .streak-wrap{margin:12px 0 6px;}
+  .streak-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .streak-head .count{font-size:0.78rem; color:var(--mint); font-weight:600;}
+  .streak-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+  .day{
+    aspect-ratio:1; border-radius:6px; background:var(--card2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:0.62rem;
+    color:var(--muted); cursor:pointer;
+  }
+  .day.done{background:var(--mint); color:#0f1412; border-color:var(--mint); font-weight:700;}
+  @media (hover:hover) and (pointer:fine){
+    .day:hover{border-color:var(--mint);}
+  }
+
+  .recheck-row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .recheck-btn{
+    flex:1; min-width:70px; padding:8px 6px; border-radius:8px; text-align:center;
+    font-size:0.75rem; background:var(--card2); border:1px solid var(--border);
+    color:var(--muted); cursor:pointer;
+  }
+  .recheck-btn.active-better{background:var(--mint); color:#0f1412; border-color:var(--mint);}
+  .recheck-btn.active-same{background:var(--border); color:var(--text);}
+  .recheck-btn.active-worse{background:var(--coral); color:#1a0f0c; border-color:var(--coral);}
+
+  .entry-actions{display:flex; gap:8px; margin-top:12px;}
+  .entry-actions .btn{flex:1; padding:9px; font-size:0.8rem;}
+
+  .empty{text-align:center; color:var(--muted); font-size:0.85rem; padding:30px 0;}
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--card2); border:1px solid var(--mint); color:var(--text);
+    padding:10px 18px; border-radius:10px; font-size:0.82rem; opacity:0;
+    pointer-events:none; transition:opacity 0.25s; z-index:50;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<h1>Trace-Back Tracker</h1>
+<p class="tagline">Symptom → suspected cause → restore plan → recheck</p>
+
+<div class="summary">
+  <div class="stat"><div class="num" id="statActive">0</div><div class="lbl">Tracking</div></div>
+  <div class="stat"><div class="num" id="statStreak">0</div><div class="lbl">Avg day streak</div></div>
+  <div class="stat"><div class="num" id="statResolved">0</div><div class="lbl">Resolved better</div></div>
+</div>
+
+<div class="card">
+  <h2 id="formTitle">Log a symptom</h2>
+
+  <label>Symptom</label>
+  <input type="text" id="fSymptom" placeholder="e.g. Afternoon headaches">
+
+  <label>Date noticed</label>
+  <input type="date" id="fDate">
+
+  <label>Suspected triggers — tap to select, then note what specifically</label>
+  <div class="chip-row" id="triggerChips" data-role="triggers">
+    <div class="chip" data-trigger="Food">Food</div>
+    <div class="chip" data-trigger="Water">Water</div>
+    <div class="chip" data-trigger="Air">Air</div>
+    <div class="chip" data-trigger="Exercise">Exercise</div>
+    <div class="chip" data-trigger="Stress">Stress</div>
+    <div class="chip" data-trigger="Sleep">Sleep</div>
+    <div class="chip" data-trigger="Screen time">Screen time</div>
+    <div class="chip" data-trigger="Other" id="otherChip">Other</div>
+  </div>
+  <div class="trigger-notes" id="triggerNotes"></div>
+
+  <label>Restore plan — what you'll change</label>
+  <textarea id="fRestore" placeholder="e.g. Cut caffeine after 2pm, 20 min walk daily, sleep by 11pm"></textarea>
+
+  <button class="btn btn-primary" id="saveBtn">Add & start 21-day tracking</button>
+</div>
+
+<div id="entriesList"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'as_tracebacktracker_v1';
+let state = load();
+let editingId = null;
+let selectedTriggers = {}; // { "Food": "toast and coffee", ... }
+
+const TRIGGER_PLACEHOLDERS = {
+  Food: 'What did you eat/drink?',
+  Water: 'What about the water — source, amount?',
+  Air: 'Where — home, office, outdoors, pollen?',
+  Exercise: 'What changed — missed, overdid, new activity?',
+  Stress: 'What was the stressor?',
+  Sleep: 'What changed — hours, quality, timing?',
+  'Screen time': 'How much, and when?',
+  Other: 'Name the cause and what happened'
+};
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return { entries: [] };
+    const parsed = JSON.parse(raw);
+    if(!parsed.entries) return { entries: [] };
+    return parsed;
+  }catch(e){ return { entries: [] }; }
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function formatDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return '';
+  const day = d.getDate();
+  const suffix = (day%10==1 && day!=11) ? 'st' : (day%10==2 && day!=12) ? 'nd' : (day%10==3 && day!=13) ? 'rd' : 'th';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function addDays(iso, n){
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function daysBetween(a,b){
+  const d1 = new Date(a+'T00:00:00'), d2 = new Date(b+'T00:00:00');
+  return Math.floor((d2-d1)/86400000);
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// ---- Triggers chip selection ----
+document.getElementById('triggerChips').addEventListener('click', (e)=>{
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  const trig = chip.dataset.trigger;
+  if(Object.prototype.hasOwnProperty.call(selectedTriggers, trig)){
+    delete selectedTriggers[trig];
+    chip.classList.remove('selected');
+  } else {
+    selectedTriggers[trig] = '';
+    chip.classList.add('selected');
+  }
+  renderTriggerNotes();
+});
+
+function renderTriggerNotes(){
+  const wrap = document.getElementById('triggerNotes');
+  const keys = Object.keys(selectedTriggers);
+  wrap.innerHTML = keys.map(k=>`
+    <div class="trigger-note-row">
+      <span class="tn-label">${escapeHtml(k)}</span>
+      <input type="text" data-role="triggerNoteInput" data-trigger="${escapeHtml(k)}"
+        placeholder="${escapeHtml(TRIGGER_PLACEHOLDERS[k] || 'What specifically?')}"
+        value="${escapeHtml(selectedTriggers[k] || '')}">
+    </div>
+  `).join('');
+}
+
+document.getElementById('triggerNotes').addEventListener('input', (e)=>{
+  const input = e.target.closest('[data-role="triggerNoteInput"]');
+  if(!input) return;
+  selectedTriggers[input.dataset.trigger] = input.value;
+});
+
+function resetForm(){
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Log a symptom';
+  document.getElementById('saveBtn').textContent = 'Add & start 21-day tracking';
+  document.getElementById('fSymptom').value = '';
+  document.getElementById('fDate').value = todayISO();
+  document.getElementById('fRestore').value = '';
+  selectedTriggers = {};
+  document.querySelectorAll('#triggerChips .chip').forEach(c=>c.classList.remove('selected'));
+  renderTriggerNotes();
+}
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const symptom = document.getElementById('fSymptom').value.trim();
+  const date = document.getElementById('fDate').value || todayISO();
+  const restore = document.getElementById('fRestore').value.trim();
+  if(!symptom){
+    showToast('Enter a symptom first');
+    return;
+  }
+  const triggers = Object.keys(selectedTriggers).map(type=>({
+    type, note: selectedTriggers[type].trim()
+  }));
+
+  if(editingId){
+    const entry = state.entries.find(e=>e.id===editingId);
+    if(entry){
+      entry.symptom = symptom;
+      entry.date = date;
+      entry.triggers = triggers;
+      entry.restore = restore;
+    }
+    showToast('Entry updated');
+  } else {
+    state.entries.unshift({
+      id: 'e' + Date.now(),
+      symptom, date, triggers, restore,
+      streakDays: [],
+      recheck: null,
+      deleteArmed: false
+    });
+    showToast('Tracking started');
+  }
+  save();
+  resetForm();
+  renderEntries();
+  renderSummary();
+});
+
+function renderSummary(){
+  const active = state.entries.filter(e=>!e.recheck || e.recheck==='same');
+  document.getElementById('statActive').textContent = state.entries.length;
+  const resolved = state.entries.filter(e=>e.recheck==='better').length;
+  document.getElementById('statResolved').textContent = resolved;
+  if(state.entries.length===0){
+    document.getElementById('statStreak').textContent = '0';
+  } else {
+    const avg = state.entries.reduce((s,e)=>s+(e.streakDays||[]).length,0) / state.entries.length;
+    document.getElementById('statStreak').textContent = Math.round(avg);
+  }
+}
+
+function buildStreakGrid(entry){
+  let html = '<div class="streak-grid">';
+  for(let i=0;i<21;i++){
+    const dayIso = addDays(entry.date, i);
+    const done = entry.streakDays.includes(dayIso);
+    const isFuture = daysBetween(todayISO(), dayIso) > 0;
+    html += `<div class="day ${done?'done':''}" data-role="daybox" data-entry="${entry.id}" data-day="${dayIso}" title="${formatDate(dayIso)}">${done?'✓':(i+1)}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderEntries(){
+  const list = document.getElementById('entriesList');
+  if(state.entries.length===0){
+    list.innerHTML = '<div class="empty">No symptoms logged yet. Add one above to start tracing back the cause.</div>';
+    return;
+  }
+  list.innerHTML = state.entries.map(entry=>{
+    const streakCount = entry.streakDays.length;
+    let statusClass = 'status-tracking', statusText = 'Tracking';
+    if(entry.recheck === 'better'){ statusClass='status-better'; statusText='Better'; }
+    else if(entry.recheck === 'worse'){ statusClass='status-worse'; statusText='Worse'; }
+    else if(entry.recheck === 'same'){ statusClass='status-same'; statusText='Same'; }
+
+    const tagsHtml = (entry.triggers||[]).map(t=>{
+      const label = t.note ? `${t.type}: ${t.note}` : t.type;
+      return `<span class="tag">${escapeHtml(label)}</span>`;
+    }).join('');
+    const canRecheck = streakCount >= 21;
+
+    return `
+    <div class="entry" data-id="${entry.id}">
+      <div class="entry-top">
+        <div>
+          <div class="name">${escapeHtml(entry.symptom)}</div>
+          <div class="date">Since ${formatDate(entry.date)}</div>
+        </div>
+        <span class="status-pill ${statusClass}">${statusText}</span>
+      </div>
+      ${tagsHtml ? `<div class="tags">${tagsHtml}</div>` : ''}
+      ${entry.restore ? `<div class="restore-text"><span class="lbl-inline">Restore plan</span>${escapeHtml(entry.restore)}</div>` : ''}
+      <div class="streak-wrap">
+        <div class="streak-head">
+          <span class="lbl-inline" style="margin:0;color:var(--muted);font-size:0.72rem;">21-day consistency</span>
+          <span class="count">${streakCount}/21</span>
+        </div>
+        ${buildStreakGrid(entry)}
+      </div>
+      <label style="margin-top:12px;">Recheck ${canRecheck?'':'(unlocks at 21 days)'}</label>
+      <div class="recheck-row">
+        <div class="recheck-btn ${entry.recheck==='better'?'active-better':''}" data-role="recheck" data-entry="${entry.id}" data-val="better">Better</div>
+        <div class="recheck-btn ${entry.recheck==='same'?'active-same':''}" data-role="recheck" data-entry="${entry.id}" data-val="same">Same</div>
+        <div class="recheck-btn ${entry.recheck==='worse'?'active-worse':''}" data-role="recheck" data-entry="${entry.id}" data-val="worse">Worse</div>
+      </div>
+      <div class="entry-actions">
+        <button class="btn btn-ghost" data-role="edit" data-entry="${entry.id}">Edit</button>
+        <button class="btn btn-danger" data-role="delete" data-entry="${entry.id}">${entry.deleteArmed ? 'Tap again to confirm' : 'Delete'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('entriesList').addEventListener('click', (e)=>{
+  const dayBox = e.target.closest('[data-role="daybox"]');
+  if(dayBox){
+    const entry = state.entries.find(en=>en.id===dayBox.dataset.entry);
+    if(!entry) return;
+    const day = dayBox.dataset.day;
+    const idx = entry.streakDays.indexOf(day);
+    if(idx>=0) entry.streakDays.splice(idx,1);
+    else entry.streakDays.push(day);
+    save();
+    updateEntryInPlace(entry);
+    renderSummary();
+    return;
+  }
+
+  const recheckBtn = e.target.closest('[data-role="recheck"]');
+  if(recheckBtn){
+    const entry = state.entries.find(en=>en.id===recheckBtn.dataset.entry);
+    if(!entry) return;
+    const val = recheckBtn.dataset.val;
+    entry.recheck = entry.recheck === val ? null : val;
+    save();
+    renderEntries();
+    renderSummary();
+    return;
+  }
+
+  const editBtn = e.target.closest('[data-role="edit"]');
+  if(editBtn){
+    const entry = state.entries.find(en=>en.id===editBtn.dataset.entry);
+    if(!entry) return;
+    editingId = entry.id;
+    document.getElementById('formTitle').textContent = 'Edit entry';
+    document.getElementById('saveBtn').textContent = 'Save changes';
+    document.getElementById('fSymptom').value = entry.symptom;
+    document.getElementById('fDate').value = entry.date;
+    document.getElementById('fRestore').value = entry.restore || '';
+    selectedTriggers = {};
+    document.querySelectorAll('#triggerChips .chip').forEach(c=>c.classList.remove('selected'));
+    (entry.triggers||[]).forEach(t=>{
+      selectedTriggers[t.type] = t.note || '';
+      const chip = document.querySelector(`#triggerChips .chip[data-trigger="${CSS.escape(t.type)}"]`);
+      if(chip) chip.classList.add('selected');
+    });
+    renderTriggerNotes();
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;
+  }
+
+  const deleteBtn = e.target.closest('[data-role="delete"]');
+  if(deleteBtn){
+    const entry = state.entries.find(en=>en.id===deleteBtn.dataset.entry);
+    if(!entry) return;
+    if(entry.deleteArmed){
+      state.entries = state.entries.filter(en=>en.id!==entry.id);
+      save();
+      renderEntries();
+      renderSummary();
+      showToast('Entry deleted');
+    } else {
+      state.entries.forEach(en=>en.deleteArmed=false);
+      entry.deleteArmed = true;
+      save();
+      deleteBtn.textContent = 'Tap again to confirm';
+      setTimeout(()=>{
+        entry.deleteArmed = false;
+        save();
+        const btn = document.querySelector(`.entry[data-id="${entry.id}"] [data-role="delete"]`);
+        if(btn) btn.textContent = 'Delete';
+      }, 2500);
+    }
+    return;
+  }
+});
+
+function updateEntryInPlace(entry){
+  const el = document.querySelector(`.entry[data-id="${entry.id}"]`);
+  if(!el) return;
+  const streakCount = entry.streakDays.length;
+  el.querySelector('.count').textContent = `${streakCount}/21`;
+  const grid = el.querySelector('.streak-grid');
+  grid.outerHTML = buildStreakGrid(entry);
+}
+
+// init
+document.getElementById('fDate').value = todayISO();
+renderEntries();
+renderSummary();
+</script>
+</body>
+</html>

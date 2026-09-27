@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<title>Clothes Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--coral:#ff8c70;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:16px 16px 80px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:18px;margin:0 0 2px;}
+  h2{font-size:14px;margin:0;}
+  p.sub{color:var(--sub);font-size:12px;margin:0 0 12px;}
+  .card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input[type=text],input[type=number],input[type=month],select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus,select:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:120px;}
+  button{font:inherit;cursor:pointer;}
+  button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;margin-top:4px;}
+  button.ghost{width:100%;padding:10px;border:1px solid #475569;border-radius:10px;background:transparent;color:var(--txt);font-size:13px;margin-top:8px;}
+  details.form summary{font-weight:700;font-size:14px;cursor:pointer;}
+  details.form[open] summary{margin-bottom:10px;}
+  .err{color:var(--bad);font-size:12px;margin:2px 0 6px;}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-top:2px;}
+  .toggle label{margin:0;font-size:12px;}
+
+  .photo-pick{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .photo-pick .preview{width:56px;height:56px;border-radius:10px;object-fit:cover;background:#0f172a;border:1px solid #334155;flex:0 0 auto;}
+  .photo-pick .preview.empty{display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:10px;text-align:center;}
+  .photo-pick .btns{display:flex;flex-direction:column;gap:4px;flex:1;}
+  .photo-pick button{padding:7px 10px;border-radius:8px;border:1px solid #475569;background:transparent;color:var(--txt);font-size:12px;}
+  .photo-pick input[type=file]{display:none;}
+
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:0 0 auto;padding:8px 12px;border-radius:20px;border:1px solid #334155;background:#0f172a;color:var(--sub);font-size:12px;white-space:nowrap;}
+  .tab.active{background:var(--acc);color:#052e16;font-weight:700;border-color:var(--acc);}
+  .tab .cnt{opacity:.7;font-weight:400;margin-left:3px;}
+
+  .stat-row{display:flex;gap:8px;}
+  .stat{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:8px 4px;}
+  .stat .n{font-size:14px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--sub);margin-top:1px;}
+
+  .list-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:16px 2px 8px;}
+  .list-head small{display:block;font-size:10px;color:var(--sub);font-weight:400;margin-top:1px;}
+
+  .empty{color:var(--sub);font-size:12px;padding:10px 2px;}
+
+  .group{border:1px solid var(--coral);border-radius:12px;padding:8px;margin-bottom:8px;background:#1e293b;}
+  .group.best{box-shadow:0 0 0 1px var(--coral) inset;}
+  .group-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--sub);margin-bottom:6px;padding:0 2px;}
+  .group-total{color:var(--coral);font-weight:700;}
+  .group-items{display:flex;gap:8px;flex-wrap:wrap;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media (max-width:380px){.grid{grid-template-columns:1fr;}}
+
+  .item-card{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;flex:1;min-width:130px;touch-action:none;user-select:none;position:relative;}
+  .item-card.dragging{opacity:.35;}
+  .item-card.drop-hover{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset;}
+  .item-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+  .swatch{width:14px;height:14px;border-radius:50%;border:1px solid #475569;flex:0 0 auto;}
+  .item-photo{width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:block;}
+  .item-type{font-size:12px;font-weight:700;}
+  .item-color{font-size:11px;color:var(--sub);}
+  .item-meta{font-size:10px;color:var(--sub);line-height:1.5;margin-top:2px;}
+  .item-price{font-size:12px;font-weight:700;color:var(--acc);}
+  .item-actions{display:flex;gap:4px;position:absolute;top:6px;right:6px;}
+  .icon-btn{width:22px;height:22px;border-radius:50%;border:1px solid #334155;background:#1e293b;color:var(--sub);font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;}
+  .icon-btn.star.on{color:var(--coral);border-color:var(--coral);}
+  .icon-btn.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .retire-warn{color:var(--bad);}
+  .retire-soon{color:var(--warn);}
+
+  .ghost-drag{position:fixed;pointer-events:none;z-index:60;opacity:.9;transform:scale(1.03);box-shadow:0 6px 18px rgba(0,0,0,.5);}
+
+  ul#shopList{list-style:none;margin:0;padding:0;font-size:12px;line-height:1.9;}
+  ul#shopList li{border-bottom:1px solid #334155;padding:4px 0;}
+  ul#shopList li:last-child{border-bottom:none;}
+
+  .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:12px;}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 16px;border-radius:16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none;z-index:70;max-width:90vw;text-align:center;}
+
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:90;padding:24px;}
+  .lightbox.open{display:flex;}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>👕 Clothes Tracker</h1>
+  <p class="sub">Log what you own per occasion, drag items together to make a pair, and see what colour to buy next.</p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="card">
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="statItems">0</div><div class="l">Items</div></div>
+      <div class="stat"><div class="n" id="statPairs">0</div><div class="l">Pairs</div></div>
+      <div class="stat"><div class="n" id="statUnpaired">0</div><div class="l">Unpaired</div></div>
+      <div class="stat"><div class="n" id="statSpend">₹0</div><div class="l">Spent</div></div>
+    </div>
+  </div>
+
+  <details class="card form" id="formBox">
+    <summary id="formSum">+ Add item</summary>
+    <div class="photo-pick">
+      <img class="preview empty" id="iPhotoPreview" alt="No photo">
+      <div class="btns">
+        <button type="button" id="iPhotoPickBtn">📷 Add photo</button>
+        <button type="button" id="iPhotoRemoveBtn" style="display:none">Remove photo</button>
+      </div>
+      <input type="file" id="iPhoto" accept="image/*">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="iType">Type</label>
+        <select id="iType"><option>Pant</option><option>Shirt</option><option>Jacket</option></select>
+      </div>
+      <div class="field">
+        <label for="iColor">Colour</label>
+        <input type="text" id="iColor" placeholder="e.g. Navy" maxlength="24">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="iBought">Bought</label>
+        <input type="month" id="iBought">
+      </div>
+      <div class="field">
+        <label for="iShop">Bought at</label>
+        <input type="text" id="iShop" placeholder="Shop name" maxlength="40">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="iLife">Wear out / life span (yrs)</label>
+        <input type="number" id="iLife" inputmode="decimal" min="0" step="0.5" placeholder="e.g. 2">
+      </div>
+      <div class="field">
+        <label for="iPrice">Price (₹)</label>
+        <input type="number" id="iPrice" inputmode="decimal" min="0" placeholder="e.g. 1500">
+      </div>
+    </div>
+    <div class="toggle"><input type="checkbox" id="iBest"><label for="iBest">Mark as a best pair piece ★</label></div>
+    <div class="err" id="formErr" role="alert"></div>
+    <button class="add" id="saveBtn" type="button">Save item</button>
+    <button class="ghost" id="cancelBtn" type="button">Cancel</button>
+  </details>
+
+  <div class="list-head"><h2>Pairs</h2><small>Drag ✕ on a piece to split it out again</small></div>
+  <div id="pairs"></div>
+
+  <div class="list-head"><h2>Unpaired</h2><small>Press and drag one card onto another to pair them</small></div>
+  <div class="grid" id="unpaired"></div>
+
+  <div class="card" id="shopCard" style="display:none">
+    <div class="list-head" style="margin-top:0"><h2>🛍 Missing colours to buy</h2></div>
+    <ul id="shopList"></ul>
+  </div>
+
+  <div class="foot" id="saved"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<div class="lightbox" id="lightbox"><img id="lightboxImg" alt="Photo"></div>
+
+<script>
+const KEY = 'clothes_tracker_v1';
+const CATS = ['Office','Office Parties','Travel for Big Occasions','Small Occasions','Festivals'];
+const TYPES = ['Pant','Shirt','Jacket'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $ = id => document.getElementById(id);
+
+function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
+function fmtMonth(ym){
+  if(!ym) return '—';
+  const [y,m] = ym.split('-').map(Number);
+  if(!y || !m) return '—';
+  return MONTHS[m-1] + ' ' + y;
+}
+function fmtDate(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const n = d.getDate(), r = n % 100;
+  const suf = (r>=11 && r<=13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[n%10] || 'th');
+  return n + suf + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function esc(s){ const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+function sameColor(a,b){ return (a||'').trim().toLowerCase() === (b||'').trim().toLowerCase(); }
+
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.items)) return s;
+  }catch(e){}
+  return null;
+}
+let state = load() || { items: [], currentCat: CATS[0], updated: null };
+if(!CATS.includes(state.currentCat)) state.currentCat = CATS[0];
+
+function save(){
+  state.updated = new Date().toISOString();
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  $('saved').textContent = 'Saved on ' + fmtDate(state.updated);
+}
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.style.display='none'; }, 2400);
+}
+
+let editingId = null;
+let pendingPhoto = null; // dataURL for the item currently being added/edited
+const pendingDel = {};
+
+// ---- Photo capture (resized + compressed before storing) ----
+function resizeImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > height && width > maxDim){ height = Math.round(height * maxDim / width); width = maxDim; }
+        else if(height > maxDim){ width = Math.round(width * maxDim / height); height = maxDim; }
+        const c = document.createElement('canvas'); c.width = width; c.height = height;
+        c.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(c.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function setPhotoPreview(dataUrl){
+  const p = $('iPhotoPreview');
+  if(dataUrl){ p.src = dataUrl; p.classList.remove('empty'); p.alt = 'Photo preview'; $('iPhotoRemoveBtn').style.display = ''; }
+  else { p.removeAttribute('src'); p.classList.add('empty'); p.alt = 'No photo'; $('iPhotoRemoveBtn').style.display = 'none'; }
+}
+$('iPhotoPickBtn').addEventListener('click', () => $('iPhoto').click());
+$('iPhoto').addEventListener('change', async e => {
+  const file = e.target.files[0]; if(!file) return;
+  try{
+    pendingPhoto = await resizeImage(file, 480, 0.72);
+    setPhotoPreview(pendingPhoto);
+  }catch(err){ toast('Could not read that image'); }
+  e.target.value = '';
+});
+$('iPhotoRemoveBtn').addEventListener('click', () => { pendingPhoto = null; setPhotoPreview(null); });
+
+// ---- Tabs ----
+const tabsEl = $('tabs');
+function renderTabs(){
+  tabsEl.innerHTML = CATS.map(c => {
+    const n = state.items.filter(i=>i.category===c).length;
+    return `<button class="tab${c===state.currentCat?' active':''}" data-cat="${esc(c)}">${esc(c)}<span class="cnt">${n}</span></button>`;
+  }).join('');
+}
+tabsEl.addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if(!b) return;
+  state.currentCat = b.dataset.cat; resetForm(); save(); renderAll();
+});
+
+// ---- Form ----
+function resetForm(){
+  editingId = null; pendingPhoto = null; setPhotoPreview(null);
+  $('iType').value = 'Pant'; $('iColor').value=''; $('iBought').value=''; $('iShop').value='';
+  $('iLife').value=''; $('iPrice').value=''; $('iBest').checked=false; $('formErr').textContent='';
+  $('formSum').textContent = '+ Add item'; $('formBox').open = false;
+}
+$('saveBtn').addEventListener('click', () => {
+  const type = $('iType').value;
+  const color = $('iColor').value.trim();
+  const bought = $('iBought').value;
+  const shop = $('iShop').value.trim();
+  const life = $('iLife').value === '' ? null : parseFloat($('iLife').value);
+  const price = parseFloat($('iPrice').value);
+  const best = $('iBest').checked;
+  const err = $('formErr');
+  if(!color){ err.textContent = 'Enter a colour.'; $('iColor').focus(); return; }
+  if(!Number.isFinite(price) || price < 0){ err.textContent = 'Enter a valid price.'; $('iPrice').focus(); return; }
+  if(life !== null && (!Number.isFinite(life) || life < 0)){ err.textContent = 'Life span must be 0 or more.'; $('iLife').focus(); return; }
+  err.textContent = '';
+  if(editingId){
+    const it = state.items.find(x=>x.id===editingId);
+    if(it){ Object.assign(it, {type,color,bought,shop,life,price,bestPair:best,photo:pendingPhoto}); }
+    toast('Item updated');
+  } else {
+    state.items.push({ id: uid(), category: state.currentCat, type, color, bought, shop, life, price, bestPair: best, photo: pendingPhoto, groupId: null });
+    toast('Item added to Unpaired');
+  }
+  save(); resetForm(); renderAll();
+});
+$('cancelBtn').addEventListener('click', resetForm);
+
+// ---- Rendering ----
+function retireInfo(it){
+  if(it.life == null || !it.bought) return {text:'', cls:''};
+  const [y,m] = it.bought.split('-').map(Number);
+  const retire = new Date(y, (m-1) + Math.round(it.life*12), 1);
+  const now = new Date();
+  const monthsLeft = (retire.getFullYear()-now.getFullYear())*12 + (retire.getMonth()-now.getMonth());
+  if(monthsLeft < 0) return {text:'⚠ Past life span', cls:'retire-warn'};
+  if(monthsLeft <= 2) return {text:'Retiring soon', cls:'retire-soon'};
+  return {text: MONTHS[retire.getMonth()] + ' ' + retire.getFullYear() + ' est. retire', cls:''};
+}
+
+function itemCardHTML(it, inGroup){
+  const ri = retireInfo(it);
+  return `<div class="item-card" data-id="${it.id}">
+    <div class="item-actions">
+      <button class="icon-btn star${it.bestPair?' on':''}" data-act="best" title="Best pair">★</button>
+      <button class="icon-btn" data-act="edit" title="Edit">✎</button>
+      ${inGroup ? `<button class="icon-btn" data-act="unpair" title="Split out">⤺</button>` : ''}
+      <button class="icon-btn" data-act="del" title="Delete">✕</button>
+    </div>
+    ${it.photo ? `<img class="item-photo" data-act="photo" src="${it.photo}" alt="${esc(it.type)} photo">` : ''}
+    <div class="item-top"><span class="swatch" style="background:${esc(it.color)}"></span><span class="item-type">${esc(it.type)}</span></div>
+    <div class="item-color">${esc(it.color)}</div>
+    <div class="item-meta">
+      ${fmtMonth(it.bought)}${it.shop ? ' · ' + esc(it.shop) : ''}<br>
+      ${it.life!=null ? it.life + ' yr life' : 'No life span set'}${ri.text ? ' · <span class="'+ri.cls+'">'+ri.text+'</span>' : ''}
+    </div>
+    <div class="item-price">${fmt(it.price)}</div>
+  </div>`;
+}
+
+function renderPairsAndUnpaired(){
+  const items = state.items.filter(i=>i.category===state.currentCat);
+  const groups = {};
+  items.forEach(i=>{ if(i.groupId){ (groups[i.groupId] = groups[i.groupId]||[]).push(i); } });
+
+  const pairsEl = $('pairs');
+  const groupIds = Object.keys(groups);
+  if(groupIds.length === 0){
+    pairsEl.innerHTML = `<div class="empty">No pairs yet in ${esc(state.currentCat)} — drag two unpaired pieces together below.</div>`;
+  } else {
+    pairsEl.innerHTML = groupIds.map(gid => {
+      const g = groups[gid];
+      const total = g.reduce((s,i)=>s+i.price,0);
+      const best = g.some(i=>i.bestPair);
+      return `<div class="group${best?' best':''}" data-gid="${gid}">
+        <div class="group-head"><span>${g.map(i=>i.type).join(' + ')}${best?' ★':''}</span><span class="group-total">${fmt(total)}</span></div>
+        <div class="group-items">${g.map(i=>itemCardHTML(i,true)).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const unpaired = items.filter(i=>!i.groupId);
+  const unpairedEl = $('unpaired');
+  unpairedEl.innerHTML = unpaired.length
+    ? unpaired.map(i=>itemCardHTML(i,false)).join('')
+    : `<div class="empty">Nothing unpaired here.</div>`;
+
+  // Stats
+  $('statItems').textContent = items.length;
+  $('statPairs').textContent = groupIds.length;
+  $('statUnpaired').textContent = unpaired.length;
+  $('statSpend').textContent = fmt(items.reduce((s,i)=>s+i.price,0));
+
+  // Shopping list: unpaired Pant/Shirt with no available colour match
+  const pants = unpaired.filter(i=>i.type==='Pant');
+  const shirts = unpaired.filter(i=>i.type==='Shirt');
+  const needRaw = [];
+  pants.forEach(p=>{ if(!shirts.some(s=>sameColor(s.color,p.color))) needRaw.push({buy:'Shirt', color:p.color, have:'Pant'}); });
+  shirts.forEach(s=>{ if(!pants.some(p=>sameColor(p.color,s.color))) needRaw.push({buy:'Pant', color:s.color, have:'Shirt'}); });
+  const seen = new Set();
+  const need = needRaw.filter(n=>{ const k = n.buy+'|'+n.color.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
+  const shopCard = $('shopCard');
+  if(need.length){
+    shopCard.style.display = '';
+    $('shopList').innerHTML = need.map(n => `<li>Buy a <b>${esc(n.color)} ${esc(n.buy)}</b> — to pair with your unpaired ${esc(n.have.toLowerCase())}</li>`).join('');
+  } else {
+    shopCard.style.display = 'none';
+  }
+}
+
+function renderAll(){ renderTabs(); renderPairsAndUnpaired(); }
+
+// ---- Row actions (event delegation) shared by both containers ----
+function handleAction(e){
+  const btn = e.target.closest('[data-act]'); if(!btn) return;
+  const card = btn.closest('.item-card'); const id = card.dataset.id;
+  const it = state.items.find(x=>x.id===id); if(!it) return;
+  const act = btn.dataset.act;
+  if(act === 'best'){ it.bestPair = !it.bestPair; save(); renderPairsAndUnpaired(); }
+  else if(act === 'edit'){
+    $('iType').value = it.type; $('iColor').value = it.color; $('iBought').value = it.bought||'';
+    $('iShop').value = it.shop||''; $('iLife').value = it.life==null?'':it.life; $('iPrice').value = it.price;
+    $('iBest').checked = !!it.bestPair; editingId = id;
+    pendingPhoto = it.photo || null; setPhotoPreview(pendingPhoto);
+    $('formSum').textContent = '✎ Edit item'; $('formBox').open = true;
+    window.scrollTo({top:0, behavior:'smooth'});
+    setTimeout(()=>$('iColor').focus({preventScroll:true}), 300);
+  }
+  else if(act === 'photo'){
+    const img = $('lightboxImg'); img.src = it.photo; $('lightbox').classList.add('open');
+  }
+  else if(act === 'unpair'){
+    const gid = it.groupId; it.groupId = null;
+    const rest = state.items.filter(x=>x.groupId===gid);
+    if(rest.length < 2) rest.forEach(x=>x.groupId=null);
+    save(); renderPairsAndUnpaired();
+  }
+  else if(act === 'del'){
+    if(pendingDel[id]){
+      clearTimeout(pendingDel[id]); delete pendingDel[id];
+      const gid = it.groupId;
+      state.items = state.items.filter(x=>x.id!==id);
+      if(gid){ const rest = state.items.filter(x=>x.groupId===gid); if(rest.length<2) rest.forEach(x=>x.groupId=null); }
+      if(editingId===id) resetForm();
+      save(); renderAll(); toast('Item deleted');
+    } else {
+      btn.textContent = '✔'; btn.classList.add('confirming'); toast('Tap ✔ again to delete');
+      pendingDel[id] = setTimeout(()=>{ delete pendingDel[id]; btn.textContent='✕'; btn.classList.remove('confirming'); }, 2500);
+    }
+  }
+}
+$('pairs').addEventListener('click', handleAction);
+$('unpaired').addEventListener('click', handleAction);
+
+// ---- Drag to pair (pointer events, works for mouse + touch) ----
+let drag = null;
+function startDrag(card, e){
+  const id = card.dataset.id;
+  const rect = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.classList.add('ghost-drag');
+  ghost.style.width = rect.width + 'px';
+  ghost.style.left = rect.left + 'px';
+  ghost.style.top = rect.top + 'px';
+  document.body.appendChild(ghost);
+  card.classList.add('dragging');
+  drag = { id, card, ghost, offX: e.clientX-rect.left, offY: e.clientY-rect.top, hoverEl: null };
+}
+function onPointerDown(e){
+  if(e.target.closest('[data-act]')) return;
+  const card = e.target.closest('.item-card'); if(!card) return;
+  e.preventDefault();
+  document.body.setPointerCapture && document.body.setPointerCapture(e.pointerId);
+  startDrag(card, e);
+}
+function onPointerMove(e){
+  if(!drag) return;
+  drag.ghost.style.left = (e.clientX-drag.offX) + 'px';
+  drag.ghost.style.top = (e.clientY-drag.offY) + 'px';
+  drag.ghost.style.display = 'none';
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  drag.ghost.style.display = '';
+  const target = under && under.closest('.item-card');
+  if(drag.hoverEl && drag.hoverEl !== target) drag.hoverEl.classList.remove('drop-hover');
+  if(target && target.dataset.id !== drag.id){ target.classList.add('drop-hover'); drag.hoverEl = target; }
+  else drag.hoverEl = null;
+}
+function onPointerUp(){
+  if(!drag) return;
+  const targetId = drag.hoverEl ? drag.hoverEl.dataset.id : null;
+  drag.ghost.remove(); drag.card.classList.remove('dragging');
+  if(drag.hoverEl) drag.hoverEl.classList.remove('drop-hover');
+  if(targetId){
+    const src = state.items.find(x=>x.id===drag.id);
+    const tgt = state.items.find(x=>x.id===targetId);
+    if(src && tgt && src.id!==tgt.id){
+      let gid = tgt.groupId;
+      if(!gid){ gid = uid(); tgt.groupId = gid; }
+      src.groupId = gid;
+      save(); toast('Paired'); renderPairsAndUnpaired();
+    }
+  }
+  drag = null;
+}
+document.addEventListener('pointerdown', onPointerDown);
+document.addEventListener('pointermove', onPointerMove);
+document.addEventListener('pointerup', onPointerUp);
+document.addEventListener('pointercancel', ()=>{ if(drag){ drag.ghost.remove(); drag.card.classList.remove('dragging'); if(drag.hoverEl) drag.hoverEl.classList.remove('drop-hover'); drag=null; } });
+
+$('lightbox').addEventListener('click', () => $('lightbox').classList.remove('open'));
+
+if(state.updated) $('saved').textContent = 'Saved on ' + fmtDate(state.updated);
+renderAll();
+</script>
+</body>
+</html>
