@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiber — Little Lab</title>
+<style>
+  :root{
+    --bg:#0d0f0e;
+    --card:#161a18;
+    --card2:#1c211e;
+    --mint:#a7e8c5;
+    --coral:#ff8c70;
+    --text:#e8ece9;
+    --muted:#8b958f;
+    --border:#262b28;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    padding:16px 14px 90px;
+    max-width:640px;
+    margin:0 auto;
+  }
+  h1{font-size:1.5rem;margin:4px 0 2px;}
+  .sub{color:var(--muted);font-size:0.85rem;margin-bottom:18px;}
+  .badge{display:inline-block;font-size:0.7rem;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.02em;}
+  .badge.fat{background:rgba(255,140,112,.15);color:var(--coral);}
+  .badge.water{background:rgba(167,232,197,.15);color:var(--mint);}
+  .badge.caution{background:rgba(255,140,112,.15);color:var(--coral);}
+  .badge.mineral{background:rgba(167,232,197,.15);color:var(--mint);}
+  .badge.macro{background:rgba(167,232,197,.15);color:var(--mint);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .fact-item{background:var(--card2);border-radius:10px;padding:10px 12px;}
+  .fact-label{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .fact-value{font-size:0.92rem;margin-top:2px;font-weight:600;}
+  .section-title{font-size:1rem;font-weight:700;margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
+  .cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;}
+  .cat-head{font-weight:700;font-size:0.95rem;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+  .food-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
+  .food-row:first-of-type{border-top:none;}
+  .food-name{font-weight:600;font-size:0.9rem;}
+  .food-qty{color:var(--muted);font-size:0.76rem;margin-top:2px;}
+  .food-combo{color:var(--muted);font-size:0.72rem;margin-top:3px;}
+  .chk{width:22px;height:22px;flex-shrink:0;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px;}
+  .chk.on{background:var(--mint);border-color:var(--mint);color:#0d0f0e;font-weight:900;font-size:0.85rem;}
+  .row-actions{display:flex;gap:12px;margin-top:6px;}
+  .link-btn{background:none;border:none;color:var(--muted);font-size:0.72rem;padding:0;cursor:pointer;text-decoration:underline;}
+  .link-btn.danger{color:var(--coral);}
+  .empty-cat{color:var(--muted);font-size:0.78rem;padding:4px 0;}
+  .addform{display:flex;gap:8px;flex-wrap:wrap;}
+  .addform input, .addform select{
+    background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:10px 12px;font-size:0.9rem;
+  }
+  .addform input{flex:1;min-width:120px;}
+  .addform select{flex:0 0 auto;}
+  .addform input:focus, .addform select:focus{outline:none;border-color:var(--mint);}
+  .btn{background:var(--mint);color:#0d0f0e;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:0.9rem;cursor:pointer;}
+  .btn:disabled{opacity:.35;cursor:not-allowed;}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn.block{width:100%;padding:13px;font-size:0.95rem;margin-top:10px;}
+  .plan-group{margin-bottom:8px;}
+  .plan-cat-label{font-size:0.72rem;color:var(--mint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:5px 11px;font-size:0.78rem;}
+  .tag-drv{font-size:0.68rem;background:var(--card2);color:var(--mint);border-radius:8px;padding:2px 7px;display:inline-block;margin-top:3px;}
+  .drv-bar-wrap{background:var(--card2);border-radius:8px;height:8px;overflow:hidden;margin-top:10px;}
+  .drv-bar{height:100%;background:var(--mint);border-radius:8px;transition:width .2s ease;}
+  .drv-bar.over{background:var(--coral);}
+  .drv-summary{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+  .drv-summary .pct{font-weight:800;font-size:1rem;}
+  .drv-summary .pct.over{color:var(--coral);}
+  .drv-warn{font-size:0.76rem;color:var(--coral);margin-top:6px;line-height:1.4;}
+  .tracker-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .tracker-head .streak{font-size:0.85rem;color:var(--mint);font-weight:700;}
+  .tracker-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.tracker{border-collapse:collapse;width:max-content;}
+  table.tracker th, table.tracker td{padding:0;text-align:center;}
+  table.tracker th{
+    font-size:0.68rem;color:var(--muted);font-weight:600;padding-bottom:6px;width:30px;
+  }
+  table.tracker th.sticky-col, table.tracker td.sticky-col{
+    position:sticky;left:0;background:var(--card);text-align:left;padding-right:10px;
+    font-size:0.78rem;font-weight:600;width:92px;white-space:nowrap;z-index:1;
+  }
+  table.tracker th.today-col{color:var(--coral);}
+  table.tracker td.total-cell{font-size:0.68rem;font-weight:800;color:var(--mint);padding-top:6px;}
+  table.tracker td.total-cell.over{color:var(--coral);}
+  table.tracker td.sticky-col.total-label{background:var(--card);}
+  .cell{
+    width:26px;height:26px;margin:2px auto;border-radius:7px;background:var(--card2);
+    border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+    font-size:0.7rem;color:var(--muted);cursor:pointer;
+  }
+  .cell.done{background:rgba(167,232,197,.2);border-color:var(--mint);color:var(--mint);font-weight:800;}
+  .cell.future{opacity:.3;cursor:not-allowed;}
+  .cell.disabled{opacity:.25;cursor:not-allowed;background:transparent;border-style:dashed;}
+  @media (hover:hover) and (pointer:fine){
+    .cell:not(.future):not(.disabled):hover{border-color:var(--mint);}
+    .btn:not(:disabled):hover{filter:brightness(1.08);}
+  }
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:var(--mint);color:#0d0f0e;padding:10px 18px;border-radius:20px;
+    font-size:0.85rem;font-weight:600;opacity:0;pointer-events:none;transition:all .25s ease;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<span class="badge macro">Gut health & fullness</span>
+<h1>Fiber</h1>
+<div class="sub">Plan low-cost Fiber foods across your meals, then build a 21-day habit.</div>
+
+<div class="card">
+  <div class="facts">
+    <div class="fact-item"><div class="fact-label">DRV / day</div><div class="fact-value">~28-30 g</div></div>
+    <div class="fact-item"><div class="fact-label">Role</div><div class="fact-value">Gut health & fullness</div></div>
+    <div class="fact-item"><div class="fact-label">Best time</div><div class="fact-value">Spread across meals, with water</div></div>
+    <div class="fact-item"><div class="fact-label">Best combo</div><div class="fact-value">Drink enough water alongside</div></div>
+  </div>
+  <div class="food-combo" style="margin-top:12px;font-size:0.78rem;">Reference: ~28-30g/day (adult) — approximate. Fiber works best with adequate water intake; if your current intake is low, increase gradually to avoid bloating or discomfort.</div>
+</div>
+
+<div class="section-title">🍽️ Plan your foods by meal</div>
+<div id="categorySections"></div>
+
+<div class="section-title">➕ Add a custom food</div>
+<div class="card">
+  <div class="addform">
+    <input id="customName" type="text" placeholder="Food name" maxlength="40">
+    <input id="customQty" type="text" placeholder="Quantity (e.g. 1 bowl)" maxlength="24">
+    <input id="customDrv" type="number" min="0" max="500" placeholder="% DRV" style="max-width:80px;">
+    <select id="customCategory">
+      <option value="breakfast">Breakfast</option>
+      <option value="lunch">Lunch</option>
+      <option value="dinner">Dinner</option>
+      <option value="snacks">Snacks</option>
+    </select>
+  </div>
+  <div class="empty-cat" style="padding-top:6px;">% DRV is how much of your daily Fiber this quantity covers — leave blank if unsure.</div>
+  <button class="btn ghost block" id="addCustomBtn">Add food</button>
+</div>
+
+<div class="section-title">✅ Your plan</div>
+<div class="card">
+  <div id="planSummary"></div>
+  <div id="drvTotal"></div>
+  <button class="btn block" id="startBtn" disabled>Start 21-Day Habit</button>
+</div>
+
+<div id="trackerSection" style="display:none;">
+  <div class="section-title">📅 21-Day Tracker</div>
+  <div class="card">
+    <div class="tracker-head">
+      <div style="font-size:0.8rem;color:var(--muted);">Tap a cell to mark that meal done</div>
+      <div class="streak" id="streakText"></div>
+    </div>
+    <div class="tracker-wrap">
+      <table class="tracker" id="trackerTable"></table>
+    </div>
+    <button class="link-btn danger" id="resetHabitBtn" style="margin-top:14px;">Reset habit</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const KEY = 'as_fiber_v1';
+  const CATS = [
+    {id:'breakfast', label:'Breakfast', icon:'🌅'},
+    {id:'lunch', label:'Lunch', icon:'☀️'},
+    {id:'dinner', label:'Dinner', icon:'🌙'},
+    {id:'snacks', label:'Snacks', icon:'🍪'}
+  ];
+
+  const TOP_FOODS = [
+    {id:'top-1', name:'Chickpeas (Chana)', quantity:'1 cup, cooked (164g)', category:'lunch', combo:'In chana chaat or curry', drvPct:43},
+    {id:'top-2', name:'Oats', quantity:'1 cup, cooked', category:'breakfast', combo:'With milk and fruit', drvPct:14},
+    {id:'top-3', name:'Wheat Roti', quantity:'2 medium', category:'dinner', combo:'With sabzi', drvPct:14},
+    {id:'top-4', name:'Guava', quantity:'1 medium (100g)', category:'snacks', combo:'Eat with the skin on', drvPct:18},
+    {id:'top-5', name:'Spinach (Palak)', quantity:'1 cup, cooked (180g)', category:'dinner', combo:'Cooked with garlic', drvPct:14}
+  ];
+
+  let state = load();
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed.habit && !parsed.habit.cells){
+          parsed.habit = {active:false, startDate:null, cells:emptyCells()};
+        }
+        return parsed;
+      }
+    }catch(e){}
+    return {customFoods:[], selected:[], habit:{active:false, startDate:null, cells:emptyCells()}};
+  }
+  function emptyCells(){
+    const c={}; CATS.forEach(cat=>c[cat.id]=Array(21).fill(false)); return c;
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+  function fmtDate(d){
+    const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+  function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+  let toastTimer=null;
+  function showToast(msg){
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>t.classList.remove('show'),1800);
+  }
+
+  function allFoods(){
+    return [...TOP_FOODS, ...state.customFoods.map(f=>({id:f.id,name:f.name,quantity:f.quantity,category:f.category,drvPct:f.drvPct||0,custom:true}))];
+  }
+  function categoryDRV(catId){
+    return state.selected.reduce((sum,id)=>{
+      const f=foodById(id);
+      return (f && f.category===catId) ? sum+(f.drvPct||0) : sum;
+    },0);
+  }
+  function planTotalDRV(){
+    return state.selected.reduce((sum,id)=>{ const f=foodById(id); return sum+(f?f.drvPct||0:0); },0);
+  }
+  function foodById(id){ return allFoods().find(f=>f.id===id); }
+  function foodsInCategory(catId){ return allFoods().filter(f=>f.category===catId); }
+
+  // ---- Category sections ----
+  let editingId=null;
+  let pendingDelete=null;
+
+  function renderCategorySections(){
+    const el=document.getElementById('categorySections');
+    el.innerHTML = CATS.map(cat=>{
+      const foods = foodsInCategory(cat.id);
+      const rows = foods.length===0 ? `<div class="empty-cat">No foods yet — add a custom one below.</div>` :
+        foods.map(f=>{
+          const sel = state.selected.includes(f.id);
+          const isCustom = !!f.custom;
+          return `<div class="food-row" data-id="${f.id}">
+            <div>
+              <div class="food-name">${f.name}</div>
+              <div class="food-qty">${f.quantity||'—'}</div>
+              ${f.drvPct?`<div class="tag-drv">${f.drvPct}% of daily DRV</div>`:''}
+              ${f.combo?`<div class="food-combo"><b>Combo:</b> ${f.combo}</div>`:''}
+              ${isCustom?`<div class="row-actions">
+                <button class="link-btn" data-role="edit-custom" data-id="${f.id}">Edit</button>
+                <button class="link-btn danger" data-role="delete-custom" data-id="${f.id}">${pendingDelete===f.id?'Tap again to delete':'Delete'}</button>
+              </div>`:''}
+            </div>
+            <div class="chk ${sel?'on':''}" data-role="toggle-select" data-id="${f.id}">${sel?'✓':''}</div>
+          </div>`;
+        }).join('');
+      return `<div class="cat-card">
+        <div class="cat-head">${cat.icon} ${cat.label}</div>
+        ${rows}
+      </div>`;
+    }).join('');
+  }
+
+  // ---- Plan summary ----
+  function renderPlanSummary(){
+    const el=document.getElementById('planSummary');
+    const groups = CATS.map(cat=>{
+      const ids = state.selected.filter(id=>{ const f=foodById(id); return f && f.category===cat.id; });
+      if(ids.length===0) return '';
+      const names = ids.map(id=>foodById(id).name);
+      return `<div class="plan-group">
+        <div class="plan-cat-label">${cat.icon} ${cat.label}</div>
+        <div class="chips">${names.map(n=>`<span class="chip">${n}</span>`).join('')}</div>
+      </div>`;
+    }).join('');
+    el.innerHTML = groups || `<div class="empty-cat" style="padding:0 0 10px;">No foods selected yet</div>`;
+
+    renderDrvTotal();
+
+    const startBtn=document.getElementById('startBtn');
+    startBtn.disabled = state.selected.length===0 || state.habit.active;
+    startBtn.textContent = state.habit.active ? 'Habit already running' : 'Start 21-Day Habit';
+  }
+
+  function renderDrvTotal(){
+    const el=document.getElementById('drvTotal');
+    if(state.selected.length===0){ el.innerHTML=''; return; }
+    const total=planTotalDRV();
+    const over = total>120;
+    const barWidth = Math.min(total,150)/150*100;
+    el.innerHTML = `
+      <div class="drv-summary">
+        <span style="font-size:0.78rem;color:var(--muted);">If eaten as planned, per day you'd cover</span>
+        <span class="pct ${over?'over':''}">${total}% DRV</span>
+      </div>
+      <div class="drv-bar-wrap"><div class="drv-bar ${over?'over':''}" style="width:${barWidth}%"></div></div>
+      ${over?`<div class="drv-warn">That's well above your typical daily need. Too much fiber too quickly (especially without enough water) can cause bloating or gas rather than any real harm — increase gradually rather than stacking a big jump in one day.</div>`:''}
+    `;
+  }
+
+  // ---- Tracker ----
+  function dayIndexFromStart(){
+    if(!state.habit.startDate) return 0;
+    const start=new Date(state.habit.startDate+'T00:00:00');
+    const now=new Date(); now.setHours(0,0,0,0);
+    return Math.floor((now-start)/86400000);
+  }
+
+  function renderTracker(){
+    const section=document.getElementById('trackerSection');
+    if(!state.habit.active){ section.style.display='none'; return; }
+    section.style.display='block';
+
+    const todayIdx = dayIndexFromStart();
+    const start=new Date(state.habit.startDate+'T00:00:00');
+    const activeCats = CATS.filter(cat=>state.selected.some(id=>foodById(id)?.category===cat.id));
+
+    let head = `<tr><th class="sticky-col"></th>`;
+    for(let i=0;i<21;i++){
+      head += `<th class="${i===todayIdx?'today-col':''}">${i+1}</th>`;
+    }
+    head += `</tr>`;
+
+    let body = CATS.map(cat=>{
+      const active = activeCats.some(c=>c.id===cat.id);
+      let row = `<tr><td class="sticky-col">${cat.icon} ${cat.label}</td>`;
+      for(let i=0;i<21;i++){
+        const dt=new Date(start); dt.setDate(dt.getDate()+i);
+        const isFuture = i>todayIdx;
+        if(!active){
+          row += `<td><div class="cell disabled" title="No food planned for ${cat.label}">–</div></td>`;
+        }else{
+          const done = state.habit.cells[cat.id][i];
+          row += `<td><div class="cell ${done?'done':''} ${isFuture?'future':''}" data-role="toggle-cell" data-cat="${cat.id}" data-day="${i}" title="${fmtDate(dt)}">${done?'✓':''}</div></td>`;
+        }
+      }
+      row += `</tr>`;
+      return row;
+    }).join('');
+
+    let totalsRow = `<tr><td class="sticky-col total-label">% DRV</td>`;
+    for(let i=0;i<21;i++){
+      totalsRow += `<td id="daytotal-${i}" class="total-cell"></td>`;
+    }
+    totalsRow += `</tr>`;
+
+    document.getElementById('trackerTable').innerHTML = `<thead>${head}</thead><tbody>${body}${totalsRow}</tbody>`;
+
+    for(let i=0;i<21;i++) updateDayTotal(i);
+
+    let doneCount=0, totalCount=0;
+    activeCats.forEach(cat=>{
+      state.habit.cells[cat.id].forEach(v=>{ totalCount++; if(v) doneCount++; });
+    });
+    document.getElementById('streakText').textContent = totalCount ? `${doneCount}/${totalCount} done` : '';
+  }
+
+  function dayTotalDRV(dayIndex){
+    return CATS.reduce((sum,cat)=>{
+      const ticked = state.habit.cells[cat.id][dayIndex];
+      return ticked ? sum+categoryDRV(cat.id) : sum;
+    },0);
+  }
+
+  function updateDayTotal(dayIndex){
+    const cell=document.getElementById(`daytotal-${dayIndex}`);
+    if(!cell) return;
+    const total=dayTotalDRV(dayIndex);
+    cell.textContent = total>0 ? total+'%' : '–';
+    cell.classList.toggle('over', total>120);
+  }
+
+  function renderAll(){
+    renderCategorySections();
+    renderPlanSummary();
+    renderTracker();
+  }
+
+  // ---- Events ----
+  document.body.addEventListener('click', function(e){
+    const toggleSel = e.target.closest('[data-role="toggle-select"]');
+    if(toggleSel){
+      const id=toggleSel.dataset.id;
+      const idx=state.selected.indexOf(id);
+      if(idx>-1) state.selected.splice(idx,1); else state.selected.push(id);
+      save(); renderCategorySections(); renderPlanSummary();
+      return;
+    }
+
+    const editBtn = e.target.closest('[data-role="edit-custom"]');
+    if(editBtn){
+      const f = state.customFoods.find(x=>x.id===editBtn.dataset.id);
+      if(f){
+        document.getElementById('customName').value=f.name;
+        document.getElementById('customQty').value=f.quantity||'';
+        document.getElementById('customDrv').value=f.drvPct||'';
+        document.getElementById('customCategory').value=f.category;
+        editingId=f.id;
+        document.getElementById('addCustomBtn').textContent='Save changes';
+        document.getElementById('customName').focus();
+      }
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-role="delete-custom"]');
+    if(delBtn){
+      const id=delBtn.dataset.id;
+      if(pendingDelete===id){
+        state.customFoods = state.customFoods.filter(x=>x.id!==id);
+        state.selected = state.selected.filter(x=>x!==id);
+        pendingDelete=null;
+        save(); renderCategorySections(); renderPlanSummary(); renderTracker();
+        showToast('Food deleted');
+      }else{
+        pendingDelete=id;
+        renderCategorySections();
+        setTimeout(()=>{ if(pendingDelete===id){ pendingDelete=null; renderCategorySections(); } },2500);
+      }
+      return;
+    }
+
+    const cell = e.target.closest('[data-role="toggle-cell"]');
+    if(cell && !cell.classList.contains('future')){
+      const cat=cell.dataset.cat, day=parseInt(cell.dataset.day,10);
+      state.habit.cells[cat][day] = !state.habit.cells[cat][day];
+      save();
+      cell.classList.toggle('done');
+      cell.textContent = state.habit.cells[cat][day] ? '✓' : '';
+      updateDayTotal(day);
+      let doneCount=0, totalCount=0;
+      CATS.forEach(c=>{
+        if(state.selected.some(id=>foodById(id)?.category===c.id)){
+          state.habit.cells[c.id].forEach(v=>{ totalCount++; if(v) doneCount++; });
+        }
+      });
+      document.getElementById('streakText').textContent = totalCount ? `${doneCount}/${totalCount} done` : '';
+      return;
+    }
+
+    if(e.target.id==='resetHabitBtn'){
+      if(e.target.dataset.armed==='1'){
+        state.habit = {active:false, startDate:null, cells:emptyCells()};
+        save(); renderPlanSummary(); renderTracker();
+        showToast('Habit reset');
+        e.target.dataset.armed='0';
+        e.target.textContent='Reset habit';
+      }else{
+        e.target.dataset.armed='1';
+        e.target.textContent='Tap again to reset';
+        setTimeout(()=>{ e.target.dataset.armed='0'; e.target.textContent='Reset habit'; },2500);
+      }
+      return;
+    }
+
+    if(e.target.id==='startBtn' && !e.target.disabled){
+      state.habit = {active:true, startDate:todayISO(), cells:emptyCells()};
+      save(); renderPlanSummary(); renderTracker();
+      showToast('21-day habit started');
+      return;
+    }
+  });
+
+  document.getElementById('addCustomBtn').addEventListener('click', function(){
+    const nameEl=document.getElementById('customName');
+    const qtyEl=document.getElementById('customQty');
+    const drvEl=document.getElementById('customDrv');
+    const catEl=document.getElementById('customCategory');
+    const name=nameEl.value.trim();
+    if(!name) return;
+    const quantity=qtyEl.value.trim();
+    const drvPct=drvEl.value ? Math.max(0,Math.min(500,parseInt(drvEl.value,10))) : 0;
+    const category=catEl.value;
+
+    if(editingId){
+      const f=state.customFoods.find(x=>x.id===editingId);
+      if(f){ f.name=name; f.quantity=quantity; f.drvPct=drvPct; f.category=category; }
+      editingId=null;
+      this.textContent='Add food';
+    }else{
+      state.customFoods.push({id:'custom-'+Date.now(), name, quantity, drvPct, category});
+    }
+    save();
+    nameEl.value=''; qtyEl.value=''; drvEl.value='';
+    renderCategorySections(); renderPlanSummary();
+  });
+
+  renderAll();
+})();
+</script>
+
+</body>
+</html>

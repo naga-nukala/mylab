@@ -54,9 +54,11 @@
 
   .group{border:1px solid var(--coral);border-radius:12px;padding:8px;margin-bottom:8px;background:#1e293b;}
   .group.best{box-shadow:0 0 0 1px var(--coral) inset;}
-  .group-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--sub);margin-bottom:6px;padding:0 2px;}
-  .group-total{color:var(--coral);font-weight:700;}
+  .group.drop-hover{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset;}
+  .group-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--sub);margin-bottom:6px;padding:0 2px;gap:6px;}
+  .group-total{color:var(--coral);font-weight:700;white-space:nowrap;}
   .group-items{display:flex;gap:8px;flex-wrap:wrap;}
+  .move-select{width:auto;max-width:112px;padding:3px 4px;font-size:10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:var(--sub);}
 
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   @media (max-width:380px){.grid{grid-template-columns:1fr;}}
@@ -71,6 +73,7 @@
   .item-color{font-size:11px;color:var(--sub);}
   .item-meta{font-size:10px;color:var(--sub);line-height:1.5;margin-top:2px;}
   .item-price{font-size:12px;font-weight:700;color:var(--acc);}
+  .item-card .move-select{width:100%;max-width:none;margin-top:6px;}
   .item-actions{display:flex;gap:4px;position:absolute;top:6px;right:6px;}
   .icon-btn{width:22px;height:22px;border-radius:50%;border:1px solid #334155;background:#1e293b;color:var(--sub);font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;}
   .icon-btn.star.on{color:var(--coral);border-color:var(--coral);}
@@ -121,7 +124,7 @@
     <div class="row">
       <div class="field">
         <label for="iType">Type</label>
-        <select id="iType"><option>Pant</option><option>Shirt</option><option>Jacket</option></select>
+        <select id="iType"><option>Pant</option><option>Shirt</option><option>Jacket</option><option>Banian</option><option>Underwear</option></select>
       </div>
       <div class="field">
         <label for="iColor">Colour</label>
@@ -172,8 +175,8 @@
 
 <script>
 const KEY = 'clothes_tracker_v1';
-const CATS = ['Office','Office Parties','Travel for Big Occasions','Small Occasions','Festivals'];
-const TYPES = ['Pant','Shirt','Jacket'];
+const CATS = ['Office','Office Parties','Home / Night Wear','Travel for Big Occasions','Small Occasions','Festivals'];
+const TYPES = ['Pant','Shirt','Jacket','Banian','Underwear'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const $ = id => document.getElementById(id);
 
@@ -315,6 +318,7 @@ function retireInfo(it){
 
 function itemCardHTML(it, inGroup){
   const ri = retireInfo(it);
+  const moveOpts = CATS.filter(c=>c!==it.category).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   return `<div class="item-card" data-id="${it.id}">
     <div class="item-actions">
       <button class="icon-btn star${it.bestPair?' on':''}" data-act="best" title="Best pair">★</button>
@@ -330,6 +334,7 @@ function itemCardHTML(it, inGroup){
       ${it.life!=null ? it.life + ' yr life' : 'No life span set'}${ri.text ? ' · <span class="'+ri.cls+'">'+ri.text+'</span>' : ''}
     </div>
     <div class="item-price">${fmt(it.price)}</div>
+    ${!inGroup ? `<select class="move-select" data-act="movesingle" data-id="${it.id}"><option value="">Move to tab…</option>${moveOpts}</select>` : ''}
   </div>`;
 }
 
@@ -347,8 +352,13 @@ function renderPairsAndUnpaired(){
       const g = groups[gid];
       const total = g.reduce((s,i)=>s+i.price,0);
       const best = g.some(i=>i.bestPair);
+      const moveOpts = CATS.filter(c=>c!==state.currentCat).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
       return `<div class="group${best?' best':''}" data-gid="${gid}">
-        <div class="group-head"><span>${g.map(i=>i.type).join(' + ')}${best?' ★':''}</span><span class="group-total">${fmt(total)}</span></div>
+        <div class="group-head">
+          <span>${g.map(i=>i.type).join(' + ')}${best?' ★':''}</span>
+          <select class="move-select" data-act="move" data-gid="${gid}"><option value="">Move to tab…</option>${moveOpts}</select>
+          <span class="group-total">${fmt(total)}</span>
+        </div>
         <div class="group-items">${g.map(i=>itemCardHTML(i,true)).join('')}</div>
       </div>`;
     }).join('');
@@ -426,6 +436,18 @@ function handleAction(e){
 }
 $('pairs').addEventListener('click', handleAction);
 $('unpaired').addEventListener('click', handleAction);
+$('pairs').addEventListener('change', e => {
+  const sel = e.target.closest('[data-act="move"]'); if(!sel || !sel.value) return;
+  const gid = sel.dataset.gid, dest = sel.value;
+  state.items.forEach(it => { if(it.groupId === gid) it.category = dest; });
+  save(); toast('Pair moved to ' + dest); renderAll();
+});
+$('unpaired').addEventListener('change', e => {
+  const sel = e.target.closest('[data-act="movesingle"]'); if(!sel || !sel.value) return;
+  const it = state.items.find(x=>x.id===sel.dataset.id); if(!it) return;
+  it.category = sel.value;
+  save(); toast('Moved to ' + sel.value); renderAll();
+});
 
 // ---- Drag to pair (pointer events, works for mouse + touch) ----
 let drag = null;
@@ -455,23 +477,35 @@ function onPointerMove(e){
   drag.ghost.style.display = 'none';
   const under = document.elementFromPoint(e.clientX, e.clientY);
   drag.ghost.style.display = '';
-  const target = under && under.closest('.item-card');
+  // Valid drop zones: another item-card, OR anywhere on an existing pair group (so
+  // dropping between/beside cards inside a group still pairs it, not just a pixel-perfect card hit).
+  let target = under && (under.closest('.item-card') || under.closest('.group'));
+  if(target && target.classList.contains('item-card') && target.dataset.id === drag.id) target = null;
   if(drag.hoverEl && drag.hoverEl !== target) drag.hoverEl.classList.remove('drop-hover');
-  if(target && target.dataset.id !== drag.id){ target.classList.add('drop-hover'); drag.hoverEl = target; }
+  if(target){ target.classList.add('drop-hover'); drag.hoverEl = target; }
   else drag.hoverEl = null;
 }
 function onPointerUp(){
   if(!drag) return;
-  const targetId = drag.hoverEl ? drag.hoverEl.dataset.id : null;
+  const target = drag.hoverEl;
   drag.ghost.remove(); drag.card.classList.remove('dragging');
-  if(drag.hoverEl) drag.hoverEl.classList.remove('drop-hover');
-  if(targetId){
+  if(target) target.classList.remove('drop-hover');
+  if(target){
     const src = state.items.find(x=>x.id===drag.id);
-    const tgt = state.items.find(x=>x.id===targetId);
-    if(src && tgt && src.id!==tgt.id){
-      let gid = tgt.groupId;
-      if(!gid){ gid = uid(); tgt.groupId = gid; }
+    let gid = null;
+    if(target.classList.contains('group')){
+      gid = target.dataset.gid;
+    } else if(target.classList.contains('item-card')){
+      const tgt = state.items.find(x=>x.id===target.dataset.id);
+      if(tgt){ gid = tgt.groupId || (tgt.groupId = uid()); }
+    }
+    if(src && gid && src.groupId !== gid){
+      const oldGid = src.groupId;
       src.groupId = gid;
+      if(oldGid){
+        const rest = state.items.filter(x=>x.groupId===oldGid);
+        if(rest.length < 2) rest.forEach(x=>x.groupId=null);
+      }
       save(); toast('Paired'); renderPairsAndUnpaired();
     }
   }

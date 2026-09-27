@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Toothbrush & Tongue Cleaner Tracker</title>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --surface:#14171c;
+    --surface-2:#1b1f26;
+    --border:#262b33;
+    --text:#e9edf1;
+    --text-dim:#8b95a1;
+    --mint:#a7e8c5;
+    --coral:#ff8c70;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:16px;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:1.3rem;margin:0 0 4px;}
+  .sub{color:var(--text-dim);font-size:0.85rem;margin:0 0 18px;}
+
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:20px;
+  }
+  .summary .stat{text-align:center;}
+  .summary .num{font-size:1.4rem;font-weight:700;}
+  .summary .label{font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;}
+  .summary .num.coral{color:var(--coral);}
+  .summary .num.mint{color:var(--mint);}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .card h2{font-size:0.95rem;margin:0 0 12px;color:var(--text);}
+  label{display:block;font-size:0.78rem;color:var(--text-dim);margin:10px 0 4px;}
+  label:first-child{margin-top:0;}
+  input[type=text], input[type=date], input[type=number]{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 12px;
+    color:var(--text);
+    font-size:0.95rem;
+  }
+  input:focus{outline:none;border-color:var(--mint);}
+  textarea{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 12px;
+    color:var(--text);
+    font-size:0.9rem;
+    resize:vertical;
+    min-height:44px;
+    font-family:inherit;
+  }
+  textarea:focus{outline:none;border-color:var(--mint);}
+
+  .item-block{
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px;
+    margin-top:14px;
+    background:var(--surface-2);
+  }
+  .item-block .item-title{font-size:0.85rem;font-weight:600;color:var(--mint);margin-bottom:2px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .preview{
+    margin-top:10px;
+    font-size:0.78rem;
+    color:var(--text-dim);
+  }
+  .preview .status-pill{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:20px;
+    font-size:0.72rem;
+    font-weight:600;
+    margin-right:6px;
+  }
+  .status-ok{background:rgba(167,232,197,0.18);color:var(--mint);}
+  .status-soon{background:rgba(255,140,112,0.15);color:var(--coral);}
+  .status-over{background:var(--coral);color:#1a0e0a;}
+
+  .form-actions{display:flex;gap:10px;margin-top:16px;}
+  button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+    border-radius:10px;
+    font-size:0.9rem;
+    font-weight:600;
+    padding:11px 16px;
+  }
+  .btn-primary{background:var(--mint);color:#0b1a12;flex:1;}
+  .btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);}
+  @media (hover:hover) and (pointer:fine){
+    .btn-primary:hover{filter:brightness(1.08);}
+    .btn-ghost:hover{border-color:var(--text-dim);color:var(--text);}
+  }
+
+  .member-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .member-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .member-name{font-size:1rem;font-weight:700;}
+  .member-actions{display:flex;gap:8px;}
+  .icon-btn{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    padding:6px 10px;
+    border-radius:8px;
+    font-size:0.78rem;
+  }
+  .icon-btn.danger{color:var(--coral);}
+  @media (hover:hover) and (pointer:fine){
+    .icon-btn:hover{color:var(--text);border-color:var(--text-dim);}
+    .icon-btn.danger:hover{color:var(--coral);border-color:var(--coral);}
+  }
+
+  .item-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:9px 0;
+    border-top:1px solid var(--border);
+    font-size:0.85rem;
+    gap:10px;
+  }
+  .item-row:first-of-type{border-top:none;}
+  .item-row .name{color:var(--text-dim);min-width:74px;}
+  .item-row .mid{flex:1;text-align:right;color:var(--text-dim);font-size:0.78rem;}
+  .item-row .cost{color:var(--text);font-size:0.78rem;min-width:64px;text-align:right;}
+  .notes-line{font-size:0.75rem;color:var(--text-dim);margin-top:6px;font-style:italic;}
+
+  .empty{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:0.85rem;
+    padding:30px 10px;
+  }
+
+  .toast{
+    position:fixed;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 18px;
+    border-radius:30px;
+    font-size:0.82rem;
+    opacity:0;
+    transition:opacity .2s, transform .2s;
+    pointer-events:none;
+    z-index:50;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Toothbrush & Tongue Cleaner Tracker</h1>
+  <p class="sub">Track when each family member's brush & tongue cleaner is due for a change.</p>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="card">
+    <h2 id="formTitle">Add family member</h2>
+    <label for="nameInput">Name</label>
+    <input type="text" id="nameInput" placeholder="e.g. Naga">
+
+    <div class="item-block">
+      <div class="item-title">🪥 Toothbrush</div>
+      <div class="row2">
+        <div><label for="brushDate">Last changed</label><input type="date" id="brushDate"></div>
+        <div><label for="brushFreq">Change every (months)</label><input type="number" id="brushFreq" value="6" min="1"></div>
+      </div>
+      <div class="row2">
+        <div><label for="brushCost">Cost (₹)</label><input type="number" id="brushCost" min="0" placeholder="0"></div>
+        <div></div>
+      </div>
+      <label for="brushNotes">Notes</label>
+      <textarea id="brushNotes" placeholder="Brand, bristle type, etc."></textarea>
+      <div class="preview" id="brushPreview"></div>
+    </div>
+
+    <div class="item-block">
+      <div class="item-title">👅 Tongue cleaner</div>
+      <div class="row2">
+        <div><label for="cleanerDate">Last changed</label><input type="date" id="cleanerDate"></div>
+        <div><label for="cleanerFreq">Change every (months)</label><input type="number" id="cleanerFreq" value="6" min="1"></div>
+      </div>
+      <div class="row2">
+        <div><label for="cleanerCost">Cost (₹)</label><input type="number" id="cleanerCost" min="0" placeholder="0"></div>
+        <div></div>
+      </div>
+      <label for="cleanerNotes">Notes</label>
+      <textarea id="cleanerNotes" placeholder="Optional notes"></textarea>
+      <div class="preview" id="cleanerPreview"></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-primary" id="saveBtn">Add member</button>
+      <button class="btn-ghost" id="cancelBtn" style="display:none;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'as_toothbrush_tracker_v1';
+  const DUE_SOON_DAYS = 14;
+
+  let state = load();
+  let editingId = null;
+  let pendingDelete = null;
+  let pendingDeleteTimer = null;
+
+  const els = {
+    name: document.getElementById('nameInput'),
+    brushDate: document.getElementById('brushDate'),
+    brushFreq: document.getElementById('brushFreq'),
+    brushCost: document.getElementById('brushCost'),
+    brushNotes: document.getElementById('brushNotes'),
+    brushPreview: document.getElementById('brushPreview'),
+    cleanerDate: document.getElementById('cleanerDate'),
+    cleanerFreq: document.getElementById('cleanerFreq'),
+    cleanerCost: document.getElementById('cleanerCost'),
+    cleanerNotes: document.getElementById('cleanerNotes'),
+    cleanerPreview: document.getElementById('cleanerPreview'),
+    saveBtn: document.getElementById('saveBtn'),
+    cancelBtn: document.getElementById('cancelBtn'),
+    formTitle: document.getElementById('formTitle'),
+    summary: document.getElementById('summary'),
+    list: document.getElementById('list'),
+    toast: document.getElementById('toast')
+  };
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return {members:[]};
+      const parsed = JSON.parse(raw);
+      if(!parsed.members) return {members:[]};
+      return parsed;
+    }catch(e){ return {members:[]}; }
+  }
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  function uid(){
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+  function showToast(msg){
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>els.toast.classList.remove('show'), 2200);
+  }
+  function ordinalDay(d){
+    return d + 'th';
+  }
+  function formatDate(isoStr){
+    if(!isoStr) return '—';
+    const d = new Date(isoStr + 'T00:00:00');
+    if(isNaN(d)) return '—';
+    const day = ordinalDay(d.getDate());
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+  function addMonths(isoStr, months){
+    const d = new Date(isoStr + 'T00:00:00');
+    const result = new Date(d.getFullYear(), d.getMonth() + Number(months), d.getDate());
+    return result;
+  }
+  function daysBetween(a, b){
+    const ms = a.setHours(0,0,0,0) - b.setHours(0,0,0,0);
+    return Math.round(ms / 86400000);
+  }
+  function computeStatus(lastChanged, freqMonths){
+    if(!lastChanged || !freqMonths){
+      return {status:'unset', label:'Add a date', nextDate:null, daysLeft:null};
+    }
+    const next = addMonths(lastChanged, freqMonths);
+    const today = new Date();
+    const dl = daysBetween(next, today);
+    if(dl < 0){
+      return {status:'over', label:`Overdue by ${Math.abs(dl)}d`, nextDate: next, daysLeft: dl};
+    } else if(dl <= DUE_SOON_DAYS){
+      return {status:'soon', label:`Due in ${dl}d`, nextDate: next, daysLeft: dl};
+    } else {
+      return {status:'ok', label:`Due in ${dl}d`, nextDate: next, daysLeft: dl};
+    }
+  }
+  function statusClass(status){
+    if(status==='over') return 'status-over';
+    if(status==='soon') return 'status-soon';
+    if(status==='ok') return 'status-ok';
+    return '';
+  }
+  function money(n){
+    const v = Number(n)||0;
+    return '₹' + v.toLocaleString('en-IN');
+  }
+
+  function updatePreview(prefix){
+    const dateVal = els[prefix+'Date'].value;
+    const freqVal = els[prefix+'Freq'].value;
+    const previewEl = els[prefix+'Preview'];
+    if(!dateVal){
+      previewEl.innerHTML = '<span style="color:var(--text-dim)">Enter last changed date to see next due date</span>';
+      return;
+    }
+    const r = computeStatus(dateVal, freqVal);
+    const cls = statusClass(r.status);
+    previewEl.innerHTML = `<span class="status-pill ${cls}">${r.label}</span> next: ${formatDate(r.nextDate ? r.nextDate.toISOString().slice(0,10) : null)}`;
+  }
+
+  ['brush','cleaner'].forEach(prefix=>{
+    els[prefix+'Date'].addEventListener('input', ()=>updatePreview(prefix));
+    els[prefix+'Freq'].addEventListener('input', ()=>updatePreview(prefix));
+  });
+
+  function resetForm(){
+    editingId = null;
+    els.name.value = '';
+    els.brushDate.value = '';
+    els.brushFreq.value = 6;
+    els.brushCost.value = '';
+    els.brushNotes.value = '';
+    els.cleanerDate.value = '';
+    els.cleanerFreq.value = 6;
+    els.cleanerCost.value = '';
+    els.cleanerNotes.value = '';
+    els.formTitle.textContent = 'Add family member';
+    els.saveBtn.textContent = 'Add member';
+    els.cancelBtn.style.display = 'none';
+    updatePreview('brush');
+    updatePreview('cleaner');
+  }
+
+  function loadIntoForm(member){
+    editingId = member.id;
+    els.name.value = member.name;
+    els.brushDate.value = member.brush.lastChanged || '';
+    els.brushFreq.value = member.brush.freq || 6;
+    els.brushCost.value = member.brush.cost || '';
+    els.brushNotes.value = member.brush.notes || '';
+    els.cleanerDate.value = member.cleaner.lastChanged || '';
+    els.cleanerFreq.value = member.cleaner.freq || 6;
+    els.cleanerCost.value = member.cleaner.cost || '';
+    els.cleanerNotes.value = member.cleaner.notes || '';
+    els.formTitle.textContent = 'Edit family member';
+    els.saveBtn.textContent = 'Save changes';
+    els.cancelBtn.style.display = 'block';
+    updatePreview('brush');
+    updatePreview('cleaner');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  els.saveBtn.addEventListener('click', ()=>{
+    const name = els.name.value.trim();
+    if(!name){
+      els.name.focus();
+      showToast('Enter a name');
+      return;
+    }
+    const memberData = {
+      id: editingId || uid(),
+      name,
+      brush: {
+        lastChanged: els.brushDate.value || '',
+        freq: Number(els.brushFreq.value) || 6,
+        cost: els.brushCost.value === '' ? '' : Number(els.brushCost.value),
+        notes: els.brushNotes.value.trim()
+      },
+      cleaner: {
+        lastChanged: els.cleanerDate.value || '',
+        freq: Number(els.cleanerFreq.value) || 6,
+        cost: els.cleanerCost.value === '' ? '' : Number(els.cleanerCost.value),
+        notes: els.cleanerNotes.value.trim()
+      }
+    };
+    if(editingId){
+      const idx = state.members.findIndex(m=>m.id===editingId);
+      if(idx>-1) state.members[idx] = memberData;
+      showToast('Updated ' + name);
+    } else {
+      state.members.push(memberData);
+      showToast('Added ' + name);
+    }
+    save();
+    resetForm();
+    render();
+  });
+
+  els.cancelBtn.addEventListener('click', resetForm);
+
+  els.list.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-role]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    const role = btn.getAttribute('data-role');
+    if(role === 'edit'){
+      const member = state.members.find(m=>m.id===id);
+      if(member) loadIntoForm(member);
+    } else if(role === 'delete'){
+      if(pendingDelete === id){
+        clearTimeout(pendingDeleteTimer);
+        const member = state.members.find(m=>m.id===id);
+        state.members = state.members.filter(m=>m.id!==id);
+        pendingDelete = null;
+        save();
+        render();
+        showToast((member ? member.name : 'Member') + ' deleted');
+      } else {
+        pendingDelete = id;
+        btn.textContent = 'Tap again';
+        clearTimeout(pendingDeleteTimer);
+        pendingDeleteTimer = setTimeout(()=>{
+          pendingDelete = null;
+          render();
+        }, 3000);
+      }
+    }
+  });
+
+  function renderSummary(){
+    let overdue = 0, soon = 0, totalCost = 0;
+    state.members.forEach(m=>{
+      ['brush','cleaner'].forEach(k=>{
+        const item = m[k];
+        const r = computeStatus(item.lastChanged, item.freq);
+        if(r.status==='over') overdue++;
+        else if(r.status==='soon') soon++;
+        totalCost += Number(item.cost)||0;
+      });
+    });
+    els.summary.innerHTML = `
+      <div class="stat"><div class="num">${state.members.length}</div><div class="label">Members</div></div>
+      <div class="stat"><div class="num ${overdue?'coral':''}">${overdue}</div><div class="label">Overdue</div></div>
+      <div class="stat"><div class="num ${soon?'coral':'mint'}">${soon}</div><div class="label">Due soon</div></div>
+      <div class="stat"><div class="num mint">${money(totalCost)}</div><div class="label">Total spent</div></div>
+    `;
+  }
+
+  function itemRowHtml(label, icon, item){
+    const r = computeStatus(item.lastChanged, item.freq);
+    const cls = statusClass(r.status);
+    const midText = item.lastChanged
+      ? `<span class="status-pill ${cls}">${r.label}</span> every ${item.freq}m`
+      : `<span style="color:var(--text-dim)">not set</span>`;
+    let html = `<div class="item-row">
+      <span class="name">${icon} ${label}</span>
+      <span class="mid">${midText}</span>
+      <span class="cost">${item.cost !== '' && item.cost != null ? money(item.cost) : ''}</span>
+    </div>`;
+    if(item.notes){
+      html += `<div class="notes-line">${escapeHtml(item.notes)}</div>`;
+    }
+    return html;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function renderList(){
+    if(state.members.length === 0){
+      els.list.innerHTML = '<div class="empty">No members yet — add one above to start tracking 🪥</div>';
+      return;
+    }
+    els.list.innerHTML = state.members.map(m => `
+      <div class="member-card">
+        <div class="member-head">
+          <div class="member-name">${escapeHtml(m.name)}</div>
+          <div class="member-actions">
+            <button class="icon-btn" data-role="edit" data-id="${m.id}">Edit</button>
+            <button class="icon-btn danger" data-role="delete" data-id="${m.id}">Delete</button>
+          </div>
+        </div>
+        ${itemRowHtml('Brush', '🪥', m.brush)}
+        ${itemRowHtml('Cleaner', '👅', m.cleaner)}
+      </div>
+    `).join('');
+  }
+
+  function render(){
+    renderSummary();
+    renderList();
+  }
+
+  resetForm();
+  render();
+})();
+</script>
+</body>
+</html>
