@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Quick Ideas — Little Lab</title>
+<style>
+  :root{
+    --bg:#0f1216;
+    --card:#171b21;
+    --card2:#1d222a;
+    --border:#2a2f3a;
+    --text:#e8ebf0;
+    --muted:#8b93a3;
+    --mint:#a7e8c5;
+    --coral:#ff8c70;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:16px;
+    padding-bottom:80px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:1.3rem;margin:0 0 16px;letter-spacing:.2px;}
+  h1 span{color:var(--mint);}
+
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .summary .stat{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 8px;
+    text-align:center;
+  }
+  .summary .stat b{display:block;font-size:1.15rem;color:var(--mint);}
+  .summary .stat small{color:var(--muted);font-size:.68rem;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+
+  textarea, input[type=text]{
+    width:100%;
+    background:var(--card2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    padding:10px;
+    font-size:.95rem;
+    font-family:inherit;
+    resize:none;
+  }
+  textarea:focus, input[type=text]:focus{outline:1px solid var(--mint);}
+
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  .row.between{justify-content:space-between;}
+
+  .toggle{
+    display:flex;align-items:center;gap:6px;
+    color:var(--muted);font-size:.82rem;user-select:none;cursor:pointer;
+  }
+  .toggle input{accent-color:var(--coral);width:16px;height:16px;}
+
+  button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+  }
+  .btn-primary{
+    background:var(--mint);
+    color:#0f1216;
+    font-weight:600;
+    padding:9px 18px;
+    border-radius:8px;
+    font-size:.9rem;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .btn-primary:hover{opacity:.88;}
+  }
+
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--card2);
+    border:1px solid var(--border);
+    color:var(--muted);
+    border-radius:999px;
+    padding:5px 10px;
+    font-size:.75rem;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .chip.active{
+    border-color:var(--mint);
+    color:var(--mint);
+  }
+  .chip .x{
+    color:var(--muted);
+    font-size:.85rem;
+    padding-left:2px;
+  }
+  .chip.danger{border-color:var(--coral);color:var(--coral);}
+  .chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+
+  .day-heading{
+    color:var(--muted);
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin:18px 0 8px;
+  }
+  .day-heading:first-of-type{margin-top:4px;}
+
+  .idea{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:8px;
+  }
+  .idea.done{opacity:.55;}
+  .idea-top{display:flex;gap:10px;align-items:flex-start;}
+  .idea-check{margin-top:2px;accent-color:var(--mint);width:17px;height:17px;flex-shrink:0;}
+  .idea-text{flex:1;font-size:.94rem;line-height:1.4;word-break:break-word;}
+  .idea.done .idea-text{text-decoration:line-through;color:var(--muted);}
+  .idea-meta{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+  .idea-time{color:var(--muted);font-size:.7rem;}
+  .idea-tag{
+    background:rgba(255,140,112,.12);
+    color:var(--coral);
+    border-radius:999px;
+    padding:2px 9px;
+    font-size:.68rem;
+    font-weight:600;
+  }
+  .hashtag{color:var(--coral);font-weight:600;}
+  .idea-pending{
+    background:rgba(167,232,197,.12);
+    color:var(--mint);
+    border-radius:999px;
+    padding:2px 9px;
+    font-size:.68rem;
+    font-weight:600;
+  }
+  .idea-actions{display:flex;gap:14px;margin-left:auto;}
+  .idea-actions button{
+    background:none;color:var(--muted);font-size:.75rem;padding:2px 0;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .idea-actions button:hover{color:var(--text);}
+  }
+  .idea-actions button.del-confirm{color:var(--coral);font-weight:600;}
+
+  .empty{color:var(--muted);text-align:center;padding:30px 0;font-size:.85rem;}
+
+  .toast{
+    position:fixed;
+    left:50%;bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--card2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:.82rem;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Quick <span>Ideas</span></h1>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="card">
+    <textarea id="ideaText" rows="2" placeholder="Capture an idea... use #tag anywhere, e.g. Idea to do #Money"></textarea>
+
+    <div class="row between">
+      <label class="toggle">
+        <input type="checkbox" id="isTask" checked>
+        Mark as pending task
+      </label>
+      <button class="btn-primary" id="addBtn" type="button">Add</button>
+    </div>
+  </div>
+
+  <div class="chip-row" id="filterRow"></div>
+
+  <div id="list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'as_ideas_v1';
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  let state = load();
+  let activeFilter = 'all';   // 'all' | 'pending' | tag name
+  let editingId = null;
+  let pendingDeleteId = null;
+  let pendingTagDelete = null;
+
+  function extractTags(text){
+    const matches = text.match(/#([a-zA-Z0-9_]+)/g) || [];
+    return [...new Set(matches.map(m=>m.slice(1)))];
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.items)) return parsed;
+      }
+    }catch(e){}
+    return { items: [], tags: [] };
+  }
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+
+  function dateKey(d){
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  }
+
+  function formatDisplayDate(key){
+    const [y,m,d] = key.split('-').map(Number);
+    return d+'th '+MONTHS[m-1]+' '+y;
+  }
+
+  function formatTime(d){
+    return pad(d.getHours())+':'+pad(d.getMinutes());
+  }
+
+  function todayKey(){ return dateKey(new Date()); }
+
+  function uid(){
+    return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  // ---- rollover: pending tasks not done, whose date isn't today, move to today ----
+  function rollover(){
+    const today = todayKey();
+    let moved = 0;
+    state.items.forEach(it=>{
+      if(it.isTask && !it.done && it.date !== today){
+        it.date = today;
+        moved++;
+      }
+    });
+    if(moved){
+      save();
+      showToast(moved+' pending idea'+(moved>1?'s':'')+' moved to today');
+    }
+  }
+
+  // ---- tag management ----
+  function addTagToLibrary(name){
+    name = name.trim();
+    if(!name) return;
+    if(!state.tags.some(t=>t.toLowerCase()===name.toLowerCase())){
+      state.tags.push(name);
+      save();
+    }
+  }
+
+  function deleteTag(name){
+    state.tags = state.tags.filter(t=>t!==name);
+    state.items.forEach(it=>{ it.tags = it.tags.filter(t=>t!==name); });
+    if(activeFilter === name) activeFilter = 'all';
+    save();
+    renderAll();
+    showToast('Tag deleted');
+  }
+
+  // ---- render ----
+  function renderSummary(){
+    const total = state.items.length;
+    const pending = state.items.filter(i=>i.isTask && !i.done).length;
+    const today = todayKey();
+    const doneToday = state.items.filter(i=>i.done && i.date===today).length;
+    const tagCount = state.tags.length;
+    document.getElementById('summary').innerHTML = `
+      <div class="stat"><b>${total}</b><small>Ideas</small></div>
+      <div class="stat"><b>${pending}</b><small>Pending</small></div>
+      <div class="stat"><b>${doneToday}</b><small>Done today</small></div>
+      <div class="stat"><b>${tagCount}</b><small>Tags</small></div>
+    `;
+  }
+
+  function renderFilterRow(){
+    const row = document.getElementById('filterRow');
+    let html = `<span class="chip ${activeFilter==='all'?'active':''}" data-role="filter" data-filter="all">All</span>`;
+    html += `<span class="chip ${activeFilter==='pending'?'active':''}" data-role="filter" data-filter="pending">Pending</span>`;
+    state.tags.forEach(t=>{
+      const isDel = pendingTagDelete === t;
+      html += `<span class="chip ${activeFilter===t?'active':''} ${isDel?'danger':''}" data-role="filter" data-filter="${escAttr(t)}">
+        ${isDel ? 'Delete "'+esc(t)+'"?' : '#'+esc(t)}
+        <span class="x" data-role="del-tag" data-tag="${escAttr(t)}">✕</span>
+      </span>`;
+    });
+    row.innerHTML = html;
+  }
+
+  function visibleItems(){
+    let items = state.items.slice();
+    if(activeFilter === 'pending'){
+      items = items.filter(i=>i.isTask && !i.done);
+    } else if(activeFilter !== 'all'){
+      items = items.filter(i=>i.tags.includes(activeFilter));
+    }
+    items.sort((a,b)=> b.createdAt - a.createdAt);
+    return items;
+  }
+
+  function renderList(){
+    const items = visibleItems();
+    const list = document.getElementById('list');
+    if(!items.length){
+      list.innerHTML = '<div class="empty">No ideas here yet.</div>';
+      return;
+    }
+    let html = '';
+    let lastDate = null;
+    items.forEach(it=>{
+      if(it.date !== lastDate){
+        html += `<div class="day-heading">${it.date===todayKey() ? 'Today · '+formatDisplayDate(it.date) : formatDisplayDate(it.date)}</div>`;
+        lastDate = it.date;
+      }
+      const isDelConfirm = pendingDeleteId === it.id;
+      html += `
+        <div class="idea ${it.done?'done':''}" data-id="${it.id}">
+          <div class="idea-top">
+            ${it.isTask ? `<input type="checkbox" class="idea-check" data-role="toggle-done" ${it.done?'checked':''}>` : ''}
+            <div class="idea-text">${highlightTags(it.text)}</div>
+          </div>
+          <div class="idea-meta">
+            ${it.isTask ? `<span class="idea-pending">${it.done?'Done':'Pending'}</span>` : ''}
+            <span class="idea-time">${formatTime(new Date(it.createdAt))}</span>
+            <span class="idea-actions">
+              <button data-role="edit" type="button">Edit</button>
+              <button data-role="delete" type="button" class="${isDelConfirm?'del-confirm':''}">${isDelConfirm?'Tap to confirm':'Delete'}</button>
+            </span>
+          </div>
+        </div>`;
+    });
+    list.innerHTML = html;
+  }
+
+  function renderAll(){
+    renderSummary();
+    renderFilterRow();
+    renderList();
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escAttr(s){ return esc(s); }
+
+  function highlightTags(text){
+    return esc(text).replace(/#([a-zA-Z0-9_]+)/g, '<span class="hashtag">#$1</span>');
+  }
+
+  // ---- form actions ----
+  function resetForm(){
+    document.getElementById('ideaText').value = '';
+    document.getElementById('isTask').checked = true;
+    editingId = null;
+    document.getElementById('addBtn').textContent = 'Add';
+  }
+
+  function addOrSaveIdea(){
+    const text = document.getElementById('ideaText').value.trim();
+    if(!text) return;
+    const isTask = document.getElementById('isTask').checked;
+    const tags = extractTags(text);
+    tags.forEach(addTagToLibrary);
+
+    if(editingId){
+      const it = state.items.find(i=>i.id===editingId);
+      if(it){
+        it.text = text;
+        it.isTask = isTask;
+        it.tags = tags;
+        if(!isTask) it.done = false;
+      }
+      showToast('Idea updated');
+    }else{
+      const now = new Date();
+      state.items.push({
+        id: uid(),
+        text,
+        tags,
+        isTask,
+        done: false,
+        createdAt: now.getTime(),
+        date: dateKey(now)
+      });
+    }
+    save();
+    resetForm();
+    renderAll();
+  }
+
+  function editIdea(id){
+    const it = state.items.find(i=>i.id===id);
+    if(!it) return;
+    editingId = id;
+    document.getElementById('ideaText').value = it.text;
+    document.getElementById('isTask').checked = it.isTask;
+    document.getElementById('addBtn').textContent = 'Save';
+    document.getElementById('ideaText').focus();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  // ---- events ----
+  document.getElementById('addBtn').addEventListener('click', addOrSaveIdea);
+
+  document.getElementById('filterRow').addEventListener('click', e=>{
+    const delBtn = e.target.closest('[data-role="del-tag"]');
+    if(delBtn){
+      const tag = delBtn.getAttribute('data-tag');
+      if(pendingTagDelete === tag){
+        pendingTagDelete = null;
+        deleteTag(tag);
+      }else{
+        pendingTagDelete = tag;
+        renderFilterRow();
+        setTimeout(()=>{ if(pendingTagDelete===tag){ pendingTagDelete=null; renderFilterRow(); } }, 2500);
+      }
+      return;
+    }
+    const chip = e.target.closest('[data-role="filter"]');
+    if(!chip) return;
+    activeFilter = chip.getAttribute('data-filter');
+    pendingDeleteId = null;
+    renderFilterRow();
+    renderList();
+  });
+
+  document.getElementById('list').addEventListener('click', e=>{
+    const ideaEl = e.target.closest('.idea');
+    if(!ideaEl) return;
+    const id = ideaEl.getAttribute('data-id');
+
+    if(e.target.closest('[data-role="edit"]')){
+      pendingDeleteId = null;
+      editIdea(id);
+      return;
+    }
+    if(e.target.closest('[data-role="delete"]')){
+      if(pendingDeleteId === id){
+        state.items = state.items.filter(i=>i.id!==id);
+        pendingDeleteId = null;
+        save();
+        renderAll();
+        showToast('Idea deleted');
+      }else{
+        pendingDeleteId = id;
+        renderList();
+        setTimeout(()=>{ if(pendingDeleteId===id){ pendingDeleteId=null; renderList(); } }, 2500);
+      }
+      return;
+    }
+  });
+
+  document.getElementById('list').addEventListener('change', e=>{
+    if(e.target.matches('[data-role="toggle-done"]')){
+      const ideaEl = e.target.closest('.idea');
+      const id = ideaEl.getAttribute('data-id');
+      const it = state.items.find(i=>i.id===id);
+      if(it){
+        it.done = e.target.checked;
+        save();
+        renderAll();
+      }
+    }
+  });
+
+  // re-check rollover when tab regains focus (crosses midnight while open)
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible'){
+      rollover();
+      renderAll();
+    }
+  });
+
+  rollover();
+  renderAll();
+})();
+</script>
+</body>
+</html>
