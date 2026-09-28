@@ -71,6 +71,8 @@
   .badge.status-active{background:rgba(74,222,128,.15); color:var(--accent);}
   .badge.status-preclosure{background:rgba(251,191,36,.15); color:var(--warn);}
   .badge.status-matured{background:rgba(148,163,184,.15); color:var(--muted);}
+  .badge.payout{background:rgba(192,132,252,.15); color:#c084fc;}
+  .badge.cumul{background:rgba(148,163,184,.15); color:var(--muted);}
   .badge.od-yes{background:rgba(96,165,250,.15); color:var(--edit);}
   .badge.od-availed{background:rgba(74,222,128,.15); color:var(--accent);}
   .fd-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
@@ -93,7 +95,8 @@
 <div class="summary-row">
   <div class="sum-box"><div class="lbl">Total Invested</div><div class="val" id="sumInvested">₹0</div></div>
   <div class="sum-box"><div class="lbl">Maturity Value</div><div class="val" id="sumMaturity">₹0</div></div>
-  <div class="sum-box"><div class="lbl">Interest Earned</div><div class="val" id="sumInterest">₹0</div></div>
+  <div class="sum-box"><div class="lbl">Total Interest</div><div class="val" id="sumInterest">₹0</div></div>
+  <div class="sum-box"><div class="lbl">Payout Income / Month</div><div class="val" id="sumPayoutMonthly">₹0</div></div>
 </div>
 <div class="od-banner" id="odBanner"></div>
 
@@ -110,7 +113,19 @@
   <div class="row">
     <div><label>Start Date</label><input type="date" id="startDate" oninput="updatePreview()"></div>
     <div><label>Tenure (months)</label><input type="number" id="tenureMonths" placeholder="e.g. 24" oninput="updatePreview()"></div>
+  </div>
+  <div class="row">
     <div>
+      <label>Interest Payout</label>
+      <select id="payoutMonths" onchange="updatePreview()">
+        <option value="0">Cumulative (paid at maturity)</option>
+        <option value="1">Monthly payout</option>
+        <option value="3">Quarterly payout</option>
+        <option value="6">Half-yearly payout</option>
+        <option value="12">Annual payout</option>
+      </select>
+    </div>
+    <div id="compoundingField">
       <label>Compounding</label>
       <select id="compounding" onchange="updatePreview()">
         <option value="4">Quarterly</option>
@@ -123,16 +138,17 @@
 
   <div class="checkbox-row">
     <input type="checkbox" id="useCustomMaturity" onchange="updatePreview()">
-    <label for="useCustomMaturity">Bank quoted a different maturity amount (override auto-calc)</label>
+    <label for="useCustomMaturity" id="customChkLbl">Bank quoted a different maturity amount (override auto-calc)</label>
   </div>
   <div class="row" id="customMaturityRow" style="display:none;">
-    <div><label>Maturity Amount (₹)</label><input type="number" id="customMaturity" placeholder="e.g. 115000" oninput="updatePreview()"></div>
+    <div><label id="customAmtLbl">Maturity Amount (₹)</label><input type="number" id="customMaturity" placeholder="e.g. 115000" oninput="updatePreview()"></div>
   </div>
 
   <div class="preview-box" id="previewBox" style="display:none;">
     <div class="preview-row"><span>Maturity Date</span><span class="pv" id="pvMaturityDate">-</span></div>
     <div class="preview-row hilite"><span>Maturity Amount</span><span class="pv" id="pvMaturityAmount">-</span></div>
-    <div class="preview-row"><span>Interest Earned</span><span class="pv" id="pvInterest">-</span></div>
+    <div class="preview-row" id="pvPayoutRow" style="display:none;"><span id="pvPayoutLbl">Payout</span><span class="pv" id="pvPayout">-</span></div>
+    <div class="preview-row"><span>Total Interest</span><span class="pv" id="pvInterest">-</span></div>
   </div>
 
   <div class="section-title">Status &amp; Purpose</div>
@@ -243,6 +259,7 @@ function readForm(){
     startDate: document.getElementById('startDate').value,
     tenureMonths: parseFloat(document.getElementById('tenureMonths').value),
     compounding: parseInt(document.getElementById('compounding').value, 10),
+    payoutMonths: parseInt(document.getElementById('payoutMonths').value, 10) || 0,
     useCustomMaturity: document.getElementById('useCustomMaturity').checked,
     customMaturity: parseFloat(document.getElementById('customMaturity').value) || 0,
     status: document.getElementById('status').value,
@@ -258,18 +275,45 @@ function isValid(f){
     (!f.useCustomMaturity || f.customMaturity > 0);
 }
 
+const PAYOUT_LABELS = {1:'Monthly', 3:'Quarterly', 6:'Half-yearly', 12:'Annual'};
+
 function computeFD(f){
-  const auto = calcMaturity(f.investedAmount, f.rate, f.tenureMonths, f.compounding);
-  const maturityAmount = f.useCustomMaturity && f.customMaturity > 0 ? f.customMaturity : auto.maturityAmount;
-  const interest = maturityAmount - f.investedAmount;
+  const pm = f.payoutMonths || 0;
   const maturityDate = addMonths(f.startDate, f.tenureMonths);
   const odEligible = f.investedAmount > 30000;
-  return { maturityAmount, interest, maturityDate, odEligible };
+  if(pm > 0){
+    // Periodic payout: principal returned at maturity, interest paid out every pm months
+    const auto = f.investedAmount * (f.rate/100) * (pm/12);
+    const payoutAmount = f.useCustomMaturity && f.customMaturity > 0 ? f.customMaturity : auto;
+    const payoutCount = Math.floor(f.tenureMonths / pm);
+    return { maturityAmount: f.investedAmount, interest: payoutAmount * payoutCount, maturityDate, odEligible, isPayout:true, payoutAmount, payoutCount, pm };
+  }
+  const auto = calcMaturity(f.investedAmount, f.rate, f.tenureMonths, f.compounding);
+  const maturityAmount = f.useCustomMaturity && f.customMaturity > 0 ? f.customMaturity : auto.maturityAmount;
+  return { maturityAmount, interest: maturityAmount - f.investedAmount, maturityDate, odEligible, isPayout:false };
+}
+
+function nextPayoutDate(f){
+  const pm = f.payoutMonths || 0;
+  if(!pm) return null;
+  const today = todayStr();
+  const count = Math.floor(f.tenureMonths / pm);
+  for(let i = 1; i <= count; i++){
+    const d = addMonths(f.startDate, i*pm).toISOString().split('T')[0];
+    if(d >= today) return d;
+  }
+  return null;
 }
 
 function updatePreview(){
   document.getElementById('customMaturityRow').style.display = document.getElementById('useCustomMaturity').checked ? 'flex' : 'none';
   const f = readForm();
+  const isPayout = f.payoutMonths > 0;
+  document.getElementById('compoundingField').style.display = isPayout ? 'none' : 'block';
+  document.getElementById('customChkLbl').textContent = isPayout
+    ? 'Bank quoted a different payout amount (override auto-calc)'
+    : 'Bank quoted a different maturity amount (override auto-calc)';
+  document.getElementById('customAmtLbl').textContent = isPayout ? 'Payout Amount per Period (₹)' : 'Maturity Amount (₹)';
   const box = document.getElementById('previewBox');
   if(!f.investedAmount || !f.rate || !f.startDate || !f.tenureMonths){ box.style.display = 'none'; return; }
   box.style.display = 'block';
@@ -277,6 +321,14 @@ function updatePreview(){
   document.getElementById('pvMaturityDate').textContent = fmtDate(r.maturityDate.toISOString().split('T')[0]);
   document.getElementById('pvMaturityAmount').textContent = fmt(r.maturityAmount);
   document.getElementById('pvInterest').textContent = fmt(r.interest);
+  const payoutRow = document.getElementById('pvPayoutRow');
+  if(r.isPayout){
+    payoutRow.style.display = 'flex';
+    document.getElementById('pvPayoutLbl').textContent = PAYOUT_LABELS[r.pm] + ' payout (' + r.payoutCount + ' payouts)';
+    document.getElementById('pvPayout').textContent = fmt(r.payoutAmount);
+  } else {
+    payoutRow.style.display = 'none';
+  }
 
   const odHint = document.getElementById('odEligHint');
   if(f.investedAmount > 30000){
@@ -291,6 +343,7 @@ function updatePreview(){
 function clearForm(){
   ['owner','bankAccount','investedAmount','rate','startDate','tenureMonths','customMaturity','purpose','comments'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('compounding').value = '4';
+  document.getElementById('payoutMonths').value = '0';
   document.getElementById('status').value = 'Active';
   document.getElementById('useCustomMaturity').checked = false;
   document.getElementById('availedOD').checked = false;
@@ -326,6 +379,7 @@ function editFD(id){
   document.getElementById('startDate').value = f.startDate;
   document.getElementById('tenureMonths').value = f.tenureMonths;
   document.getElementById('compounding').value = f.compounding || 4;
+  document.getElementById('payoutMonths').value = f.payoutMonths || 0;
   document.getElementById('useCustomMaturity').checked = !!f.useCustomMaturity;
   document.getElementById('customMaturity').value = f.customMaturity || '';
   document.getElementById('status').value = f.status;
@@ -361,6 +415,10 @@ function renderList(){
   list.innerHTML = filtered.map(f => {
     const r = computeFD(f);
     const statusClass = 'status-' + f.status.toLowerCase();
+    const payoutBadge = r.isPayout
+      ? `<span class="badge payout">${PAYOUT_LABELS[r.pm].toUpperCase()} PAYOUT</span>`
+      : '<span class="badge cumul">CUMULATIVE</span>';
+    const nextPayout = (r.isPayout && f.status === 'Active') ? nextPayoutDate(f) : null;
     const odBadge = r.odEligible
       ? (f.availedOD ? '<span class="badge od-availed">OD AVAILED</span>' : '<span class="badge od-yes">OD ELIGIBLE</span>')
       : '';
@@ -378,6 +436,7 @@ function renderList(){
         </div>
         <div class="badges">
           <span class="badge ${statusClass}">${escapeHtml(f.status).toUpperCase()}</span>
+          ${payoutBadge}
           ${odBadge}
         </div>
         <div class="fd-stats">
@@ -385,6 +444,9 @@ function renderList(){
           <div class="stat hilite"><div class="slbl">Maturity Value</div><div class="sval">${fmt(r.maturityAmount)}</div></div>
           <div class="stat"><div class="slbl">Interest</div><div class="sval">${fmt(r.interest)}</div></div>
           <div class="stat"><div class="slbl">Rate</div><div class="sval">${f.rate}% p.a.</div></div>
+          ${r.isPayout ? `
+          <div class="stat hilite"><div class="slbl">${PAYOUT_LABELS[r.pm]} Payout</div><div class="sval">${fmt(r.payoutAmount)}</div></div>
+          <div class="stat"><div class="slbl">Next Payout</div><div class="sval" style="font-size:12px;">${nextPayout ? fmtDate(nextPayout) : '-'}</div></div>` : ''}
         </div>
         <div class="fd-meta">
           Started <b>${fmtDate(f.startDate)}</b> · Matures <b>${fmtDate(r.maturityDate.toISOString().split('T')[0])}</b> · ${f.tenureMonths} months
@@ -395,7 +457,7 @@ function renderList(){
 }
 
 function renderSummary(){
-  let totalInvested = 0, totalMaturity = 0;
+  let totalInvested = 0, totalMaturity = 0, totalInterest = 0, payoutMonthly = 0;
   let odOpportunityCount = 0, odOpportunityAmt = 0;
 
   fds.forEach(f => {
@@ -403,6 +465,8 @@ function renderSummary(){
     if(f.status !== 'Matured'){
       totalInvested += f.investedAmount;
       totalMaturity += r.maturityAmount;
+      totalInterest += r.interest;
+      if(r.isPayout && f.status === 'Active') payoutMonthly += r.payoutAmount / r.pm;
     }
     if(r.odEligible && !f.availedOD && f.status === 'Active'){
       odOpportunityCount++;
@@ -412,7 +476,8 @@ function renderSummary(){
 
   document.getElementById('sumInvested').textContent = fmt(totalInvested);
   document.getElementById('sumMaturity').textContent = fmt(totalMaturity);
-  document.getElementById('sumInterest').textContent = fmt(totalMaturity - totalInvested);
+  document.getElementById('sumInterest').textContent = fmt(totalInterest);
+  document.getElementById('sumPayoutMonthly').textContent = fmt(payoutMonthly);
 
   const banner = document.getElementById('odBanner');
   if(odOpportunityCount > 0){

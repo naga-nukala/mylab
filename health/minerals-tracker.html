@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minerals Tracker — Little Lab</title>
+<style>
+  :root{
+    --bg:#0d0f0e; --card:#161a18; --card2:#1c211e;
+    --mint:#a7e8c5; --coral:#ff8c70; --text:#e8ece9; --muted:#8b958f; --border:#262b28;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0 auto;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    padding:16px 14px 90px;max-width:640px;}
+  h1{font-size:1.5rem;margin:4px 0 2px;}
+  .sub{color:var(--muted);font-size:0.85rem;margin-bottom:18px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;}
+  .section-title{font-size:1rem;font-weight:700;margin:22px 0 10px;}
+  .badge{display:inline-block;font-size:0.65rem;font-weight:600;padding:2px 8px;border-radius:20px;margin-left:6px;vertical-align:middle;}
+  .badge.fat{background:rgba(255,140,112,.15);color:var(--coral);}
+  .badge.water{background:rgba(167,232,197,.15);color:var(--mint);}
+  .sum-row{display:flex;justify-content:space-between;align-items:baseline;}
+  .sum-big{font-size:1.6rem;font-weight:800;color:var(--mint);}
+  .muted{color:var(--muted);font-size:0.78rem;}
+  .v-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .v-name{font-weight:700;font-size:1rem;}
+  .v-day{font-size:0.78rem;color:var(--mint);font-weight:700;}
+  .drv-summary{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+  .drv-summary .pct{font-weight:800;font-size:0.95rem;}
+  .drv-summary .pct.over{color:var(--coral);}
+  .drv-bar-wrap{background:var(--card2);border-radius:8px;height:8px;overflow:hidden;margin:8px 0 12px;}
+  .drv-bar{height:100%;background:var(--mint);border-radius:8px;transition:width .2s ease;}
+  .drv-bar.over{background:var(--coral);}
+  .meals{display:flex;flex-wrap:wrap;gap:8px;}
+  .meal{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);
+    border-radius:10px;padding:8px 12px;font-size:0.8rem;cursor:pointer;user-select:none;}
+  .meal .box{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);display:flex;
+    align-items:center;justify-content:center;font-size:0.72rem;font-weight:900;color:#0d0f0e;}
+  .meal.done{border-color:var(--mint);}
+  .meal.done .box{background:var(--mint);border-color:var(--mint);}
+  .link{color:var(--muted);font-size:0.75rem;text-decoration:underline;display:inline-block;margin-top:12px;}
+  .empty{color:var(--muted);font-size:0.82rem;}
+  .wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.ov{border-collapse:collapse;width:max-content;}
+  table.ov th,table.ov td{padding:0;text-align:center;}
+  table.ov th{font-size:0.66rem;color:var(--muted);font-weight:600;padding-bottom:6px;width:26px;}
+  table.ov th.today{color:var(--coral);}
+  table.ov td.name,table.ov th.name{position:sticky;left:0;background:var(--card);text-align:left;
+    padding-right:10px;font-size:0.76rem;font-weight:600;width:96px;white-space:nowrap;z-index:1;}
+  .hm{width:20px;height:20px;margin:2px auto;border-radius:6px;background:var(--card2);border:1px solid var(--border);}
+  .hm.part{background:rgba(167,232,197,.3);border-color:rgba(167,232,197,.5);}
+  .hm.full{background:var(--mint);border-color:var(--mint);}
+  .hm.na{opacity:.25;border-style:dashed;background:transparent;}
+  .hm.future{opacity:.3;}
+  .legend{display:flex;gap:14px;margin-top:12px;font-size:0.7rem;color:var(--muted);align-items:center;flex-wrap:wrap;}
+  .legend .hm{display:inline-block;margin:0 4px 0 0;vertical-align:middle;width:14px;height:14px;}
+  @media (hover:hover) and (pointer:fine){ .meal:hover{border-color:var(--mint);} }
+</style>
+</head>
+<body>
+
+<h1>Minerals Tracker</h1>
+<div class="sub" id="todayLabel"></div>
+
+<div class="card" id="summary"></div>
+
+<div class="section-title">📅 Today</div>
+<div id="cards"></div>
+
+<div class="section-title">🗓️ 21-day overview</div>
+<div class="card">
+  <div class="wrap"><table class="ov" id="overview"></table></div>
+  <div class="legend">
+    <span><span class="hm full"></span>All meals</span>
+    <span><span class="hm part"></span>Some</span>
+    <span><span class="hm"></span>None</span>
+    <span><span class="hm na"></span>No habit</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  const MEALS = {breakfast:'🌅 Breakfast', lunch:'☀️ Lunch', dinner:'🌙 Dinner', snacks:'🍪 Snacks', sunlight:'🔆 Sunlight'};
+  const STD = ['breakfast','lunch','dinner','snacks'];
+  const V = [
+    {
+      "id": "iron",
+      "name": "Iron",
+      "file": "iron.html",
+      "key": "as_iron_v1",
+      "sol": "fat",
+      "badge": "Avoid with tea/coffee",
+      "cats": STD,
+      "foods": {
+        "top-1": [
+          "lunch",
+          37
+        ],
+        "top-2": [
+          "lunch",
+          26
+        ],
+        "top-3": [
+          "dinner",
+          44
+        ],
+        "top-4": [
+          "dinner",
+          18
+        ],
+        "top-5": [
+          "snacks",
+          6
+        ]
+      }
+    },
+    {
+      "id": "calcium",
+      "name": "Calcium",
+      "file": "calcium.html",
+      "key": "as_calcium_v1",
+      "sol": "water",
+      "badge": "Needs Vitamin D",
+      "cats": STD,
+      "foods": {
+        "top-1": [
+          "breakfast",
+          30
+        ],
+        "top-2": [
+          "dinner",
+          34
+        ],
+        "top-3": [
+          "lunch",
+          25
+        ],
+        "top-4": [
+          "dinner",
+          20
+        ],
+        "top-5": [
+          "snacks",
+          9
+        ]
+      }
+    },
+    {
+      "id": "magnesium",
+      "name": "Magnesium",
+      "file": "magnesium.html",
+      "key": "as_magnesium_v1",
+      "sol": "water",
+      "badge": "Under-consumed",
+      "cats": STD,
+      "foods": {
+        "top-1": [
+          "snacks",
+          37
+        ],
+        "top-2": [
+          "lunch",
+          39
+        ],
+        "top-3": [
+          "snacks",
+          19
+        ],
+        "top-4": [
+          "dinner",
+          20
+        ],
+        "top-5": [
+          "breakfast",
+          8
+        ]
+      }
+    },
+    {
+      "id": "potassium",
+      "name": "Potassium",
+      "file": "potassium.html",
+      "key": "as_potassium_v1",
+      "sol": "fat",
+      "badge": "Kidney caution",
+      "cats": STD,
+      "foods": {
+        "top-1": [
+          "breakfast",
+          12
+        ],
+        "top-2": [
+          "lunch",
+          17
+        ],
+        "top-3": [
+          "snacks",
+          17
+        ],
+        "top-4": [
+          "dinner",
+          24
+        ],
+        "top-5": [
+          "lunch",
+          11
+        ]
+      }
+    }
+  ];
+
+  function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+  function fmtDate(d){
+    const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return ordinal(d.getDate())+' '+m[d.getMonth()]+' '+d.getFullYear();
+  }
+
+  function readState(v){
+    try{
+      const raw = localStorage.getItem(v.key);
+      if(!raw) return null;
+      const s = JSON.parse(raw);
+      return s && typeof s === 'object' ? s : null;
+    }catch(e){ return null; }
+  }
+  function writeState(v, s){ try{ localStorage.setItem(v.key, JSON.stringify(s)); }catch(e){} }
+
+  const MULT = {sedentary:0.8, moderate:1.2, active:1.6};
+  function target(s){
+    const w = s.profile && s.profile.weightKg;
+    if(!w || w<=0) return 50;
+    return Math.round(w*(MULT[s.profile.activity]||0.8));
+  }
+  function foodInfo(v, s, id){
+    if(v.foods[id]) return {cat:v.foods[id][0], val:v.foods[id][1]};
+    const c = (s.customFoods||[]).find(f=>f.id===id);
+    return c ? {cat:c.category, val:(v.grams ? c.grams : c.drvPct)||0} : null;
+  }
+  function activeCats(v, s){
+    const sel = s.selected || [];
+    return v.cats.filter(cat => sel.some(id => { const f=foodInfo(v,s,id); return f && f.cat===cat; }));
+  }
+  function catPct(v, s, cat){
+    const sum = (s.selected||[]).reduce((t,id)=>{ const f=foodInfo(v,s,id); return f && f.cat===cat ? t+f.val : t; },0);
+    return v.grams ? Math.round(sum/target(s)*100) : sum;
+  }
+  function ticked(s, cat, i){ return !!(s.habit && s.habit.cells && s.habit.cells[cat] && s.habit.cells[cat][i]); }
+  function dayTotal(v, s, i){
+    return activeCats(v,s).reduce((sum,cat)=> ticked(s,cat,i) ? sum+catPct(v,s,cat) : sum, 0);
+  }
+  function todayIndex(s){
+    const p = String(s.habit.startDate||'').split('-');
+    if(p.length!==3) return 0;
+    const start = new Date(+p[0], +p[1]-1, +p[2]);
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((now-start)/86400000);
+  }
+  function isActive(s){ return !!(s && s.habit && s.habit.active && s.habit.startDate); }
+
+  function badge(v){ return '<span class="badge '+v.sol+'">'+v.badge+'</span>'; }
+
+  function cardHTML(v){
+    const s = readState(v);
+    let head = '<div class="v-head"><div class="v-name">'+v.name+badge(v)+'</div>';
+    let body = '';
+    if(!isActive(s)){
+      head += '<div class="muted">Not started</div></div>';
+      body = '<div class="empty">No 21-day habit running yet.</div>';
+    }else{
+      const idx = todayIndex(s);
+      if(idx > 20){
+        head += '<div class="v-day">Complete 🎉</div></div>';
+        body = '<div class="empty">Your 21-day habit has finished. Reset it on its page to go again.</div>';
+      }else{
+        head += '<div class="v-day">Day '+(idx+1)+' / 21</div></div>';
+        const total = dayTotal(v,s,idx);
+        const over = total>120;
+        const w = Math.min(total,150)/150*100;
+        body += '<div class="drv-summary"><span class="muted">Covered today</span><span class="pct '+(over?'over':'')+'">'+total+'% '+(v.unit||'DRV')+'</span></div>';
+        body += '<div class="drv-bar-wrap"><div class="drv-bar '+(over?'over':'')+'" style="width:'+w+'%"></div></div>';
+        const cats = activeCats(v,s);
+        if(cats.length===0){
+          body += '<div class="empty">No foods planned. Pick some on its page.</div>';
+        }else{
+          body += '<div class="meals">' + cats.map(cat=>{
+            const d = ticked(s,cat,idx);
+            return '<div class="meal '+(d?'done':'')+'" data-role="tick" data-v="'+v.id+'" data-cat="'+cat+'"><span class="box">'+(d?'✓':'')+'</span>'+MEALS[cat]+'</div>';
+          }).join('') + '</div>';
+        }
+      }
+    }
+    return '<div class="card" id="card-'+v.id+'">'+head+body+'<a class="link" href="'+v.file+'">Open '+v.name+' →</a></div>';
+  }
+
+  function overviewRowHTML(v){
+    const s = readState(v);
+    let row = '<tr id="ov-'+v.id+'"><td class="name">'+v.name+'</td>';
+    if(!isActive(s)){
+      for(let i=0;i<21;i++) row += '<td><div class="hm na"></div></td>';
+      return row+'</tr>';
+    }
+    const idx = todayIndex(s);
+    const cats = activeCats(v,s);
+    for(let i=0;i<21;i++){
+      let cls = 'hm';
+      if(cats.length){
+        const n = cats.filter(c=>ticked(s,c,i)).length;
+        if(n===cats.length) cls += ' full'; else if(n>0) cls += ' part';
+      }
+      if(i>idx) cls += ' future';
+      row += '<td><div class="'+cls+'"></div></td>';
+    }
+    return row+'</tr>';
+  }
+
+  function overviewHead(){
+    // Each vitamin has its own start date, so columns are habit-day numbers, not calendar dates.
+    let h = '<thead><tr><th class="name"></th>';
+    for(let i=1;i<=21;i++) h += '<th>'+i+'</th>';
+    return h+'</tr></thead>';
+  }
+
+  function renderSummary(){
+    let running=0, doneToday=0, notStarted=[];
+    V.forEach(v=>{
+      const s = readState(v);
+      if(!isActive(s)){ notStarted.push(v.name); return; }
+      const idx = todayIndex(s);
+      if(idx>20) return;
+      running++;
+      const cats = activeCats(v,s);
+      if(cats.length && cats.every(c=>ticked(s,c,idx))) doneToday++;
+    });
+    let html = '<div class="sum-row"><div><div class="muted">Habits fully done today</div>'+
+      '<div class="sum-big">'+doneToday+' / '+running+'</div></div>'+
+      '<div class="muted" style="text-align:right;">'+running+' of '+V.length+' minerals<br>have a habit running</div></div>';
+    if(notStarted.length) html += '<div class="muted" style="margin-top:10px;">Not started: '+notStarted.join(', ')+'</div>';
+    document.getElementById('summary').innerHTML = html;
+  }
+
+  function renderAll(){
+    document.getElementById('todayLabel').textContent = fmtDate(new Date());
+    renderSummary();
+    document.getElementById('cards').innerHTML = V.map(cardHTML).join('');
+    document.getElementById('overview').innerHTML = overviewHead()+'<tbody>'+V.map(overviewRowHTML).join('')+'</tbody>';
+  }
+
+  document.body.addEventListener('click', function(e){
+    const t = e.target.closest('[data-role="tick"]');
+    if(!t) return;
+    const v = V.find(x=>x.id===t.dataset.v);
+    const s = v && readState(v);
+    if(!v || !isActive(s)) return;
+    const idx = todayIndex(s), cat = t.dataset.cat;
+    if(idx<0 || idx>20) return;
+    if(!s.habit.cells) s.habit.cells = {};
+    if(!Array.isArray(s.habit.cells[cat])) s.habit.cells[cat] = Array(21).fill(false);
+    s.habit.cells[cat][idx] = !s.habit.cells[cat][idx];
+    writeState(v, s);
+    // In-place refresh: only this vitamin's card + overview row + summary
+    const card = document.getElementById('card-'+v.id);
+    if(card) card.outerHTML = cardHTML(v);
+    const row = document.getElementById('ov-'+v.id);
+    if(row) row.outerHTML = overviewRowHTML(v);
+    renderSummary();
+  });
+
+  // Pick up changes made on the individual vitamin pages
+  window.addEventListener('focus', renderAll);
+  window.addEventListener('pageshow', renderAll);
+  window.addEventListener('storage', renderAll);
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

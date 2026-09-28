@@ -63,7 +63,7 @@
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   @media (max-width:380px){.grid{grid-template-columns:1fr;}}
 
-  .item-card{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;flex:1;min-width:130px;touch-action:none;user-select:none;position:relative;}
+  .item-card{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;flex:1;min-width:130px;touch-action:pan-y;user-select:none;position:relative;}
   .item-card.dragging{opacity:.35;}
   .item-card.drop-hover{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset;}
   .item-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
@@ -74,7 +74,9 @@
   .item-meta{font-size:10px;color:var(--sub);line-height:1.5;margin-top:2px;}
   .item-price{font-size:12px;font-weight:700;color:var(--acc);}
   .item-card .move-select{width:100%;max-width:none;margin-top:6px;}
-  .item-actions{display:flex;gap:4px;position:absolute;top:6px;right:6px;}
+  .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .item-actions{display:flex;gap:4px;}
+  .grip{width:32px;height:26px;border-radius:8px;background:#1e293b;border:1px solid #334155;color:var(--sub);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:grab;touch-action:none;}
   .icon-btn{width:22px;height:22px;border-radius:50%;border:1px solid #334155;background:#1e293b;color:var(--sub);font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;}
   .icon-btn.star.on{color:var(--coral);border-color:var(--coral);}
   .icon-btn.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
@@ -124,7 +126,7 @@
     <div class="row">
       <div class="field">
         <label for="iType">Type</label>
-        <select id="iType"><option>Pant</option><option>Shirt</option><option>Jacket</option><option>Banian</option><option>Underwear</option></select>
+        <select id="iType"><option>Pant</option><option>Shirt</option><option>T Shirt</option><option>Jacket</option><option>Banian</option><option>Underwear</option></select>
       </div>
       <div class="field">
         <label for="iColor">Colour</label>
@@ -160,7 +162,7 @@
   <div class="list-head"><h2>Pairs</h2><small>Drag ✕ on a piece to split it out again</small></div>
   <div id="pairs"></div>
 
-  <div class="list-head"><h2>Unpaired</h2><small>Press and drag one card onto another to pair them</small></div>
+  <div class="list-head"><h2>Unpaired</h2><small>Hold the ⠿ grip and drag onto another card or pair</small></div>
   <div class="grid" id="unpaired"></div>
 
   <div class="card" id="shopCard" style="display:none">
@@ -176,7 +178,7 @@
 <script>
 const KEY = 'clothes_tracker_v1';
 const CATS = ['Office','Office Parties','Home / Night Wear','Travel for Big Occasions','Small Occasions','Festivals'];
-const TYPES = ['Pant','Shirt','Jacket','Banian','Underwear'];
+const TYPES = ['Pant','Shirt','T Shirt','Jacket','Banian','Underwear'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const $ = id => document.getElementById(id);
 
@@ -320,12 +322,13 @@ function itemCardHTML(it, inGroup){
   const ri = retireInfo(it);
   const moveOpts = CATS.filter(c=>c!==it.category).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   return `<div class="item-card" data-id="${it.id}">
+    <div class="item-head"><span class="grip" title="Drag to pair">⠿</span>
     <div class="item-actions">
       <button class="icon-btn star${it.bestPair?' on':''}" data-act="best" title="Best pair">★</button>
       <button class="icon-btn" data-act="edit" title="Edit">✎</button>
       ${inGroup ? `<button class="icon-btn" data-act="unpair" title="Split out">⤺</button>` : ''}
       <button class="icon-btn" data-act="del" title="Delete">✕</button>
-    </div>
+    </div></div>
     ${it.photo ? `<img class="item-photo" data-act="photo" src="${it.photo}" alt="${esc(it.type)} photo">` : ''}
     <div class="item-top"><span class="swatch" style="background:${esc(it.color)}"></span><span class="item-type">${esc(it.type)}</span></div>
     <div class="item-color">${esc(it.color)}</div>
@@ -378,10 +381,10 @@ function renderPairsAndUnpaired(){
 
   // Shopping list: unpaired Pant/Shirt with no available colour match
   const pants = unpaired.filter(i=>i.type==='Pant');
-  const shirts = unpaired.filter(i=>i.type==='Shirt');
+  const shirts = unpaired.filter(i=>i.type==='Shirt' || i.type==='T Shirt');
   const needRaw = [];
   pants.forEach(p=>{ if(!shirts.some(s=>sameColor(s.color,p.color))) needRaw.push({buy:'Shirt', color:p.color, have:'Pant'}); });
-  shirts.forEach(s=>{ if(!pants.some(p=>sameColor(p.color,s.color))) needRaw.push({buy:'Pant', color:s.color, have:'Shirt'}); });
+  shirts.forEach(s=>{ if(!pants.some(p=>sameColor(p.color,s.color))) needRaw.push({buy:'Pant', color:s.color, have:s.type}); });
   const seen = new Set();
   const need = needRaw.filter(n=>{ const k = n.buy+'|'+n.color.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
   const shopCard = $('shopCard');
@@ -464,10 +467,10 @@ function startDrag(card, e){
   drag = { id, card, ghost, offX: e.clientX-rect.left, offY: e.clientY-rect.top, hoverEl: null };
 }
 function onPointerDown(e){
-  if(e.target.closest('[data-act]')) return;
-  const card = e.target.closest('.item-card'); if(!card) return;
+  const grip = e.target.closest('.grip'); if(!grip) return;
+  const card = grip.closest('.item-card'); if(!card) return;
   e.preventDefault();
-  document.body.setPointerCapture && document.body.setPointerCapture(e.pointerId);
+  try{ grip.setPointerCapture(e.pointerId); }catch(_){}
   startDrag(card, e);
 }
 function onPointerMove(e){

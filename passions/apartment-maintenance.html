@@ -204,6 +204,17 @@
   .flatrow .flatname .owner{color:var(--muted);font-weight:400;}
   .flatrow .row input{font-size:14px;}
 
+  .flatrow.paid{border-color:var(--mint);}
+  .flatrow.unpaid{border-color:var(--coral);}
+  .flatrow .flatname{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+  .badge.paid{background:var(--mint);color:#0f1210;}
+  .badge.unpaid,.badge.partial{background:var(--coral);color:#0f1210;}
+  .carry{font-size:12px;color:var(--coral);margin-top:8px;}
+  .summary .pending{grid-column:1 / -1;}
+  .summary .pending .value{color:var(--coral);}
+  .btn.small{padding:10px;font-size:13px;width:100%;}
+  .hidden{display:none !important;}
   textarea#notesInput{min-height:90px;resize:vertical;}
 
   #toast{
@@ -242,7 +253,13 @@
   <div class="card received"><div class="label">Received</div><div class="value" id="receivedVal">₹0</div></div>
   <div class="card paid"><div class="label">Paid Out</div><div class="value" id="paidVal">₹0</div></div>
   <div class="card closing"><div class="label">Closing Balance</div><div class="value" id="closingVal">₹0</div></div>
+  <div class="card pending"><div class="label">Total Pending (all flats, till this month)</div><div class="value" id="pendingVal">₹0</div></div>
 </div>
+
+<details class="section" id="pendingSection" open>
+  <summary><h2>Pending Dues</h2><span class="chev">▾</span></summary>
+  <div class="inner"><ul class="list" id="pendingList"></ul></div>
+</details>
 
 <!-- Opening balance override (only shown when no earlier month exists) -->
 <div class="section" id="openingOverrideSection" style="display:none;">
@@ -264,6 +281,12 @@
         <div>
           <label class="small">Owner Name</label>
           <input type="text" id="flatOwner" placeholder="e.g. R. Sharma" required>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="small">Monthly Maintenance</label>
+          <input type="number" id="flatMaint" min="0" step="1" placeholder="0" required>
         </div>
       </div>
       <div class="row">
@@ -357,16 +380,29 @@
   }
   // If this month has no record yet, seed it from the previous month
   // (same flats/amounts and same bills) so the user only edits what changed.
+  function entryDue(e){ return e ? ((e.due != null && e.due !== '') ? Number(e.due) : (Number(e.amount)||0)) : 0; }
+  function monthKeys(){ return Object.keys(state.months).sort(); }
+  function defaultRecvDate(){ return currentMonth === todayMonthKey() ? todayISO() : currentMonth + '-01'; }
   function ensureMonthDefaults(key){
+    const keys = monthKeys();
+    if(keys.length && key > keys[keys.length-1]){
+      let k = shiftMonthKey(keys[keys.length-1], 1);
+      while(k < key){ seedMonth(k); k = shiftMonthKey(k, 1); }
+    }
+    seedMonth(key);
+  }
+  function seedMonth(key){
     if(state.months[key]) return;
-    const prevKey = shiftMonthKey(key, -1);
-    const prev = state.months[prevKey];
+    const keys = monthKeys();
+    const backward = keys.length && key < keys[0];
+    const prev = state.months[shiftMonthKey(key, -1)];
     const month = emptyMonth();
+    state.flats.forEach(f=>{
+      const pe = prev && prev.inflows[f.id];
+      const due = pe ? entryDue(pe) : (backward ? 0 : (Number(f.maintenance)||0));
+      month.inflows[f.id] = { due, amount:'', date:'' };
+    });
     if(prev){
-      Object.keys(prev.inflows).forEach(flatId=>{
-        const pe = prev.inflows[flatId];
-        month.inflows[flatId] = { amount: pe.amount, date: mapDateToMonth(pe.date, key) };
-      });
       month.outflows = prev.outflows.map(o=>({ id: uid(), desc: o.desc, amount: o.amount, date: mapDateToMonth(o.date, key) }));
     }
     state.months[key] = month;
@@ -415,6 +451,7 @@
         const parsed = JSON.parse(raw);
         if(parsed && Array.isArray(parsed.flats) && parsed.months && typeof parsed.months === 'object'){
           state = parsed;
+          state.flats.forEach(f=>{ if(f.maintenance == null){ let m = 0; Object.keys(state.months).sort().forEach(k=>{ const e = state.months[k].inflows[f.id]; if(e && entryDue(e) > 0) m = entryDue(e); }); f.maintenance = m; } });
         }else if(parsed && Array.isArray(parsed.inflows) && Array.isArray(parsed.outflows)){
           state = migrateOldData(parsed);
           save();
@@ -486,6 +523,54 @@
     return !!state.months[shiftMonthKey(key, -1)];
   }
 
+  function monthShort(key){ return monthLabel(key).slice(0,3) + ' ' + key.slice(0,4); }
+  function flatPending(flatId, uptoKey){
+    let total = 0; const months = [];
+    monthKeys().forEach(k=>{
+      if(k > uptoKey) return;
+      const e = state.months[k].inflows[flatId];
+      if(!e) return;
+      const p = entryDue(e) - (Number(e.amount)||0);
+      total += p;
+      if(p > 0) months.push(monthShort(k));
+    });
+    return {total, months};
+  }
+  function renderPending(){
+    const ul = document.getElementById('pendingList');
+    const rows = [];
+    let sum = 0;
+    state.flats.forEach(f=>{ const p = flatPending(f.id, currentMonth); if(p.total > 0){ sum += p.total; rows.push({f, p}); } });
+    rows.sort((a,b)=>b.p.total - a.p.total);
+    ul.innerHTML = rows.length ? '' : '<li class="empty">All flats are up to date.</li>';
+    rows.forEach(({f,p})=>{
+      const li = document.createElement('li');
+      li.className = 'item outflow';
+      li.innerHTML = `<div class="info"><div class="title">${escapeHtml(f.flatNo)} — ${escapeHtml(f.owner)}</div><div class="sub">${p.months.join(' · ')}</div></div><div class="amt">${fmtCurrency(p.total)}</div>`;
+      ul.appendChild(li);
+    });
+    document.getElementById('pendingVal').textContent = fmtCurrency(sum);
+  }
+  function rowStatus(flatId){
+    const e = getMonth(currentMonth).inflows[flatId];
+    const due = entryDue(e), rec = Number(e && e.amount) || 0;
+    if(due <= 0 && rec <= 0) return {cls:'', text:'No dues'};
+    if(rec >= due) return {cls:'paid', text:'Paid'};
+    if(rec <= 0) return {cls:'unpaid', text:'Not paid'};
+    return {cls:'partial', text:'Partial · ' + fmtCurrency(due - rec) + ' left'};
+  }
+  function updateRow(row){
+    const id = row.dataset.flatId;
+    const s = rowStatus(id);
+    row.classList.remove('paid','unpaid');
+    if(s.cls === 'paid') row.classList.add('paid'); else if(s.cls) row.classList.add('unpaid');
+    const b = row.querySelector('[data-role="badge"]');
+    b.textContent = s.text; b.className = 'badge ' + s.cls;
+    const p = flatPending(id, currentMonth);
+    row.querySelector('[data-role="carry"]').textContent = p.total > 0 ? 'Total pending: ' + fmtCurrency(p.total) + (p.months.length > 1 ? ' (' + p.months.join(', ') + ')' : '') : '';
+    row.querySelector('[data-action="mark-paid"]').classList.toggle('hidden', s.cls === 'paid' || entryDue(getMonth(currentMonth).inflows[id]) <= 0);
+  }
+
   // ---- rendering ----
   function renderMonthNav(){
     document.getElementById('monthLabel').textContent = monthLabel(currentMonth);
@@ -502,6 +587,7 @@
     document.getElementById('paidVal').textContent = fmtCurrency(paid);
     document.getElementById('closingVal').textContent = fmtCurrency(closing);
 
+    renderPending();
     const overrideSection = document.getElementById('openingOverrideSection');
     const overrideInput = document.getElementById('openingOverrideInput');
     if(hasPrevMonthData(currentMonth)){
@@ -528,7 +614,7 @@
       li.innerHTML = `
         <div class="info">
           <div class="title">${escapeHtml(f.flatNo)}</div>
-          <div class="sub">${escapeHtml(f.owner)}</div>
+          <div class="sub">${escapeHtml(f.owner)} · ${fmtCurrency(f.maintenance)}/month</div>
         </div>
         <div class="actions">
           <button class="icon-btn" data-action="edit-flat" data-id="${f.id}" title="Edit">✎</button>
@@ -547,23 +633,23 @@
     }
     const month = getMonth(currentMonth);
     state.flats.slice().sort((a,b)=>a.flatNo.localeCompare(b.flatNo, undefined, {numeric:true})).forEach(f=>{
-      const entry = month.inflows[f.id] || {amount:'', date: currentMonth + '-01'};
+      const entry = month.inflows[f.id] || {due:0, amount:'', date:''};
       const div = document.createElement('div');
-      div.className = 'flatrow' + (entry.amount ? ' has-amt' : '');
+      div.className = 'flatrow';
       div.dataset.flatId = f.id;
       div.innerHTML = `
-        <div class="flatname">${escapeHtml(f.flatNo)} <span class="owner">— ${escapeHtml(f.owner)}</span></div>
+        <div class="flatname"><span>${escapeHtml(f.flatNo)} <span class="owner">— ${escapeHtml(f.owner)}</span></span><span class="badge" data-role="badge"></span></div>
         <div class="row">
-          <div>
-            <label class="small">Amount</label>
-            <input type="number" min="0" step="1" placeholder="0" data-role="inflow-amount" data-flat-id="${f.id}" value="${entry.amount === '' ? '' : entry.amount}">
-          </div>
-          <div>
-            <label class="small">Date</label>
-            <input type="date" data-role="inflow-date" data-flat-id="${f.id}" value="${entry.date || ''}">
-          </div>
-        </div>`;
+          <div><label class="small">Due</label><input type="number" min="0" step="1" placeholder="0" data-role="inflow-due" data-flat-id="${f.id}" value="${entryDue(entry)}"></div>
+          <div><label class="small">Received</label><input type="number" min="0" step="1" placeholder="0" data-role="inflow-amount" data-flat-id="${f.id}" value="${entry.amount === '' ? '' : entry.amount}"></div>
+        </div>
+        <div class="row">
+          <div><label class="small">Date received</label><input type="date" data-role="inflow-date" data-flat-id="${f.id}" value="${entry.date || ''}"></div>
+          <div style="display:flex;align-items:flex-end;"><button type="button" class="btn small" data-action="mark-paid" data-flat-id="${f.id}">Mark paid</button></div>
+        </div>
+        <div class="carry" data-role="carry"></div>`;
       wrap.appendChild(div);
+      updateRow(div);
     });
   }
 
@@ -634,6 +720,7 @@
   const flatForm = document.getElementById('flatForm');
   const flatNoInput = document.getElementById('flatNo');
   const flatOwnerInput = document.getElementById('flatOwner');
+  const flatMaintInput = document.getElementById('flatMaint');
   const flatSubmitBtn = document.getElementById('flatSubmitBtn');
   const flatCancelBtn = document.getElementById('flatCancelBtn');
 
@@ -648,20 +735,30 @@
     e.preventDefault();
     const flatNo = flatNoInput.value.trim();
     const owner = flatOwnerInput.value.trim();
+    const maint = parseFloat(flatMaintInput.value) || 0;
     if(!flatNo || !owner) return;
 
     if(editingFlatId){
       const f = state.flats.find(x=>x.id===editingFlatId);
-      if(f){ f.flatNo = flatNo; f.owner = owner; }
+      if(f){
+        const old = Number(f.maintenance) || 0;
+        f.flatNo = flatNo; f.owner = owner; f.maintenance = maint;
+        if(old !== maint){
+          monthKeys().forEach(k=>{ if(k >= currentMonth){ const en = state.months[k].inflows[f.id]; if(en && entryDue(en) === old && !(Number(en.amount) > 0)) en.due = maint; } });
+        }
+      }
       showToast('Flat updated');
     }else{
-      state.flats.push({id: uid(), flatNo, owner});
+      const nf = {id: uid(), flatNo, owner, maintenance: maint};
+      state.flats.push(nf);
+      monthKeys().forEach(k=>{ if(k >= currentMonth) state.months[k].inflows[nf.id] = {due: maint, amount:'', date:''}; });
       showToast('Flat added');
     }
     save();
     resetFlatForm();
     renderFlatsList();
     renderInflowRows();
+    renderSummary();
   });
 
   flatCancelBtn.addEventListener('click', resetFlatForm);
@@ -678,6 +775,7 @@
       editingFlatId = id;
       flatNoInput.value = f.flatNo;
       flatOwnerInput.value = f.owner;
+      flatMaintInput.value = f.maintenance == null ? '' : f.maintenance;
       flatSubmitBtn.textContent = 'Save Changes';
       flatCancelBtn.style.display = 'inline-block';
       flatNoInput.focus();
@@ -713,19 +811,41 @@
     if(!role) return;
     const flatId = el.dataset.flatId;
     const month = getMonth(currentMonth);
-    const entry = month.inflows[flatId] || {amount:'', date: currentMonth + '-01'};
+    const entry = month.inflows[flatId] || {due:0, amount:'', date:''};
+    if(entry.due == null) entry.due = entryDue(entry);
+    if(role === 'inflow-due') entry.due = el.value === '' ? 0 : parseFloat(el.value);
     if(role === 'inflow-amount'){
       entry.amount = el.value === '' ? '' : parseFloat(el.value);
-      if(!entry.date) entry.date = todayISO();
+      if(entry.amount !== '' && !entry.date) entry.date = defaultRecvDate();
     }
-    if(role === 'inflow-date'){
-      entry.date = el.value;
-    }
+    if(role === 'inflow-date') entry.date = el.value;
     month.inflows[flatId] = entry;
     save();
     renderSummary();
     const row = el.closest('.flatrow');
-    if(row){ row.classList.toggle('has-amt', !!entry.amount); }
+    if(row){
+      updateRow(row);
+      const d = row.querySelector('[data-role="inflow-date"]');
+      if(entry.date && d.value !== entry.date) d.value = entry.date;
+    }
+  });
+
+  document.getElementById('inflowRows').addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-action="mark-paid"]');
+    if(!btn) return;
+    const month = getMonth(currentMonth);
+    const entry = month.inflows[btn.dataset.flatId] || {due:0, amount:'', date:''};
+    if(entry.due == null) entry.due = entryDue(entry);
+    entry.amount = entry.due;
+    if(!entry.date) entry.date = defaultRecvDate();
+    month.inflows[btn.dataset.flatId] = entry;
+    save();
+    const row = btn.closest('.flatrow');
+    row.querySelector('[data-role="inflow-amount"]').value = entry.amount;
+    row.querySelector('[data-role="inflow-date"]').value = entry.date;
+    updateRow(row);
+    renderSummary();
+    showToast('Marked as paid');
   });
 
   // ---- outflow ----
