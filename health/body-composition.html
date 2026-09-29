@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1311">
+<title>Body Composition Tracker</title>
+<style>
+:root{--bg:#0e1311;--card:#161d1a;--card2:#1c2521;--line:#2a3630;--txt:#e8f0ec;--mut:#8a9a92;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px 14px calc(90px + env(safe-area-inset-bottom))}
+main{max-width:760px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 14px}
+h2{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+input{width:100%;background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font:inherit}
+input:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:10px 0}
+.hint{min-height:20px;margin-top:4px}
+button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--txt);padding:9px 14px}
+.primary{background:var(--mint);color:#0e1311;border-color:var(--mint);font-weight:600}
+.armed{background:var(--coral);color:#0e1311;border-color:var(--coral)}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.chip{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid;white-space:nowrap}
+.chip.ok{color:var(--mint);border-color:var(--mint)}
+.chip.warn{color:var(--coral);border-color:var(--coral)}
+.chip.bad{background:var(--coral);color:#0e1311;border-color:var(--coral);font-weight:600}
+.t{background:var(--card2);border-radius:10px;padding:9px 10px}
+.tl{font-size:12px;color:var(--mut)}
+.tv{font-size:18px;font-weight:600;margin:1px 0 4px}
+.tv small{font-size:12px;color:var(--mut);font-weight:400}
+.tf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:20px}
+.tr{font-size:12px;font-weight:600}
+.tr.g{color:var(--mint)}.tr.b{color:var(--coral)}.tr.n{color:var(--mut)}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.head b{font-size:16px}
+.mut{color:var(--mut);font-size:13px}
+.note{margin-top:8px;font-size:13px;color:var(--mut);white-space:pre-wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chips button{border-radius:99px;padding:5px 14px}
+.chips button.on{background:var(--mint);color:#0e1311;border-color:var(--mint)}
+.empty{text-align:center;color:var(--mut);padding:22px 10px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--card2);border:1px solid var(--mint);color:var(--txt);padding:10px 16px;border-radius:99px;opacity:0;pointer-events:none;transition:.2s;max-width:90vw;font-size:14px}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}.primary:hover{filter:brightness(1.08)}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Body Composition Tracker</h1>
+<div id="summary"></div>
+
+<form class="card" id="form" autocomplete="off">
+  <h2 id="formTitle">New entry</h2>
+  <div class="row">
+    <div><label for="f_date">Date</label><input type="date" id="f_date" required></div>
+    <div><label for="f_name">Name</label><input type="text" id="f_name" list="names" maxlength="40" required><datalist id="names"></datalist></div>
+  </div>
+  <div class="grid" id="fields"></div>
+  <label for="f_note">Notes</label>
+  <input type="text" id="f_note" maxlength="200">
+  <div class="actions">
+    <button type="submit" class="primary" id="saveBtn">Add entry</button>
+    <button type="button" id="cancelBtn" data-act="cancel" hidden>Cancel edit</button>
+  </div>
+</form>
+
+<div id="filters" class="chips"></div>
+<div id="list"></div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='as_bodycomp_v1';
+// d: which direction counts as improvement. lo/hi = standard range, top = "too high" above this.
+var M=[
+ {k:'years',l:'Age',u:'yrs',d:'none',kid:1},
+ {k:'weight',l:'Weight',u:'kg',lo:58.6,hi:79.2,top:95.1,d:'range',kid:1},
+ {k:'height',l:'Height',u:'cm',d:'up',kid:1},
+ {k:'bmi',l:'BMI',u:'',lo:18.5,hi:25,top:30,d:'range'},
+ {k:'fat',l:'Body fat',u:'%',lo:11,hi:22,top:27,d:'range'},
+ {k:'muscleRate',l:'Muscle rate',u:'%',lo:60,hi:74,d:'up',good:1},
+ {k:'ffw',l:'Fat-free body weight',u:'kg',d:'up'},
+ {k:'subFat',l:'Subcutaneous fat',u:'%',lo:7,hi:15,d:'range'},
+ {k:'visceral',l:'Visceral fat',u:'',lo:9,hi:14,d:'range'},
+ {k:'water',l:'Body water',u:'%',lo:55,hi:65,d:'range',good:1},
+ {k:'skeletal',l:'Skeletal muscle',u:'%',lo:40,hi:60,d:'range',good:1},
+ {k:'muscleKg',l:'Muscle mass',u:'kg',lo:39.9,hi:49.2,d:'up',good:1},
+ {k:'bone',l:'Bone mass',u:'kg',lo:2.9,hi:3,d:'range',good:1},
+ {k:'protein',l:'Protein',u:'%',lo:16,hi:18,d:'range',good:1},
+ {k:'bmr',l:'BMR',u:'kcal',lo:1650,noStd:1,d:'up',good:1},
+ {k:'age',l:'Body age',u:'yrs',d:'down'}
+];
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var S={entries:[],filter:'',editId:null};
+var $=function(id){return document.getElementById(id)};
+
+function load(){try{var o=JSON.parse(localStorage.getItem(KEY)||'null');if(o&&Array.isArray(o.entries)){S.entries=o.entries;S.filter=o.filter||''}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({entries:S.entries,filter:S.filter}))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fmt(n){return n.toLocaleString('en-IN',{maximumFractionDigits:2})}
+function fmtDate(s){var p=s.split('-');return ('0'+parseInt(p[2],10)).slice(-2)+'th '+MON[parseInt(p[1],10)-1]+' '+p[0]}
+function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+var tT;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(function(){t.classList.remove('show')},2200)}
+
+function isKid(v){return v.years!=null&&v.years<10}
+function status(m,v){
+  if(v==null||m.lo==null)return null;
+  if(m.noStd)return v<=m.lo?'low':'high';
+  if(v<m.lo)return 'low';
+  if(v<=m.hi)return 'std';
+  if(m.top!=null&&v>m.top)return 'top';
+  return 'high';
+}
+function chip(m,v){
+  var s=status(m,v);if(!s)return '';
+  var map={low:['warn','Low'],std:['ok','Standard'],high:m.good?['ok','Excellent']:['warn','High'],top:['bad','Too high']}[s];
+  return '<span class="chip '+map[0]+'">'+map[1]+'</span>';
+}
+function dist(m,v){if(m.lo==null)return 0;return v<m.lo?m.lo-v:(v>m.hi?v-m.hi:0)}
+function trend(m,c,p){
+  if(c==null||p==null)return '';
+  var dl=+(c-p).toFixed(2);
+  if(!dl)return '<span class="tr n" title="No change">–</span>';
+  var cls;
+  if(m.d==='up')cls=dl>0?'g':'b';
+  else if(m.d==='down')cls=dl<0?'g':'b';
+  else{var a=dist(m,p),b=dist(m,c);cls=b<a?'g':(b>a?'b':'n')}
+  return '<span class="tr '+cls+'" title="Change since previous entry">'+(dl>0?'▲':'▼')+' '+fmt(Math.abs(dl))+'</span>';
+}
+function tile(m,v,pv,kid){
+  return '<div class="t"><div class="tl">'+m.l+'</div><div class="tv">'+fmt(v)+(m.u?' <small>'+m.u+'</small>':'')+'</div><div class="tf">'+(kid?'':chip(m,v))+trend(m,v,pv)+'</div></div>';
+}
+function tiles(e,prev){
+  var kid=isKid(e.v);
+  return '<div class="grid">'+M.filter(function(m){return m.k!=='years'&&e.v[m.k]!=null&&(!kid||m.kid)}).map(function(m){return tile(m,e.v[m.k],prev?prev.v[m.k]:null,kid)}).join('')+'</div>';
+}
+
+function ageTxt(e){return e.v.years!=null?', '+fmt(e.v.years)+' yrs':''}
+function cmp(a,b){return a.date<b.date?-1:a.date>b.date?1:a.ts-b.ts}
+function prevMap(){
+  var asc=S.entries.slice().sort(cmp),last={},pm={};
+  asc.forEach(function(e){pm[e.id]=last[e.name]||null;last[e.name]=e});
+  return {pm:pm,asc:asc};
+}
+function names(){var n=[];S.entries.forEach(function(e){if(n.indexOf(e.name)<0)n.push(e.name)});return n}
+
+function render(){
+  var ns=names();if(S.filter&&ns.indexOf(S.filter)<0){S.filter='';save()}
+  var pmr=prevMap(),pm=pmr.pm,asc=pmr.asc;
+  $('names').innerHTML=ns.map(function(n){return '<option value="'+esc(n)+'">'}).join('');
+  // filters
+  $('filters').innerHTML=ns.length>1?['']. concat(ns).map(function(n){return '<button type="button" data-act="filter" data-name="'+esc(n)+'" class="'+(S.filter===n?'on':'')+'">'+(n?esc(n):'All')+'</button>'}).join(''):'';
+  // summary: latest entry per person, live
+  var show=S.filter?[S.filter]:ns,sum='';
+  show.forEach(function(n){
+    var mine=asc.filter(function(e){return e.name===n}),last=mine[mine.length-1],first=mine[0];
+    var extra='';
+    if(mine.length>1&&first.v.weight!=null&&last.v.weight!=null){
+      var dw=+(last.v.weight-first.v.weight).toFixed(2);
+      extra='<div class="mut">Weight since first entry: '+(dw>0?'+':dw<0?'−':'')+fmt(Math.abs(dw))+' kg</div>';
+    }
+    sum+='<div class="card"><div class="head"><b>'+esc(n)+ageTxt(last)+'</b><span class="mut">Latest: '+fmtDate(last.date)+' · '+mine.length+' '+(mine.length===1?'entry':'entries')+'</span></div>'+tiles(last,pm[last.id])+extra+'</div>';
+  });
+  $('summary').innerHTML=sum;
+  // list
+  var rows=S.entries.filter(function(e){return !S.filter||e.name===S.filter}).sort(function(a,b){return cmp(b,a)});
+  $('list').innerHTML=rows.length?rows.map(function(e){
+    return '<div class="card"><div class="head"><b>'+fmtDate(e.date)+'</b><span class="mut">'+esc(e.name)+ageTxt(e)+'</span></div>'+tiles(e,pm[e.id])+
+      (e.note?'<div class="note">'+esc(e.note)+'</div>':'')+
+      '<div class="actions"><button type="button" data-act="edit" data-id="'+e.id+'">Edit</button><button type="button" data-act="del" data-id="'+e.id+'">Delete</button></div></div>';
+  }).join(''):'<div class="empty">No entries yet. Fill in the form above and tap Add entry.</div>';
+}
+
+// form (built once; typing only updates the small status hint)
+function buildForm(){
+  $('fields').innerHTML=M.map(function(m){
+    return '<div data-wrap="'+m.k+'"><label for="f_'+m.k+'">'+m.l+(m.u?' ('+m.u+')':'')+'</label><input type="number" inputmode="decimal" step="any" min="0" id="f_'+m.k+'" data-k="'+m.k+'"><div class="hint" data-role="hint" data-k="'+m.k+'"></div></div>';
+  }).join('');
+}
+function formKid(){var a=parseFloat($('f_years').value);return !isNaN(a)&&a<10}
+function updateHint(k){
+  var m=M.filter(function(x){return x.k===k})[0],v=parseFloat($('f_'+k).value);
+  document.querySelector('[data-role="hint"][data-k="'+k+'"]').innerHTML=(isNaN(v)||formKid())?'':chip(m,v);
+}
+function applyKid(){
+  var kid=formKid();
+  M.forEach(function(m){document.querySelector('[data-wrap="'+m.k+'"]').hidden=kid&&!m.kid;updateHint(m.k)});
+}
+function clearForm(keepName){
+  M.forEach(function(m){$('f_'+m.k).value=''});applyKid();
+  $('f_note').value='';$('f_date').value=today();
+  if(!keepName)$('f_name').value='';
+}
+function setEdit(id){
+  S.editId=id;
+  $('formTitle').textContent=id?'Edit entry':'New entry';
+  $('saveBtn').textContent=id?'Save changes':'Add entry';
+  $('cancelBtn').hidden=!id;
+}
+function readForm(){
+  var v={},any=false;
+  var kid=formKid();
+  M.forEach(function(m){if(kid&&!m.kid)return;var n=parseFloat($('f_'+m.k).value);if(!isNaN(n)){v[m.k]=n;if(m.k!=='years')any=true}});
+  return {v:v,any:any};
+}
+
+$('form').addEventListener('input',function(ev){var k=ev.target.getAttribute('data-k');if(k==='years')applyKid();else if(k)updateHint(k)});
+$('form').addEventListener('submit',function(ev){
+  ev.preventDefault();
+  var name=$('f_name').value.trim(),date=$('f_date').value,r=readForm();
+  if(!name||!date){toast('Add a date and a name');return}
+  if(!r.any){toast('Enter at least one measurement');return}
+  var e={id:S.editId||(Date.now().toString(36)+Math.random().toString(36).slice(2,6)),ts:Date.now(),date:date,name:name,v:r.v,note:$('f_note').value.trim()};
+  if(S.editId){
+    var i=S.entries.findIndex(function(x){return x.id===S.editId});
+    if(i>=0){e.ts=S.entries[i].ts;S.entries[i]=e}
+    toast('Changes saved');
+  }else{S.entries.push(e);toast('Entry added')}
+  setEdit(null);save();clearForm(true);render();
+});
+
+var armed=null,armT;
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-act]');if(!b)return;
+  var act=b.getAttribute('data-act'),id=b.getAttribute('data-id');
+  if(act==='filter'){S.filter=b.getAttribute('data-name')||'';save();render()}
+  else if(act==='cancel'){setEdit(null);clearForm(true);toast('Edit cancelled')}
+  else if(act==='edit'){
+    var e=S.entries.filter(function(x){return x.id===id})[0];if(!e)return;
+    $('f_date').value=e.date;$('f_name').value=e.name;$('f_note').value=e.note||'';
+    M.forEach(function(m){$('f_'+m.k).value=e.v[m.k]!=null?e.v[m.k]:''});applyKid();
+    setEdit(id);toast('Editing '+fmtDate(e.date));
+    $('form').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  else if(act==='del'){
+    if(armed===id){
+      armed=null;clearTimeout(armT);
+      S.entries=S.entries.filter(function(x){return x.id!==id});
+      if(S.editId===id){setEdit(null);clearForm(true)}
+      save();render();toast('Entry deleted');
+    }else{
+      armed=id;b.textContent='Tap again to delete';b.classList.add('armed');toast('Tap delete again to confirm');
+      clearTimeout(armT);
+      armT=setTimeout(function(){armed=null;var x=document.querySelector('[data-act="del"][data-id="'+id+'"]');if(x){x.textContent='Delete';x.classList.remove('armed')}},3000);
+    }
+  }
+});
+
+load();buildForm();clearForm(false);
+var nm=names();if(nm.length===1)$('f_name').value=nm[0];
+render();
+})();
+</script>
+</body>
+</html>

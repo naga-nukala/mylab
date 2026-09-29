@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1412">
+<title>Family Health Record</title>
+<style>
+:root{--bg:#0f1412;--card:#182019;--card2:#1f2a22;--line:#2b382f;--tx:#e8f0ea;--mut:#8fa396;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:980px;margin-inline:auto}
+h1{font-size:20px;margin:4px 0 2px;color:var(--mint)}
+.tag{color:var(--mut);font-size:12px;margin-bottom:14px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:14px}
+.sum div{text-align:center}.sum b{display:block;font-size:17px;color:var(--mint)}.sum span{font-size:11px;color:var(--mut)}
+.pt{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.pt-h{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;cursor:pointer;gap:10px}
+.pt-h b{display:block;font-size:16px}.sub{font-size:12px;color:var(--mut)}
+.chev{color:var(--mint);transition:transform .2s}.pt.closed .chev{transform:rotate(-90deg)}
+.pt.closed .pt-b{display:none}
+.pt-b{padding:0 14px 14px;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.full{grid-column:1/-1}
+label{display:block;font-size:11px;color:var(--mut);margin-bottom:3px}
+input,textarea{width:100%;background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font:inherit;font-size:14px}
+textarea{resize:vertical;min-height:54px}
+input:focus,textarea:focus{outline:none;border-color:var(--mint)}
+h3{font-size:13px;color:var(--mint);margin:16px 0 0;text-transform:uppercase;letter-spacing:.05em}
+.btn{background:var(--mint);color:#0f1412;border:0;border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--mint);border:1px solid var(--line)}
+.btn.del{background:transparent;color:var(--coral);border:1px solid var(--coral)}
+.btn.armed{background:var(--coral);color:#0f1412}
+.btn.sm{padding:5px 10px;font-size:12px}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.rec{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;margin-top:10px}
+.rec.edit{border-color:var(--mint)}
+.rec .top{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.rec .dt{color:var(--mint);font-weight:600}.rec .fu{color:var(--coral);font-size:12px}
+.rec .dx{font-weight:600;margin:4px 0 2px}
+.rec p{margin:4px 0 0;font-size:13px;color:var(--tx);white-space:pre-wrap}.rec p i{color:var(--mut);font-style:normal}
+.empty{color:var(--mut);font-size:13px;text-align:center;padding:14px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-weight:600;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+h3{margin:0}.info{margin-top:14px;border:1px solid var(--line);border-radius:11px;background:var(--card2)}
+.info-h{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;cursor:pointer}
+.info.closed .chev{transform:rotate(-90deg)}.info.closed .info-b{display:none}.info-b{padding:0 12px 12px}
+.iv p{margin:6px 0 0;font-size:13px;white-space:pre-wrap}.iv p i{color:var(--mut);font-style:normal}
+.recs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-top:10px}
+.recs .empty{grid-column:1/-1}.recs .rec{margin:0;padding:8px 10px}
+.rec .top{align-items:center;gap:6px;justify-content:flex-start}.rec .mut{color:var(--mut);font-size:12px}
+.acts{margin-left:auto;display:flex;gap:4px}
+.lnk{background:none;border:1px solid var(--line);border-radius:6px;color:var(--mint);font:inherit;font-size:11px;padding:2px 8px;cursor:pointer}
+.lnk.del{color:var(--coral)}.lnk.armed{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+.rec .dx{margin:3px 0 1px;font-size:14px}.rec p{margin:2px 0 0;font-size:12px;line-height:1.35}
+@media(hover:hover) and (pointer:fine){.pt-h:hover{background:var(--card2)}.btn:hover{filter:brightness(1.1)}}
+@media(max-width:420px){.grid{grid-template-columns:1fr}.sum b{font-size:15px}}
+</style>
+</head>
+<body>
+<h1>Family Health Record</h1>
+<div class="tag">Stored only in this browser. Nothing leaves your device.</div>
+<div class="sum" id="sum"></div>
+<div id="list"></div>
+<div class="bar">
+  <button class="btn" data-action="add-patient">+ Add patient</button>
+  <button class="btn ghost" data-action="export">Export backup</button>
+  <button class="btn ghost" data-action="import">Import backup</button>
+  <input type="file" id="file" accept="application/json" hidden>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const KEY='as_family_health_v1';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let state={patients:[]};
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inr=n=>Number(n||0).toLocaleString('en-IN');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function fmtDate(iso){if(!iso)return '';const p=iso.split('-');if(p.length<3)return iso;return String(+p[2]).padStart(2,'0')+'th '+MON[+p[1]-1]+' '+p[0]}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.patients))state=s}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){toast('Could not save')}}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)}
+const getP=id=>state.patients.find(p=>p.id===id);
+
+const PF=[['name','Patient name'],['blood','Blood group']];
+const INF=[['allergies','Allergies','full','ta'],['chronic','Chronic conditions','full','ta'],['notes','Notes','full','ta']];
+const hasInfo=p=>INF.some(f=>(p[f[0]]||'').trim());
+const RF=[['date','Date','','date'],['age','Age','','number'],['doctor','Doctor'],['hospital','Hospital'],['diagnosis','Diagnosed for','full'],['medicines','Medicines prescribed (name, dose, duration)','full','ta'],['reports','Disease / test reports (findings, lab, scan)','full','ta'],['notes','Notes','full','ta']];
+
+function field(f,val,attrs){const [k,l,cls,t]=f;
+  const inp=t==='ta'?`<textarea ${attrs} data-field="${k}">${esc(val)}</textarea>`:`<input ${attrs} data-field="${k}" type="${t||'text'}" ${t==='number'?'inputmode="decimal" min="0"':''} value="${esc(val)}">`;
+  return `<div class="${cls||''}"><label>${l}</label>${inp}</div>`}
+function sub(p){const n=p.records.length;return [p.blood,n+(n===1?' visit':' visits')].filter(Boolean).join(' · ')}
+function recHTML(p,r){const dr=[r.doctor,r.hospital].filter(Boolean).join(', ');return `<div class="rec ${p.editing===r.id?'edit':''}" data-rid="${r.id}">
+<div class="top"><span class="dt">${fmtDate(r.date)||'No date'}</span>${r.age?`<span class="mut">· Age ${esc(r.age)}</span>`:''}<span class="acts"><button class="lnk" data-action="edit-rec">Edit</button><button class="lnk del" data-action="del-rec">Delete</button></span></div>
+<div class="dx">${esc(r.diagnosis)||'—'}</div>
+${dr?`<p><i>Dr:</i> ${esc(dr)}</p>`:''}
+${r.medicines?`<p><i>Meds:</i> ${esc(r.medicines)}</p>`:''}
+${r.reports?`<p><i>Reports:</i> ${esc(r.reports)}</p>`:''}
+${r.notes?`<p><i>Notes:</i> ${esc(r.notes)}</p>`:''}</div>`}
+function infoBody(p){if(!p.infoEdit&&hasInfo(p))return `<div class="iv">${INF.map(f=>p[f[0]]?`<p><i>${f[1]}:</i> ${esc(p[f[0]])}</p>`:'').join('')}</div><div class="row"><button class="btn ghost sm" data-action="edit-info">Edit</button><button class="btn del sm" data-action="del-info">Delete</button></div>`;
+  return `<div class="grid">${INF.map(f=>field(f,p[f[0]],'data-scope="i"')).join('')}</div><div class="row"><button class="btn sm" data-action="save-info">Save</button>${hasInfo(p)?'<button class="btn ghost sm" data-action="cancel-info">Cancel</button>':''}</div>`}
+function recsHTML(p){if(!p.records.length)return '<div class="empty">No visits recorded yet.</div>';
+  return [...p.records].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(r=>recHTML(p,r)).join('')}
+function ptHTML(p){return `<section class="pt ${p.closed?'closed':''}" data-pid="${p.id}">
+<div class="pt-h" data-action="toggle"><div><b data-role="title">${esc(p.name)||'New patient'}</b><span class="sub" data-role="sub">${esc(sub(p))}</span></div><span class="chev">▾</span></div>
+<div class="pt-b">
+<div class="grid">${PF.map(f=>field(f,p[f[0]],'data-scope="p"')).join('')}</div>
+<div class="info ${p.infoClosed?'closed':''}"><div class="info-h" data-action="toggle-info"><h3>Health info</h3><span class="chev">▾</span></div><div class="info-b" data-role="infobody">${infoBody(p)}</div></div>
+<h3 data-role="formtitle">Add visit</h3>
+<div class="grid" data-role="form">${RF.map(f=>field(f,f[0]==='date'?today():'','data-scope="r"')).join('')}</div>
+<div class="row"><button class="btn" data-action="save-rec" data-role="savebtn">Save visit</button><button class="btn ghost" data-action="cancel-edit" data-role="cancel" hidden>Cancel edit</button></div>
+<h3>History</h3><div class="recs" data-role="recs">${recsHTML(p)}</div>
+<div class="row"><button class="btn del sm" data-action="del-patient">Delete patient</button></div>
+</div></section>`}
+function renderAll(){const l=$('#list');l.innerHTML=state.patients.length?state.patients.map(ptHTML).join(''):'<div class="empty">No patients yet. Tap “+ Add patient”.</div>';renderSum()}
+function renderSum(){let v=0,last='';state.patients.forEach(p=>p.records.forEach(r=>{v++;if(r.date&&r.date>last)last=r.date}));
+  $('#sum').innerHTML=`<div><b>${state.patients.length}</b><span>Patients</span></div><div><b>${v}</b><span>Visits</span></div><div><b>${last?fmtDate(last):'—'}</b><span>Last visit</span></div>`}
+function rerenderRecs(p,el){el.querySelector('[data-role=recs]').innerHTML=recsHTML(p);const s=el.querySelector('[data-role=sub]');s.textContent=sub(p);renderSum()}
+function resetForm(p,el){el.querySelectorAll('[data-scope=r]').forEach(i=>i.value=i.dataset.field==='date'?today():'');
+  p.editing=null;el.querySelector('[data-role=formtitle]').textContent='Add visit';el.querySelector('[data-role=savebtn]').textContent='Save visit';el.querySelector('[data-role=cancel]').hidden=true}
+
+function arm(btn,label){if(btn.dataset.armed){return true}btn.dataset.armed='1';btn.dataset.old=btn.textContent;btn.textContent=label;btn.classList.add('armed');toast('Tap again to confirm');
+  setTimeout(()=>{if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.old;btn.classList.remove('armed')}},3000);return false}
+
+document.addEventListener('input',e=>{const i=e.target;if(i.dataset.scope!=='p')return;
+  const el=i.closest('.pt'),p=getP(el.dataset.pid);if(!p)return;p[i.dataset.field]=i.value;
+  if(i.dataset.field==='name')el.querySelector('[data-role=title]').textContent=i.value||'New patient';
+  el.querySelector('[data-role=sub]').textContent=sub(p);save()});
+
+document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action;
+  const el=b.closest('.pt'),p=el&&getP(el.dataset.pid);
+  if(a==='add-patient'){const np={id:uid(),name:'',blood:'',allergies:'',chronic:'',notes:'',closed:false,records:[]};
+    state.patients.push(np);save();renderAll();const n=document.querySelector(`[data-pid="${np.id}"] [data-field=name]`);n&&n.focus();return}
+  if(a==='export'){const u=URL.createObjectURL(new Blob([JSON.stringify(state,null,1)],{type:'application/json'}));const l=document.createElement('a');l.href=u;l.download='family-health-record.json';l.click();setTimeout(()=>URL.revokeObjectURL(u),500);return}
+  if(a==='import'){$('#file').click();return}
+  if(!p)return;
+  if(a==='toggle'){p.closed=!p.closed;el.classList.toggle('closed',p.closed);save();return}
+  const ib=()=>el.querySelector('[data-role=infobody]');
+  if(a==='toggle-info'){p.infoClosed=!p.infoClosed;b.parentElement.classList.toggle('closed',p.infoClosed);save();return}
+  if(a==='edit-info'){p.infoEdit=true;ib().innerHTML=infoBody(p);return}
+  if(a==='cancel-info'){p.infoEdit=false;ib().innerHTML=infoBody(p);return}
+  if(a==='save-info'){el.querySelectorAll('[data-scope=i]').forEach(i=>p[i.dataset.field]=i.value.trim());p.infoEdit=false;save();ib().innerHTML=infoBody(p);toast('Saved');return}
+  if(a==='del-info'){if(!arm(b,'Tap again to delete'))return;INF.forEach(f=>p[f[0]]='');p.infoEdit=false;save();ib().innerHTML=infoBody(p);toast('Health info deleted');return}
+  if(a==='del-patient'){if(!arm(b,'Tap again to delete'))return;state.patients=state.patients.filter(x=>x!==p);save();renderAll();toast('Patient deleted');return}
+  if(a==='save-rec'){const r={};el.querySelectorAll('[data-scope=r]').forEach(i=>r[i.dataset.field]=i.value.trim());
+    if(!r.diagnosis&&!r.medicines&&!r.reports&&!r.doctor){toast('Add at least a diagnosis or medicine');return}
+    if(p.editing){const o=p.records.find(x=>x.id===p.editing);Object.assign(o,r)}else{r.id=uid();p.records.push(r)}
+    resetForm(p,el);save();rerenderRecs(p,el);toast('Saved');return}
+  if(a==='cancel-edit'){resetForm(p,el);rerenderRecs(p,el);return}
+  const rc=b.closest('.rec'),r=rc&&p.records.find(x=>x.id===rc.dataset.rid);if(!r)return;
+  if(a==='edit-rec'){p.editing=r.id;el.querySelectorAll('[data-scope=r]').forEach(i=>i.value=r[i.dataset.field]||'');
+    el.querySelector('[data-role=formtitle]').textContent='Editing visit';el.querySelector('[data-role=savebtn]').textContent='Update visit';el.querySelector('[data-role=cancel]').hidden=false;
+    rerenderRecs(p,el);el.querySelector('[data-role=formtitle]').scrollIntoView({behavior:'smooth',block:'center'});return}
+  if(a==='del-rec'){if(!arm(b,'Tap again'))return;p.records=p.records.filter(x=>x!==r);if(p.editing===r.id)resetForm(p,el);save();rerenderRecs(p,el);toast('Visit deleted')}
+});
+
+$('#file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!Array.isArray(d.patients))throw 0;
+    d.patients.forEach(p=>{p.id=uid();p.records=(p.records||[]).map(r=>({...r,id:uid()}))});
+    state.patients.push(...d.patients);save();renderAll();toast('Imported '+d.patients.length+' patient(s)')}catch(x){toast('Invalid backup file')}};
+  rd.readAsText(f);e.target.value=''});
+
+load();state.patients.forEach(p=>{p.editing=null;p.infoEdit=false;p.records=p.records||[]});renderAll();
+</script>
+</body>
+</html>

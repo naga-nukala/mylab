@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Cashback Comparator</title>
+<style>
+  :root{
+    --bg:#0d0f12;
+    --card:#161a1f;
+    --card-2:#1e2329;
+    --border:#282e36;
+    --text:#e8ecef;
+    --dim:#8b93a1;
+    --mint:#a7e8c5;
+    --mint-dim:rgba(167,232,197,0.14);
+    --coral:#ff8c70;
+    --coral-dim:rgba(255,140,112,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:20px 16px 60px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:560px;margin:0 auto;}
+  h1{font-size:22px;margin:4px 0 2px;font-weight:600;}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 20px;}
+
+  .summary{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px 18px;
+    margin-bottom:20px;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .summary .stat{flex:1;}
+  .summary .stat .n{font-size:20px;font-weight:600;color:var(--mint);}
+  .summary .stat .l{font-size:12px;color:var(--dim);margin-top:2px;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .card h2{font-size:15px;margin:0 0 12px;font-weight:600;}
+
+  label{display:block;font-size:12px;color:var(--dim);margin:0 0 5px;}
+  input[type=text], input[type=number]{
+    width:100%;
+    background:var(--card-2);
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:10px 11px;
+    color:var(--text);
+    font-size:14px;
+    outline:none;
+  }
+  input:focus{border-color:var(--mint);}
+  input::placeholder{color:#5b6270;}
+
+  .field{margin-bottom:14px;}
+
+  .options{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+  .option-row{
+    background:var(--card-2);
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:12px;
+  }
+  .option-row .row1{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .option-row .row1 input[data-role="label"]{flex:1;}
+  .remove-opt{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--dim);
+    border-radius:8px;
+    width:34px;height:34px;
+    font-size:15px;
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .remove-opt:hover{border-color:var(--coral);color:var(--coral);}
+  }
+  .option-row .row2{display:flex;gap:8px;align-items:flex-end;}
+  .option-row .row2 .field{flex:1;margin-bottom:0;}
+  .effective-box{
+    flex:1;
+    text-align:right;
+  }
+  .effective-box .eff-label{font-size:12px;color:var(--dim);margin-bottom:5px;}
+  .effective-box .eff-val{font-size:16px;font-weight:600;color:var(--mint);}
+
+  .add-opt{
+    width:100%;
+    background:transparent;
+    border:1px dashed var(--border);
+    color:var(--dim);
+    border-radius:10px;
+    padding:10px;
+    font-size:13px;
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .add-opt:hover{border-color:var(--mint);color:var(--mint);}
+  }
+
+  .btn-row{display:flex;gap:10px;}
+  .btn{
+    flex:1;
+    border:none;
+    border-radius:10px;
+    padding:12px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--mint);color:#0d0f12;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--dim);flex:0 0 auto;padding:12px 16px;}
+
+  .list-title{font-size:13px;color:var(--dim);margin:24px 0 10px;}
+
+  .item-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;}
+  .item-head .name{font-size:16px;font-weight:600;}
+  .item-head .date{font-size:11px;color:var(--dim);margin-top:2px;}
+  .item-actions{display:flex;gap:6px;flex-shrink:0;}
+  .icon-btn{
+    background:var(--card-2);
+    border:1px solid var(--border);
+    color:var(--dim);
+    border-radius:8px;
+    width:30px;height:30px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .icon-btn[data-role="delete"].confirm{background:var(--coral-dim);border-color:var(--coral);color:var(--coral);}
+
+  .opt-line{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:9px 10px;
+    border-radius:9px;
+    margin-bottom:6px;
+    background:var(--card-2);
+    border:1px solid transparent;
+  }
+  .opt-line:last-child{margin-bottom:0;}
+  .opt-line.best{background:var(--mint-dim);border-color:var(--mint);}
+  .opt-line .ol-left .ol-name{font-size:13px;font-weight:500;}
+  .opt-line .ol-left .ol-sub{font-size:11px;color:var(--dim);margin-top:1px;}
+  .opt-line .ol-right{text-align:right;}
+  .opt-line .ol-right .ol-eff{font-size:14px;font-weight:600;}
+  .opt-line.best .ol-right .ol-eff{color:var(--mint);}
+  .opt-line .ol-right .ol-delta{font-size:11px;color:var(--coral);margin-top:1px;}
+  .best-tag{
+    display:inline-block;
+    font-size:10px;
+    color:#0d0f12;
+    background:var(--mint);
+    border-radius:5px;
+    padding:1px 6px;
+    margin-left:6px;
+    font-weight:700;
+    vertical-align:middle;
+  }
+
+  .empty{
+    text-align:center;
+    color:var(--dim);
+    font-size:13px;
+    padding:30px 10px;
+    border:1px dashed var(--border);
+    border-radius:14px;
+  }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%);
+    background:var(--card-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s;
+    z-index:50;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cashback Comparator</h1>
+  <p class="sub">Compare effective prices across payment options and pick the real winner.</p>
+
+  <div class="summary">
+    <div class="stat">
+      <div class="n" id="statCount">0</div>
+      <div class="l">items compared</div>
+    </div>
+    <div class="stat">
+      <div class="n" id="statSaved">₹0</div>
+      <div class="l">total savings identified</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="formTitle">Add an item</h2>
+
+    <div class="field">
+      <label for="itemName">Item</label>
+      <input type="text" id="itemName" placeholder="e.g. Cashew (1kg)">
+    </div>
+
+    <div class="options" id="optionsWrap"></div>
+
+    <button type="button" class="add-opt" id="addOptBtn">+ Add option</button>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+      <button type="button" class="btn btn-ghost" id="cancelBtn" style="display:none;">Cancel</button>
+    </div>
+  </div>
+
+  <div class="list-title">Saved comparisons</div>
+  <div id="listWrap"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var STORAGE_KEY = 'as_cashback_comparator_v1';
+  var state = { items: [] };
+  var editingId = null;
+  var deleteArmed = null;
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.items)) state = parsed;
+      }
+    }catch(e){}
+  }
+  function persist(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function fmtCurrency(n){
+    if(!isFinite(n)) n = 0;
+    return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
+
+  function ordinal(d){
+    if(d>3 && d<21) return d+'th';
+    switch(d%10){case 1:return d+'st';case 2:return d+'nd';case 3:return d+'rd';default:return d+'th';}
+  }
+  function fmtDate(ts){
+    var d = new Date(ts);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return ordinal(d.getDate()) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  function effectivePrice(opt){
+    var price = parseFloat(opt.price) || 0;
+    var cb = parseFloat(opt.cashback) || 0;
+    return price - (price * cb / 100);
+  }
+
+  // ---------- FORM ----------
+  var formOptions = [];
+
+  function newOption(){ return { id: uid(), label:'', price:'', cashback:'' }; }
+
+  function resetForm(){
+    editingId = null;
+    document.getElementById('itemName').value = '';
+    formOptions = [newOption(), newOption()];
+    renderOptions();
+    document.getElementById('formTitle').textContent = 'Add an item';
+    document.getElementById('cancelBtn').style.display = 'none';
+  }
+
+  function renderOptions(){
+    var wrap = document.getElementById('optionsWrap');
+    wrap.innerHTML = '';
+    formOptions.forEach(function(opt, idx){
+      var row = document.createElement('div');
+      row.className = 'option-row';
+      row.setAttribute('data-index', idx);
+
+      var row1 = document.createElement('div');
+      row1.className = 'row1';
+
+      var labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.setAttribute('data-role','label');
+      labelInput.placeholder = 'Option name, e.g. Dmart + CC';
+      labelInput.value = opt.label;
+      row1.appendChild(labelInput);
+
+      if(formOptions.length > 2){
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'remove-opt';
+        rm.setAttribute('data-action','remove-option');
+        rm.setAttribute('data-index', idx);
+        rm.textContent = '✕';
+        row1.appendChild(rm);
+      }
+      row.appendChild(row1);
+
+      var row2 = document.createElement('div');
+      row2.className = 'row2';
+
+      var priceField = document.createElement('div');
+      priceField.className = 'field';
+      var priceLabel = document.createElement('label');
+      priceLabel.textContent = 'Price (₹)';
+      var priceInput = document.createElement('input');
+      priceInput.type = 'number';
+      priceInput.inputMode = 'decimal';
+      priceInput.setAttribute('data-role','price');
+      priceInput.placeholder = '0';
+      priceInput.value = opt.price;
+      priceField.appendChild(priceLabel);
+      priceField.appendChild(priceInput);
+      row2.appendChild(priceField);
+
+      var cbField = document.createElement('div');
+      cbField.className = 'field';
+      var cbLabel = document.createElement('label');
+      cbLabel.textContent = 'Cashback %';
+      var cbInput = document.createElement('input');
+      cbInput.type = 'number';
+      cbInput.inputMode = 'decimal';
+      cbInput.setAttribute('data-role','cashback');
+      cbInput.placeholder = '0';
+      cbInput.value = opt.cashback;
+      cbField.appendChild(cbLabel);
+      cbField.appendChild(cbInput);
+      row2.appendChild(cbField);
+
+      var effBox = document.createElement('div');
+      effBox.className = 'effective-box';
+      var effLabel = document.createElement('div');
+      effLabel.className = 'eff-label';
+      effLabel.textContent = 'Effective';
+      var effVal = document.createElement('div');
+      effVal.className = 'eff-val';
+      effVal.setAttribute('data-role','effective');
+      effVal.textContent = fmtCurrency(effectivePrice(opt));
+      effBox.appendChild(effLabel);
+      effBox.appendChild(effVal);
+      row2.appendChild(effBox);
+
+      row.appendChild(row2);
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById('optionsWrap').addEventListener('input', function(e){
+    var role = e.target.getAttribute('data-role');
+    if(!role) return;
+    var row = e.target.closest('.option-row');
+    var idx = parseInt(row.getAttribute('data-index'), 10);
+    var opt = formOptions[idx];
+    if(!opt) return;
+    opt[role] = e.target.value;
+    if(role === 'price' || role === 'cashback'){
+      var effEl = row.querySelector('[data-role="effective"]');
+      effEl.textContent = fmtCurrency(effectivePrice(opt));
+    }
+  });
+
+  document.getElementById('optionsWrap').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-action="remove-option"]');
+    if(!btn) return;
+    var idx = parseInt(btn.getAttribute('data-index'), 10);
+    formOptions.splice(idx, 1);
+    renderOptions();
+  });
+
+  document.getElementById('addOptBtn').addEventListener('click', function(){
+    if(formOptions.length >= 6) return;
+    formOptions.push(newOption());
+    renderOptions();
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', function(){
+    var name = document.getElementById('itemName').value.trim();
+    if(!name){ showToast('Enter an item name'); return; }
+    var cleanOptions = formOptions
+      .map(function(o){ return { id:o.id, label:(o.label||'').trim(), price:parseFloat(o.price)||0, cashback:parseFloat(o.cashback)||0 }; })
+      .filter(function(o){ return o.label && o.price > 0; });
+    if(cleanOptions.length < 2){ showToast('Add at least 2 valid options'); return; }
+
+    if(editingId){
+      var item = state.items.find(function(it){ return it.id === editingId; });
+      if(item){
+        item.name = name;
+        item.options = cleanOptions;
+      }
+      showToast('Updated');
+    } else {
+      state.items.unshift({ id: uid(), name: name, options: cleanOptions, savedAt: Date.now() });
+      showToast('Saved');
+    }
+    persist();
+    resetForm();
+    renderList();
+  });
+
+  document.getElementById('cancelBtn').addEventListener('click', resetForm);
+
+  // ---------- LIST ----------
+  function renderList(){
+    var wrap = document.getElementById('listWrap');
+    wrap.innerHTML = '';
+
+    document.getElementById('statCount').textContent = state.items.length;
+
+    var totalSavings = 0;
+    state.items.forEach(function(item){
+      var effs = item.options.map(effectivePrice);
+      totalSavings += (Math.max.apply(null, effs) - Math.min.apply(null, effs));
+    });
+    document.getElementById('statSaved').textContent = fmtCurrency(totalSavings);
+
+    if(state.items.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'No comparisons yet. Add an item above to see which option actually wins.';
+      wrap.appendChild(empty);
+      return;
+    }
+
+    state.items.forEach(function(item){
+      var card = document.createElement('div');
+      card.className = 'item-card';
+      card.setAttribute('data-id', item.id);
+
+      var head = document.createElement('div');
+      head.className = 'item-head';
+      var nameWrap = document.createElement('div');
+      var nameEl = document.createElement('div');
+      nameEl.className = 'name';
+      nameEl.textContent = item.name;
+      var dateEl = document.createElement('div');
+      dateEl.className = 'date';
+      dateEl.textContent = 'Saved ' + fmtDate(item.savedAt);
+      nameWrap.appendChild(nameEl);
+      nameWrap.appendChild(dateEl);
+      head.appendChild(nameWrap);
+
+      var actions = document.createElement('div');
+      actions.className = 'item-actions';
+      var editBtn = document.createElement('button');
+      editBtn.className = 'icon-btn';
+      editBtn.setAttribute('data-action','edit');
+      editBtn.setAttribute('data-id', item.id);
+      editBtn.textContent = '✎';
+      var delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn';
+      delBtn.setAttribute('data-role','delete');
+      delBtn.setAttribute('data-action','delete');
+      delBtn.setAttribute('data-id', item.id);
+      delBtn.textContent = '🗑';
+      if(deleteArmed === item.id){
+        delBtn.classList.add('confirm');
+        delBtn.textContent = 'Sure?';
+      }
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      head.appendChild(actions);
+      card.appendChild(head);
+
+      var effs = item.options.map(effectivePrice);
+      var best = Math.min.apply(null, effs);
+
+      item.options.forEach(function(opt){
+        var eff = effectivePrice(opt);
+        var isBest = eff === best;
+        var line = document.createElement('div');
+        line.className = 'opt-line' + (isBest ? ' best' : '');
+
+        var left = document.createElement('div');
+        left.className = 'ol-left';
+        var nm = document.createElement('div');
+        nm.className = 'ol-name';
+        nm.textContent = opt.label;
+        if(isBest){
+          var tag = document.createElement('span');
+          tag.className = 'best-tag';
+          tag.textContent = 'BEST';
+          nm.appendChild(tag);
+        }
+        var sub = document.createElement('div');
+        sub.className = 'ol-sub';
+        sub.textContent = fmtCurrency(opt.price) + ' · ' + opt.cashback + '% back';
+        left.appendChild(nm);
+        left.appendChild(sub);
+
+        var right = document.createElement('div');
+        right.className = 'ol-right';
+        var ev = document.createElement('div');
+        ev.className = 'ol-eff';
+        ev.textContent = fmtCurrency(eff);
+        right.appendChild(ev);
+        if(!isBest){
+          var delta = document.createElement('div');
+          delta.className = 'ol-delta';
+          delta.textContent = '+' + fmtCurrency(eff - best);
+          right.appendChild(delta);
+        }
+
+        line.appendChild(left);
+        line.appendChild(right);
+        card.appendChild(line);
+      });
+
+      wrap.appendChild(card);
+    });
+  }
+
+  document.getElementById('listWrap').addEventListener('click', function(e){
+    var editBtn = e.target.closest('[data-action="edit"]');
+    if(editBtn){
+      var id = editBtn.getAttribute('data-id');
+      var item = state.items.find(function(it){ return it.id === id; });
+      if(!item) return;
+      editingId = id;
+      document.getElementById('itemName').value = item.name;
+      formOptions = item.options.map(function(o){ return { id:uid(), label:o.label, price:o.price, cashback:o.cashback }; });
+      renderOptions();
+      document.getElementById('formTitle').textContent = 'Edit item';
+      document.getElementById('cancelBtn').style.display = 'block';
+      window.scrollTo({ top:0, behavior:'smooth' });
+      return;
+    }
+    var delBtn = e.target.closest('[data-action="delete"]');
+    if(delBtn){
+      var did = delBtn.getAttribute('data-id');
+      if(deleteArmed === did){
+        state.items = state.items.filter(function(it){ return it.id !== did; });
+        deleteArmed = null;
+        persist();
+        renderList();
+        showToast('Deleted');
+        if(editingId === did) resetForm();
+      } else {
+        deleteArmed = did;
+        renderList();
+      }
+      return;
+    }
+  });
+
+  // ---------- TOAST ----------
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  // ---------- INIT ----------
+  load();
+  resetForm();
+  renderList();
+})();
+</script>
+</body>
+</html>

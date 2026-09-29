@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Online Shopping Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--mint:#a7e8c5;--coral:#ff8c70;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px 20px 90px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;}
+  p.sub{color:var(--sub);font-size:13px;margin:0 0 20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .card h2{font-size:14px;margin:0 0 10px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input,select,textarea{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--txt);font:inherit;font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  textarea{resize:vertical;min-height:54px;}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:130px;}
+  button{font:inherit;cursor:pointer;}
+  button.primary{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;margin-top:4px;}
+  button.ghost{padding:8px 12px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:var(--txt);font-size:12px;}
+
+  .summary{display:flex;gap:10px;}
+  .summary .box{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:14px 8px;}
+  .summary .n{font-size:19px;font-weight:800;color:var(--mint);}
+  .summary .n.coral{color:var(--coral);}
+  .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
+
+  .metric{margin-bottom:10px;}
+  .metric:last-child{margin-bottom:0;}
+  .metric-head{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:4px;}
+  .metric-head b{font-weight:700;}
+  .metric-head span{color:var(--sub);font-size:12px;}
+  .bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;}
+  .bar-fill{height:100%;background:var(--mint);}
+  .bar-fill.alt{background:var(--coral);}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:16px;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;border-radius:20px;background:#0f172a;border:1px solid var(--line);font-size:12px;}
+  .chip button{border:none;background:none;color:var(--sub);font-size:13px;padding:0 4px;line-height:1;}
+  .chip button.confirming{color:#fff;background:var(--bad);border-radius:10px;}
+  .add-inline{display:flex;gap:6px;}
+  .add-inline button{padding:0 14px;border:1px solid var(--acc);border-radius:8px;background:transparent;color:var(--acc);font-weight:700;}
+  .list-title{font-size:12px;font-weight:700;margin:12px 0 6px;}
+  .list-title:first-of-type{margin-top:0;}
+  details.card summary{cursor:pointer;font-size:14px;font-weight:700;}
+  details.card[open] summary{margin-bottom:12px;}
+
+  .entry{border-bottom:1px solid var(--line);padding:12px 0;}
+  .entry:last-child{border-bottom:none;}
+  .entry-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .entry-name{font-weight:700;font-size:14px;}
+  .entry-price{font-weight:800;color:var(--mint);white-space:nowrap;}
+  .entry-price.rw{color:var(--coral);}
+  .entry-meta{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.6;}
+  .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;margin-right:4px;background:rgba(59,130,246,.15);color:#60a5fa;}
+  .tag.good{background:rgba(34,197,94,.15);color:var(--acc);}
+  .tag.bad{background:rgba(239,68,68,.15);color:var(--bad);}
+  .entry-actions{display:flex;gap:6px;margin-top:6px;}
+  .entry-actions button{padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:#0f172a;color:var(--acc);font-size:12px;}
+  .entry-actions button.del{color:var(--bad);}
+  .entry-actions button.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .notes{font-size:12px;color:var(--txt);margin-top:4px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;white-space:nowrap;display:none;}
+  .hint{font-size:11px;color:var(--sub);margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛍️ Online Shopping Tracker</h1>
+  <p class="sub">Log every online purchase, see what you spend each year and on each type, and check later if it was worth it.</p>
+
+  <div class="card">
+    <div class="summary">
+      <div class="box"><div class="n" id="sumTotal">₹0</div><div class="l" id="sumTotalLabel">Price spent</div></div>
+      <div class="box"><div class="n coral" id="sumRewards">0 pts</div><div class="l" id="sumRewardsLabel">Rewards used</div></div>
+    </div>
+    <div class="summary" style="margin-top:10px;">
+      <div class="box"><div class="n" id="sumCount">0</div><div class="l">Items</div></div>
+      <div class="box"><div class="n coral" id="sumWasted">₹0</div><div class="l">Price marked not useful</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Year-wise spend</h2>
+    <div id="yearMetrics"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:flex-end;margin-bottom:10px;">
+      <h2 style="margin:0;flex:1;">Type-wise spend</h2>
+      <div class="field" style="max-width:150px;min-width:110px;">
+        <label for="viewYear">Year</label>
+        <select id="viewYear"></select>
+      </div>
+    </div>
+    <div id="typeMetrics"></div>
+  </div>
+
+  <details class="card" id="manageCard">
+    <summary>Manage lists (Type, Shopped From, Bought By)</summary>
+    <div class="list-title">Type</div>
+    <div class="chips" id="chips-types"></div>
+    <div class="add-inline"><input type="text" id="new-types" placeholder="e.g. Electronics, Medical, Kids" maxlength="40"><button type="button" data-action="addOption" data-list="types" aria-label="Add type">+</button></div>
+
+    <div class="list-title">Shopped From</div>
+    <div class="chips" id="chips-stores"></div>
+    <div class="add-inline"><input type="text" id="new-stores" placeholder="e.g. Rewards, Amazon, Flipkart" maxlength="40"><button type="button" data-action="addOption" data-list="stores" aria-label="Add store">+</button></div>
+
+    <div class="list-title">Bought By</div>
+    <div class="chips" id="chips-buyers"></div>
+    <div class="add-inline"><input type="text" id="new-buyers" placeholder="Add a name" maxlength="40"><button type="button" data-action="addOption" data-list="buyers" aria-label="Add buyer">+</button></div>
+    <div class="hint">Removing an option here does not change purchases already saved with it.</div>
+  </details>
+
+  <div class="card">
+    <h2 id="formTitle">Add purchase</h2>
+    <div class="row">
+      <div class="field" style="flex-basis:100%;"><label for="fItem">Item</label><input type="text" id="fItem" placeholder="e.g. Baby stroller" maxlength="80"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fDate">Date</label><input type="date" id="fDate"></div>
+      <div class="field"><label for="fMode">Paid with</label>
+        <select id="fMode"><option value="price">Price (money)</option><option value="rewards">Rewards (points)</option></select>
+      </div>
+      <div class="field"><label for="fPrice" id="fPriceLabel">Price (₹)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 1499"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fType">Type</label><select id="fType"></select></div>
+      <div class="field"><label for="fStore">Shopped from</label><select id="fStore"></select></div>
+      <div class="field"><label for="fBuyer">Bought by</label><select id="fBuyer"></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fUseful">Useful?</label>
+        <select id="fUseful"><option value="">Not rated yet</option><option value="useful">Useful</option><option value="not">Not useful</option></select>
+      </div>
+      <div class="field"><label for="fWear">Broken / lasted till</label><input type="date" id="fWear"></div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex-basis:100%;"><label for="fCue">Cue (what triggered the purchase)</label><input type="text" id="fCue" placeholder="e.g. Sale alert, friend's recommendation, needed it" maxlength="80"></div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex-basis:100%;"><label for="fNotes">Notes</label><textarea id="fNotes" maxlength="300"></textarea></div>
+    </div>
+    <div id="formMsg" class="hint" style="color:var(--warn);"></div>
+    <button class="primary" id="saveBtn" type="button" data-action="save">+ Add Purchase</button>
+    <button class="ghost" id="cancelBtn" type="button" data-action="cancelEdit" style="display:none;width:100%;margin-top:8px;">Cancel edit</button>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:flex-end;margin-bottom:6px;">
+      <h2 style="margin:0;flex:1;">Purchases</h2>
+      <div class="field" style="max-width:150px;min-width:110px;">
+        <label for="filterType">Type</label>
+        <select id="filterType"></select>
+      </div>
+    </div>
+    <div class="hint" style="margin:0 0 8px;">Shows the year selected under Type-wise spend.</div>
+    <div id="entryList"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status"></div>
+
+<script>
+const ENTRIES_KEY = 'shopping_tracker_v1';
+const LISTS_KEY = 'shopping_tracker_lists_v1';
+const DRAFT_KEY = 'shopping_tracker_draft_v1';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DEFAULT_LISTS = {
+  types: ['Electronics','Medical','Kids','Clothing','Home','Grocery','Other'],
+  stores: ['Amazon','Flipkart','Myntra','Rewards','Other'],
+  buyers: []
+};
+const FORM_IDS = ['fItem','fDate','fMode','fPrice','fType','fStore','fBuyer','fUseful','fWear','fCue','fNotes'];
+
+function read(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v === null ? fallback : v; }catch(e){ return fallback; } }
+function write(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+let entries = read(ENTRIES_KEY, []);
+let lists = Object.assign({}, DEFAULT_LISTS, read(LISTS_KEY, {}));
+let editingId = null;
+let pending = {};
+let toastTimer;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- shared formatting conventions ---------- */
+function fmtPts(n){ return Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2}) + ' pts'; }
+function modeOf(e){ return e.mode === 'rewards' ? 'rewards' : 'price'; }
+function fmtAmt(e){ return modeOf(e) === 'rewards' ? fmtPts(e.price) : fmtINR(e.price); }
+function updateAmountLabel(){
+  const r = $('fMode').value === 'rewards';
+  $('fPriceLabel').textContent = r ? 'Rewards (points)' : 'Price (₹)';
+}
+function fmtINR(n){ return '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+function ordinal(d){
+  if(d % 100 >= 11 && d % 100 <= 13) return d + 'th';
+  return d + (['th','st','nd','rd'][d % 10] || 'th');
+}
+function fmtDate(iso){
+  if(!iso) return '';
+  const p = String(iso).split('-').map(Number);
+  if(p.length !== 3 || p.some(isNaN)) return '';
+  return ordinal(p[2]) + ' ' + MONTHS[p[1] - 1] + ' ' + p[0];
+}
+function esc(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function yearOf(e){ return (e.date || '').slice(0,4) || 'No date'; }
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2200);
+}
+
+/* tap-twice confirmation (no native dialogs) */
+function confirmTap(key, btn, idleText, action){
+  if(pending[key]){ clearTimeout(pending[key]); delete pending[key]; action(); return; }
+  btn.textContent = 'Tap again'; btn.classList.add('confirming');
+  toast('Tap again to confirm delete');
+  pending[key] = setTimeout(() => {
+    delete pending[key];
+    if(document.body.contains(btn)){ btn.textContent = idleText; btn.classList.remove('confirming'); }
+  }, 2500);
+}
+
+/* ---------- lists (Type / Shopped From / Bought By) ---------- */
+function fillSelect(id, items, blankLabel, current){
+  const sel = $(id);
+  const keep = current !== undefined ? current : sel.value;
+  let opts = '<option value="">' + blankLabel + '</option>' + items.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+  if(keep && !items.includes(keep)) opts += '<option value="' + esc(keep) + '">' + esc(keep) + ' (removed)</option>';
+  sel.innerHTML = opts;
+  sel.value = keep || '';
+}
+function renderLists(){
+  ['types','stores','buyers'].forEach(k => {
+    const c = $('chips-' + k);
+    c.innerHTML = lists[k].length
+      ? lists[k].map((v, i) => '<span class="chip">' + esc(v) + '<button type="button" data-action="removeOption" data-list="' + k + '" data-index="' + i + '" aria-label="Remove ' + esc(v) + '">✕</button></span>').join('')
+      : '<span class="hint">Nothing added yet.</span>';
+  });
+  fillSelect('fType', lists.types, 'Select type');
+  fillSelect('fStore', lists.stores, 'Select store');
+  fillSelect('fBuyer', lists.buyers, lists.buyers.length ? 'Select name' : 'Add names in Manage lists');
+}
+function addOption(k){
+  const input = $('new-' + k);
+  const v = input.value.trim();
+  if(!v) return;
+  if(lists[k].some(x => x.toLowerCase() === v.toLowerCase())){ toast('Already in the list'); return; }
+  lists[k].push(v); write(LISTS_KEY, lists); input.value = '';
+  renderLists(); renderFilters(); toast('Added ' + v);
+}
+function removeOption(k, i, btn){
+  confirmTap('opt-' + k + '-' + i, btn, '✕', () => {
+    lists[k].splice(i, 1); write(LISTS_KEY, lists);
+    renderLists(); renderFilters(); toast('Removed');
+  });
+}
+
+/* ---------- form ---------- */
+function readForm(){
+  const o = {}; FORM_IDS.forEach(id => { o[id] = $(id).value; }); return o;
+}
+function saveDraft(){ if(editingId === null) write(DRAFT_KEY, readForm()); }
+function loadDraft(){
+  const d = read(DRAFT_KEY, null);
+  if(!d) return;
+  FORM_IDS.forEach(id => { if(d[id] !== undefined){
+    const el = $(id);
+    if(el.tagName === 'SELECT' && d[id] && ![...el.options].some(o => o.value === d[id])) return;
+    el.value = d[id];
+  }});
+  if(!$('fMode').value) $('fMode').value = 'price';
+  updateAmountLabel();
+}
+function clearForm(){
+  FORM_IDS.forEach(id => { $(id).value = ''; });
+  $('fMode').value = 'price'; updateAmountLabel();
+  $('fDate').value = todayISO();
+  $('formMsg').textContent = '';
+  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+}
+function resetEditUI(){
+  editingId = null;
+  $('saveBtn').textContent = '+ Add Purchase';
+  $('formTitle').textContent = 'Add purchase';
+  $('cancelBtn').style.display = 'none';
+}
+function saveEntry(){
+  const f = readForm();
+  const price = parseFloat(f.fPrice);
+  if(!f.fDate || !f.fItem.trim() || isNaN(price) || price < 0){
+    $('formMsg').textContent = 'Enter an item name, a date, and a price or rewards amount of 0 or more.'; return;
+  }
+  if(f.fWear && f.fWear < f.fDate){ $('formMsg').textContent = 'Broken / lasted till date cannot be before the purchase date.'; return; }
+  $('formMsg').textContent = '';
+  const rec = { date:f.fDate, item:f.fItem.trim(), type:f.fType, mode:f.fMode === 'rewards' ? 'rewards' : 'price', price, store:f.fStore, buyer:f.fBuyer, useful:f.fUseful, wear:f.fWear, cue:f.fCue.trim(), notes:f.fNotes.trim() };
+  if(editingId !== null){
+    const i = entries.findIndex(e => e.id === editingId);
+    if(i > -1) entries[i] = Object.assign({}, entries[i], rec);
+    toast('Purchase updated');
+    resetEditUI();
+  } else {
+    entries.push(Object.assign({ id: uid() }, rec));
+    toast('Purchase added');
+  }
+  write(ENTRIES_KEY, entries);
+  clearForm(); renderAll();
+}
+function editEntry(id){
+  const e = entries.find(x => x.id === id); if(!e) return;
+  fillSelect('fType', lists.types, 'Select type', e.type);
+  fillSelect('fStore', lists.stores, 'Select store', e.store);
+  fillSelect('fBuyer', lists.buyers, lists.buyers.length ? 'Select name' : 'Add names in Manage lists', e.buyer);
+  $('fDate').value = e.date; $('fMode').value = modeOf(e); updateAmountLabel(); $('fPrice').value = e.price; $('fItem').value = e.item;
+  $('fUseful').value = e.useful || ''; $('fWear').value = e.wear || '';
+  $('fCue').value = e.cue || ''; $('fNotes').value = e.notes || '';
+  editingId = id;
+  $('saveBtn').textContent = '✓ Update Purchase';
+  $('formTitle').textContent = 'Edit purchase';
+  $('cancelBtn').style.display = 'block';
+  window.scrollTo({top: $('formTitle').getBoundingClientRect().top + window.scrollY - 20, behavior:'smooth'});
+}
+function cancelEdit(){ resetEditUI(); clearForm(); renderLists(); }
+function deleteEntry(id, btn){
+  confirmTap('entry-' + id, btn, 'Delete', () => {
+    entries = entries.filter(e => e.id !== id);
+    write(ENTRIES_KEY, entries);
+    if(editingId === id){ resetEditUI(); clearForm(); }
+    renderAll(); toast('Purchase deleted');
+  });
+}
+
+/* ---------- metrics ---------- */
+function bars(map, total, alt, unit){
+  const rows = Object.keys(map).sort((a,b) => map[b].sum - map[a].sum);
+  if(!rows.length) return '<div class="hint" style="margin:0 0 6px;">None.</div>';
+  const max = Math.max(...rows.map(k => map[k].sum), 1);
+  const f = unit === 'rewards' ? fmtPts : fmtINR;
+  return rows.map(k => {
+    const pct = total > 0 ? (map[k].sum / total) * 100 : 0;
+    return '<div class="metric"><div class="metric-head"><b>' + esc(k) + '</b><span>' + f(map[k].sum) + ' · ' + pct.toFixed(0) + '% · ' + map[k].n + ' item' + (map[k].n === 1 ? '' : 's') + '</span></div><div class="bar"><div class="bar-fill' + (alt ? ' alt' : '') + '" style="width:' + (map[k].sum / max * 100) + '%"></div></div></div>';
+  }).join('');
+}
+function group(list, keyFn){
+  const m = {};
+  list.forEach(e => { const k = keyFn(e); (m[k] = m[k] || {sum:0, n:0}); m[k].sum += e.price; m[k].n++; });
+  return m;
+}
+function split(list){ return { price: list.filter(e => modeOf(e) === 'price'), rewards: list.filter(e => modeOf(e) === 'rewards') }; }
+function sumOf(list){ return list.reduce((s,e) => s + e.price, 0); }
+function twoBlocks(list, keyFn){
+  if(!list.length) return '<div class="empty">No purchases yet.</div>';
+  const sp = split(list);
+  return '<div class="list-title">Price (₹)</div>' + bars(group(sp.price, keyFn), sumOf(sp.price), false, 'price') +
+         '<div class="list-title">Rewards (points)</div>' + bars(group(sp.rewards, keyFn), sumOf(sp.rewards), true, 'rewards');
+}
+function years(){ return [...new Set(entries.map(yearOf))].sort().reverse(); }
+function renderFilters(){
+  const yearSel = $('viewYear'), cur = yearSel.value || 'all';
+  yearSel.innerHTML = '<option value="all">All years</option>' + years().map(y => '<option value="' + y + '">' + y + '</option>').join('');
+  yearSel.value = [...yearSel.options].some(o => o.value === cur) ? cur : 'all';
+  const ft = $('filterType'), ct = ft.value;
+  const used = [...new Set([...lists.types, ...entries.map(e => e.type).filter(Boolean)])];
+  ft.innerHTML = '<option value="">All types</option><option value="__none">No type</option>' + used.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+  ft.value = [...ft.options].some(o => o.value === ct) ? ct : '';
+}
+function scoped(){
+  const y = $('viewYear').value;
+  return y === 'all' ? entries : entries.filter(e => yearOf(e) === y);
+}
+function renderMetrics(){
+  $('yearMetrics').innerHTML = twoBlocks(entries, yearOf);
+  const list = scoped();
+  const sp = split(list);
+  $('typeMetrics').innerHTML = twoBlocks(list, e => e.type || 'No type');
+  const y = $('viewYear').value;
+  $('sumTotal').textContent = fmtINR(sumOf(sp.price));
+  $('sumTotalLabel').textContent = y === 'all' ? 'Price spent' : 'Price spent in ' + y;
+  $('sumRewards').textContent = fmtPts(sumOf(sp.rewards));
+  $('sumRewardsLabel').textContent = y === 'all' ? 'Rewards used' : 'Rewards used in ' + y;
+  $('sumCount').textContent = list.length.toLocaleString('en-IN');
+  $('sumWasted').textContent = fmtINR(sumOf(sp.price.filter(e => e.useful === 'not')));
+}
+function renderEntries(){
+  const ft = $('filterType').value;
+  let list = scoped();
+  if(ft === '__none') list = list.filter(e => !e.type);
+  else if(ft) list = list.filter(e => e.type === ft);
+  list = [...list].sort((a,b) => (b.date || '').localeCompare(a.date || ''));
+  const box = $('entryList');
+  if(!list.length){ box.innerHTML = '<div class="empty">' + (entries.length ? 'No purchases match this view.' : 'No purchases yet. Add your first one above.') + '</div>'; return; }
+  box.innerHTML = list.map(e => {
+    let gap = '';
+    if(e.wear && e.date){
+      const days = Math.round((new Date(e.wear + 'T00:00:00') - new Date(e.date + 'T00:00:00')) / 86400000);
+      gap = ' (' + days.toLocaleString('en-IN') + ' day' + (days === 1 ? '' : 's') + ' from purchase)';
+    }
+    const usefulTag = e.useful === 'useful' ? '<span class="tag good">Useful</span>' : e.useful === 'not' ? '<span class="tag bad">Not useful</span>' : '';
+    return '<div class="entry">' +
+      '<div class="entry-head"><div><div class="entry-name">' + esc(e.item) + '</div>' +
+      '<div class="entry-meta">' + (e.type ? '<span class="tag">' + esc(e.type) + '</span>' : '') + usefulTag + fmtDate(e.date) +
+      '<br>' + [e.store ? 'From ' + esc(e.store) : '', e.buyer ? 'Bought by ' + esc(e.buyer) : ''].filter(Boolean).join(' · ') +
+      (e.wear ? '<br>Broken / lasted till: ' + fmtDate(e.wear) + gap : '') +
+      (e.cue ? '<br>Cue: ' + esc(e.cue) : '') + '</div></div>' +
+      '<div class="entry-price' + (modeOf(e) === 'rewards' ? ' rw' : '') + '">' + fmtAmt(e) + '</div></div>' +
+      (e.notes ? '<div class="notes">' + esc(e.notes) + '</div>' : '') +
+      '<div class="entry-actions"><button type="button" data-action="edit" data-id="' + e.id + '">Edit</button><button type="button" class="del" data-action="delete" data-id="' + e.id + '">Delete</button></div></div>';
+  }).join('');
+}
+function renderAll(){ renderFilters(); renderMetrics(); renderEntries(); }
+
+/* ---------- events (delegation) ---------- */
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('[data-action]'); if(!b) return;
+  const a = b.dataset.action;
+  if(a === 'save') saveEntry();
+  else if(a === 'cancelEdit') cancelEdit();
+  else if(a === 'edit') editEntry(b.dataset.id);
+  else if(a === 'delete') deleteEntry(b.dataset.id, b);
+  else if(a === 'addOption') addOption(b.dataset.list);
+  else if(a === 'removeOption') removeOption(b.dataset.list, Number(b.dataset.index), b);
+});
+['types','stores','buyers'].forEach(k => $('new-' + k).addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); addOption(k); } }));
+FORM_IDS.forEach(id => { $(id).addEventListener('input', saveDraft); $(id).addEventListener('change', saveDraft); });
+$('fMode').addEventListener('change', updateAmountLabel);
+$('viewYear').addEventListener('change', () => { renderMetrics(); renderEntries(); });
+$('filterType').addEventListener('change', renderEntries);
+
+/* ---------- init ---------- */
+renderLists();
+$('fDate').value = todayISO();
+loadDraft();
+renderAll();
+</script>
+</body>
+</html>
