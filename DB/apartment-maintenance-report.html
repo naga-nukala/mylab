@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Yearly Bill Report</title>
+<style>
+  :root{
+    --bg:#0f1210;
+    --panel:#171b19;
+    --panel2:#1e2321;
+    --border:#2a2f2c;
+    --text:#eef1ef;
+    --muted:#9aa39d;
+    --mint:#a7e8c5;
+    --coral:#ff8c70;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:16px;
+    padding-bottom:60px;
+  }
+  a.back{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:var(--muted);
+    text-decoration:none;
+    font-size:13px;
+    margin-bottom:10px;
+  }
+  h1{font-size:20px;margin:0 0 16px;}
+  h2{font-size:15px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+
+  .yearnav{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .yearnav button{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    width:38px;height:38px;
+    border-radius:10px;
+    font-size:18px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .yearnav .label{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:8px 10px;
+    text-align:center;
+    font-size:15px;
+    font-weight:700;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .yearnav button:hover{background:var(--panel2);}
+  }
+
+  .summary{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .summary .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 10px;
+    text-align:center;
+  }
+  .summary .card .label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .summary .card .value{font-size:22px;font-weight:700;color:var(--coral);}
+
+  .section{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:18px;
+  }
+  details.section{padding:0;overflow:hidden;}
+  details.section summary{
+    list-style:none;
+    cursor:pointer;
+    padding:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  details.section summary::-webkit-details-marker{display:none;}
+  details.section summary h2{margin:0;}
+  details.section summary .chev{color:var(--muted);transition:transform .15s;}
+  details[open].section summary .chev{transform:rotate(180deg);}
+  details.section .inner{padding:0 14px 14px;}
+
+  form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+  .row{display:flex;gap:8px;}
+  .row > *{flex:1;min-width:0;}
+  input{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px;
+    border-radius:8px;
+    font-size:14px;
+    width:100%;
+  }
+  input::placeholder{color:var(--muted);}
+  label.small{font-size:11px;color:var(--muted);margin-bottom:2px;display:block;}
+
+  .btn{
+    background:var(--mint);
+    color:#0f1210;
+    border:none;
+    padding:10px 14px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .btn.cancel{
+    background:transparent;
+    color:var(--muted);
+    border:1px solid var(--border);
+  }
+
+  ul.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  li.item{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .item .info{min-width:0;}
+  .item .title{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .item .amt{font-size:14px;font-weight:700;white-space:nowrap;color:var(--coral);}
+
+  .actions{display:flex;gap:6px;flex-shrink:0;}
+  .icon-btn{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    width:30px;height:30px;
+    border-radius:8px;
+    font-size:14px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn.danger{color:var(--coral);border-color:var(--coral);}
+  @media (hover:hover) and (pointer:fine){
+    .icon-btn:hover{background:var(--panel);}
+    .btn:hover{opacity:.9;}
+  }
+
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:16px 0;}
+
+  .syncpill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    color:var(--muted);
+    background:var(--panel);
+    border:1px solid var(--border);
+    padding:4px 10px;
+    border-radius:12px;
+    margin-bottom:14px;
+  }
+  .syncpill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+  .syncpill.synced .dot{background:var(--mint);}
+  .syncpill.offline .dot{background:var(--coral);}
+  .syncpill.syncing .dot{animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  #toast{
+    position:fixed;
+    left:50%;bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:50;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<a class="back" href="apartment-maintenance.html">‹ Apartment Maintenance</a>
+<h1>Yearly Bill Report</h1>
+<div class="syncpill" id="syncPill"><span class="dot"></span><span id="syncPillText">Local only</span></div>
+
+<div class="yearnav">
+  <button type="button" id="prevYearBtn" title="Previous year">‹</button>
+  <div class="label" id="yearLabel">2026</div>
+  <button type="button" id="nextYearBtn" title="Next year">›</button>
+</div>
+
+<div class="summary">
+  <div class="card"><div class="label">Total Spent This Year</div><div class="value" id="yearTotal">₹0</div></div>
+</div>
+
+<div class="section">
+  <h2>By Category</h2>
+  <ul class="list" id="categoryList"></ul>
+</div>
+
+<details class="section" id="billsSection">
+  <summary><h2>Bill Payments</h2><span class="chev">▾</span></summary>
+  <div class="inner">
+    <form id="billForm">
+      <div class="row">
+        <div>
+          <label class="small">Description</label>
+          <input type="text" id="billDesc" placeholder="e.g. Watchman Salary" required>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="small">Amount</label>
+          <input type="number" id="billAmount" min="0" step="1" placeholder="0" required>
+        </div>
+        <div>
+          <label class="small">Date</label>
+          <input type="date" id="billDate" required>
+        </div>
+      </div>
+      <div class="row">
+        <button type="submit" class="btn" id="billSubmitBtn">Add Entry</button>
+        <button type="button" class="btn cancel" id="billCancelBtn" style="display:none;">Cancel</button>
+      </div>
+    </form>
+    <ul class="list" id="billsList"></ul>
+  </div>
+</details>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'as_aptmaintenance_v1';
+  const SYNCED_KEY = STORAGE_KEY + '_synced_at';
+
+  // ---- Supabase sync (fill these in from your project's API settings) ----
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const SYNC_TABLE = 'apartment_maintenance_data';
+  const SYNC_ROW_ID = 'default';
+  let sb = null;
+  if(window.supabase && SUPABASE_URL.indexOf('YOUR_') !== 0 && SUPABASE_ANON_KEY.indexOf('YOUR_') !== 0){
+    try{ sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }catch(e){}
+  }
+  function setSyncStatus(kind, text){
+    const pill = document.getElementById('syncPill');
+    if(!pill) return;
+    pill.className = 'syncpill ' + kind;
+    document.getElementById('syncPillText').textContent = text;
+  }
+  async function pullRemote(){
+    if(!sb) return null;
+    try{
+      const { data, error } = await sb.from(SYNC_TABLE).select('data, updated_at').eq('id', SYNC_ROW_ID).maybeSingle();
+      if(error) throw error;
+      return data;
+    }catch(e){ console.warn('Supabase pull failed', e); return null; }
+  }
+  async function pushRemote(payload){
+    if(!sb) return false;
+    try{
+      const nowIso = new Date().toISOString();
+      const { error } = await sb.from(SYNC_TABLE).upsert({ id: SYNC_ROW_ID, data: payload, updated_at: nowIso });
+      if(error) throw error;
+      localStorage.setItem(SYNCED_KEY, nowIso);
+      return true;
+    }catch(e){ console.warn('Supabase push failed', e); return false; }
+  }
+  let pushTimer = null;
+  function queuePush(){
+    if(!sb) return;
+    setSyncStatus('syncing', 'Syncing…');
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(async ()=>{
+      const ok = await pushRemote(state);
+      setSyncStatus(ok ? 'synced' : 'offline', ok ? 'Synced' : 'Offline — will retry');
+    }, 700);
+  }
+  async function initSync(){
+    if(!sb){ setSyncStatus('offline', 'Local only'); return; }
+    setSyncStatus('syncing', 'Syncing…');
+    const remote = await pullRemote();
+    if(remote && remote.data){
+      const localSyncedAt = localStorage.getItem(SYNCED_KEY);
+      const remoteNewer = !localSyncedAt || new Date(remote.updated_at) > new Date(localSyncedAt);
+      if(remoteNewer){
+        state = remote.data;
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+        localStorage.setItem(SYNCED_KEY, remote.updated_at);
+        resetForm();
+        renderAll();
+        setSyncStatus('synced', 'Synced');
+        return;
+      }
+    }
+    const ok = await pushRemote(state);
+    setSyncStatus(ok ? 'synced' : 'offline', ok ? 'Synced' : 'Offline — will retry');
+  }
+  let state = { flats: [], months: {} };
+  let currentYear = new Date().getFullYear();
+  let editingId = null; // {monthKey, id}
+  let pendingDelete = null;
+
+  function todayISO(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function emptyMonth(){ return { inflows:{}, outflows:[], otherIncome:[], notes:'', openingOverride:null }; }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.flats) && parsed.months && typeof parsed.months === 'object'){
+          state = parsed;
+        }
+      }
+    }catch(e){}
+  }
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+    queuePush();
+  }
+
+  function fmtCurrency(n){
+    const num = Number(n) || 0;
+    const sign = num < 0 ? '-' : '';
+    return sign + '₹' + Math.abs(num).toLocaleString('en-IN');
+  }
+  function ordinal(d){
+    if(d>3 && d<21) return 'th';
+    switch(d%10){case 1:return 'st';case 2:return 'nd';case 3:return 'rd';default:return 'th';}
+  }
+  function fmtDate(iso){
+    if(!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    if(isNaN(d)) return '';
+    const day = d.getDate();
+    const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return day + ordinal(day) + ' ' + monthsShort[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  let toastTimer = null;
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  function monthKeysOfYear(year){
+    const keys = [];
+    for(let m=1;m<=12;m++) keys.push(year + '-' + String(m).padStart(2,'0'));
+    return keys;
+  }
+
+  // Every bill entry annotated with its owning monthKey, for edit/delete routing.
+  function yearBills(year){
+    const list = [];
+    monthKeysOfYear(year).forEach(mk=>{
+      const month = state.months[mk];
+      if(!month) return;
+      month.outflows.forEach(o=> list.push({ ...o, monthKey: mk }));
+    });
+    return list;
+  }
+
+  function renderYearNav(){ document.getElementById('yearLabel').textContent = currentYear; }
+
+  function renderSummary(){
+    const bills = yearBills(currentYear);
+    const total = bills.reduce((s,b)=>s+(Number(b.amount)||0),0);
+    document.getElementById('yearTotal').textContent = fmtCurrency(total);
+  }
+
+  function renderCategoryBreakdown(){
+    const bills = yearBills(currentYear);
+    const map = {};
+    bills.forEach(b=>{ map[b.desc] = (map[b.desc]||0) + (Number(b.amount)||0); });
+    const rows = Object.keys(map).map(desc=>({desc, total: map[desc]})).sort((a,b)=>b.total-a.total);
+    const ul = document.getElementById('categoryList');
+    ul.innerHTML = rows.length ? '' : '<li class="empty">No bills logged this year.</li>';
+    rows.forEach(r=>{
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.innerHTML = `<div class="info"><div class="title">${escapeHtml(r.desc)}</div></div><div class="amt">${fmtCurrency(r.total)}</div>`;
+      ul.appendChild(li);
+    });
+  }
+
+  function renderBillsList(){
+    const ul = document.getElementById('billsList');
+    const bills = yearBills(currentYear).sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    ul.innerHTML = bills.length ? '' : '<li class="empty">No bills logged this year.</li>';
+    bills.forEach(item=>{
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.dataset.id = item.id;
+      li.dataset.monthKey = item.monthKey;
+      li.innerHTML = `
+        <div class="info">
+          <div class="title">${escapeHtml(item.desc)}</div>
+          <div class="sub">${fmtDate(item.date)}</div>
+        </div>
+        <div class="amt">${fmtCurrency(item.amount)}</div>
+        <div class="actions">
+          <button class="icon-btn" data-action="edit" data-id="${item.id}" data-month="${item.monthKey}" title="Edit">✎</button>
+          <button class="icon-btn danger" data-action="delete" data-id="${item.id}" data-month="${item.monthKey}" title="Delete">✕</button>
+        </div>`;
+      ul.appendChild(li);
+    });
+  }
+
+  function renderAll(){
+    renderYearNav();
+    renderSummary();
+    renderCategoryBreakdown();
+    renderBillsList();
+  }
+
+  document.getElementById('prevYearBtn').addEventListener('click', ()=>{ currentYear--; renderAll(); });
+  document.getElementById('nextYearBtn').addEventListener('click', ()=>{ currentYear++; renderAll(); });
+
+  // ---- form ----
+  const billForm = document.getElementById('billForm');
+  const billDesc = document.getElementById('billDesc');
+  const billAmount = document.getElementById('billAmount');
+  const billDate = document.getElementById('billDate');
+  const billSubmitBtn = document.getElementById('billSubmitBtn');
+  const billCancelBtn = document.getElementById('billCancelBtn');
+
+  function resetForm(){
+    editingId = null;
+    billForm.reset();
+    billDate.value = todayISO();
+    billSubmitBtn.textContent = 'Add Entry';
+    billCancelBtn.style.display = 'none';
+  }
+
+  function monthOf(dateStr){ return dateStr.slice(0,7); }
+  function getOrCreateMonth(key){
+    if(!state.months[key]) state.months[key] = emptyMonth();
+    return state.months[key];
+  }
+
+  billForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const desc = billDesc.value.trim();
+    const amount = parseFloat(billAmount.value);
+    const date = billDate.value;
+    if(!desc || isNaN(amount) || !date) return;
+    const targetMonthKey = monthOf(date);
+
+    if(editingId){
+      const oldMonth = state.months[editingId.monthKey];
+      const idx = oldMonth ? oldMonth.outflows.findIndex(o=>o.id===editingId.id) : -1;
+      if(idx > -1){
+        const item = oldMonth.outflows[idx];
+        if(targetMonthKey === editingId.monthKey){
+          oldMonth.outflows[idx] = { ...item, desc, amount, date };
+        }else{
+          oldMonth.outflows.splice(idx,1);
+          getOrCreateMonth(targetMonthKey).outflows.push({ ...item, desc, amount, date });
+        }
+      }
+      showToast('Entry updated');
+    }else{
+      getOrCreateMonth(targetMonthKey).outflows.push({ id: uid(), desc, amount, date });
+      showToast('Entry added');
+    }
+    save();
+    resetForm();
+    if(targetMonthKey.slice(0,4) != currentYear) currentYear = Number(targetMonthKey.slice(0,4));
+    renderAll();
+  });
+
+  billCancelBtn.addEventListener('click', resetForm);
+
+  document.getElementById('billsList').addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const monthKey = btn.dataset.month;
+    const action = btn.dataset.action;
+    const month = state.months[monthKey];
+    if(!month) return;
+
+    if(action === 'edit'){
+      const item = month.outflows.find(o=>o.id===id);
+      if(!item) return;
+      editingId = { monthKey, id };
+      billDesc.value = item.desc;
+      billAmount.value = item.amount;
+      billDate.value = item.date;
+      billSubmitBtn.textContent = 'Save Changes';
+      billCancelBtn.style.display = 'inline-block';
+      billDesc.focus();
+    }
+
+    if(action === 'delete'){
+      if(pendingDelete && pendingDelete.id===id && pendingDelete.monthKey===monthKey){
+        month.outflows = month.outflows.filter(o=>o.id!==id);
+        pendingDelete = null;
+        save();
+        if(editingId && editingId.id===id) resetForm();
+        renderAll();
+        showToast('Entry deleted');
+      }else{
+        pendingDelete = {id, monthKey};
+        btn.textContent = '✓?';
+        showToast('Tap again to delete');
+        setTimeout(()=>{
+          if(pendingDelete && pendingDelete.id===id){ pendingDelete=null; }
+          btn.textContent = '✕';
+        }, 2500);
+      }
+    }
+  });
+
+  // init
+  load();
+  resetForm();
+  renderAll();
+  initSync();
+})();
+</script>
+</body>
+</html>
