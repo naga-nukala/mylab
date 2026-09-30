@@ -261,11 +261,44 @@
   <div class="inner"><ul class="list" id="pendingList"></ul></div>
 </details>
 
+<a href="apartment-maintenance-report.html" class="section" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:inherit;">
+  <h2 style="margin:0;">📊 Yearly Bill Report</h2>
+  <span style="color:var(--muted);font-size:18px;">›</span>
+</a>
+
 <!-- Opening balance override (only shown when no earlier month exists) -->
 <div class="section" id="openingOverrideSection" style="display:none;">
   <h2>Starting Balance</h2>
   <label class="small">No earlier month found — enter the opening balance to start from</label>
   <input type="number" id="openingOverrideInput" placeholder="0" step="1">
+</div>
+
+<!-- OTHER INCOME -->
+<div class="section" id="otherIncomeSection">
+  <h2>Other Income</h2>
+  <form id="otherIncomeForm">
+    <div class="row">
+      <div>
+        <label class="small">Source</label>
+        <input type="text" id="oiDesc" placeholder="e.g. Hall Rental" required>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label class="small">Amount</label>
+        <input type="number" id="oiAmount" min="0" step="1" placeholder="0" required>
+      </div>
+      <div>
+        <label class="small">Date</label>
+        <input type="date" id="oiDate" required>
+      </div>
+    </div>
+    <div class="row">
+      <button type="submit" class="btn" id="oiSubmitBtn">Add Entry</button>
+      <button type="button" class="btn cancel" id="oiCancelBtn" style="display:none;">Cancel</button>
+    </div>
+  </form>
+  <ul class="list" id="otherIncomeList"></ul>
 </div>
 
 <!-- FLATS MASTER -->
@@ -285,8 +318,16 @@
       </div>
       <div class="row">
         <div>
-          <label class="small">Monthly Maintenance</label>
+          <label class="small">Maintenance</label>
           <input type="number" id="flatMaint" min="0" step="1" placeholder="0" required>
+        </div>
+        <div>
+          <label class="small">Water Tanker</label>
+          <input type="number" id="flatWater" min="0" step="1" placeholder="0">
+        </div>
+        <div>
+          <label class="small">Garbage</label>
+          <input type="number" id="flatGarbage" min="0" step="1" placeholder="0">
         </div>
       </div>
       <div class="row">
@@ -358,12 +399,14 @@
   function todayMonthKey(){ return todayISO().slice(0,7); }
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
-  function emptyMonth(){ return { inflows:{}, outflows:[], notes:'', openingOverride:null }; }
+  function emptyMonth(){ return { inflows:{}, outflows:[], otherIncome:[], notes:'', openingOverride:null }; }
 
   function getMonth(key){
     if(!state.months[key]) state.months[key] = emptyMonth();
     return state.months[key];
   }
+
+  function flatTotal(f){ return (Number(f.maintenance)||0) + (Number(f.waterTanker)||0) + (Number(f.garbage)||0); }
 
   function daysInMonth(key){
     const [y,m] = key.split('-').map(Number);
@@ -399,7 +442,7 @@
     const month = emptyMonth();
     state.flats.forEach(f=>{
       const pe = prev && prev.inflows[f.id];
-      const due = pe ? entryDue(pe) : (backward ? 0 : (Number(f.maintenance)||0));
+      const due = pe ? entryDue(pe) : (backward ? 0 : flatTotal(f));
       month.inflows[f.id] = { due, amount:'', date:'' };
     });
     if(prev){
@@ -498,7 +541,20 @@
   function monthReceived(key){
     const m = state.months[key];
     if(!m) return 0;
-    return Object.values(m.inflows).reduce((s,i)=>s+(Number(i.amount)||0),0);
+    const fromFlats = Object.values(m.inflows).reduce((s,i)=>s+(Number(i.amount)||0),0);
+    const fromOther = (m.otherIncome||[]).reduce((s,o)=>s+(Number(o.amount)||0),0);
+    return fromFlats + fromOther;
+  }
+  function monthOtherIncome(key){
+    const m = state.months[key];
+    return m ? (m.otherIncome||[]).reduce((s,o)=>s+(Number(o.amount)||0),0) : 0;
+  }
+  function outflowBreakdown(key){
+    const m = state.months[key];
+    if(!m) return [];
+    const map = {};
+    m.outflows.forEach(o=>{ map[o.desc] = (map[o.desc]||0) + (Number(o.amount)||0); });
+    return Object.keys(map).map(desc=>({desc, total: map[desc]})).sort((a,b)=>b.total-a.total);
   }
   function monthPaid(key){
     const m = state.months[key];
@@ -614,7 +670,7 @@
       li.innerHTML = `
         <div class="info">
           <div class="title">${escapeHtml(f.flatNo)}</div>
-          <div class="sub">${escapeHtml(f.owner)} · ${fmtCurrency(f.maintenance)}/month</div>
+          <div class="sub">${escapeHtml(f.owner)} · ${fmtCurrency(flatTotal(f))}/month</div>
         </div>
         <div class="actions">
           <button class="icon-btn" data-action="edit-flat" data-id="${f.id}" title="Edit">✎</button>
@@ -692,6 +748,7 @@
     renderFlatsList();
     renderInflowRows();
     renderOutflows();
+    renderOtherIncome();
     renderNotes();
   }
 
@@ -699,6 +756,7 @@
     ensureMonthDefaults(key);
     currentMonth = key;
     resetOutflowForm();
+    resetOtherIncomeForm();
     renderAll();
   }
 
@@ -721,6 +779,8 @@
   const flatNoInput = document.getElementById('flatNo');
   const flatOwnerInput = document.getElementById('flatOwner');
   const flatMaintInput = document.getElementById('flatMaint');
+  const flatWaterInput = document.getElementById('flatWater');
+  const flatGarbageInput = document.getElementById('flatGarbage');
   const flatSubmitBtn = document.getElementById('flatSubmitBtn');
   const flatCancelBtn = document.getElementById('flatCancelBtn');
 
@@ -736,22 +796,26 @@
     const flatNo = flatNoInput.value.trim();
     const owner = flatOwnerInput.value.trim();
     const maint = parseFloat(flatMaintInput.value) || 0;
+    const water = parseFloat(flatWaterInput.value) || 0;
+    const garbage = parseFloat(flatGarbageInput.value) || 0;
     if(!flatNo || !owner) return;
 
     if(editingFlatId){
       const f = state.flats.find(x=>x.id===editingFlatId);
       if(f){
-        const old = Number(f.maintenance) || 0;
-        f.flatNo = flatNo; f.owner = owner; f.maintenance = maint;
-        if(old !== maint){
-          monthKeys().forEach(k=>{ if(k >= currentMonth){ const en = state.months[k].inflows[f.id]; if(en && entryDue(en) === old && !(Number(en.amount) > 0)) en.due = maint; } });
+        const old = flatTotal(f);
+        f.flatNo = flatNo; f.owner = owner; f.maintenance = maint; f.waterTanker = water; f.garbage = garbage;
+        const total = flatTotal(f);
+        if(old !== total){
+          monthKeys().forEach(k=>{ if(k >= currentMonth){ const en = state.months[k].inflows[f.id]; if(en && entryDue(en) === old && !(Number(en.amount) > 0)) en.due = total; } });
         }
       }
       showToast('Flat updated');
     }else{
-      const nf = {id: uid(), flatNo, owner, maintenance: maint};
+      const nf = {id: uid(), flatNo, owner, maintenance: maint, waterTanker: water, garbage: garbage};
+      const total = flatTotal(nf);
       state.flats.push(nf);
-      monthKeys().forEach(k=>{ if(k >= currentMonth) state.months[k].inflows[nf.id] = {due: maint, amount:'', date:''}; });
+      monthKeys().forEach(k=>{ if(k >= currentMonth) state.months[k].inflows[nf.id] = {due: total, amount:'', date:''}; });
       showToast('Flat added');
     }
     save();
@@ -776,6 +840,8 @@
       flatNoInput.value = f.flatNo;
       flatOwnerInput.value = f.owner;
       flatMaintInput.value = f.maintenance == null ? '' : f.maintenance;
+      flatWaterInput.value = f.waterTanker == null ? '' : f.waterTanker;
+      flatGarbageInput.value = f.garbage == null ? '' : f.garbage;
       flatSubmitBtn.textContent = 'Save Changes';
       flatCancelBtn.style.display = 'inline-block';
       flatNoInput.focus();
@@ -846,6 +912,115 @@
     updateRow(row);
     renderSummary();
     showToast('Marked as paid');
+  });
+
+  // ---- other income ----
+  const otherIncomeForm = document.getElementById('otherIncomeForm');
+  const oiDesc = document.getElementById('oiDesc');
+  const oiAmount = document.getElementById('oiAmount');
+  const oiDate = document.getElementById('oiDate');
+  const oiSubmitBtn = document.getElementById('oiSubmitBtn');
+  const oiCancelBtn = document.getElementById('oiCancelBtn');
+  let editingOtherIncomeId = null;
+
+  function resetOtherIncomeForm(){
+    editingOtherIncomeId = null;
+    otherIncomeForm.reset();
+    oiDate.value = currentMonth === todayMonthKey() ? todayISO() : currentMonth + '-01';
+    oiSubmitBtn.textContent = 'Add Entry';
+    oiCancelBtn.style.display = 'none';
+  }
+
+  function renderOtherIncome(){
+    const ul = document.getElementById('otherIncomeList');
+    ul.innerHTML = '';
+    const month = getMonth(currentMonth);
+    if(!month.otherIncome || month.otherIncome.length === 0){
+      ul.innerHTML = '<li class="empty">No entries yet.</li>';
+      return;
+    }
+    month.otherIncome.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'')).forEach(item=>{
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.dataset.id = item.id;
+      li.innerHTML = `
+        <div class="info">
+          <div class="title">${escapeHtml(item.desc)}</div>
+          <div class="sub">${fmtDate(item.date)}</div>
+        </div>
+        <div class="amt" style="color:var(--mint);">${fmtCurrency(item.amount)}</div>
+        <div class="actions">
+          <button class="icon-btn" data-action="edit-oi" data-id="${item.id}" title="Edit">✎</button>
+          <button class="icon-btn danger" data-action="delete-oi" data-id="${item.id}" title="Delete">✕</button>
+        </div>`;
+      ul.appendChild(li);
+    });
+  }
+
+  otherIncomeForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const desc = oiDesc.value.trim();
+    const amount = parseFloat(oiAmount.value);
+    const date = oiDate.value || todayISO();
+    if(!desc || isNaN(amount)) return;
+    const month = getMonth(currentMonth);
+    if(!month.otherIncome) month.otherIncome = [];
+
+    if(editingOtherIncomeId){
+      const idx = month.otherIncome.findIndex(o=>o.id===editingOtherIncomeId);
+      if(idx>-1){ month.otherIncome[idx] = {...month.otherIncome[idx], desc, amount, date}; }
+      showToast('Entry updated');
+    }else{
+      month.otherIncome.push({id: uid(), desc, amount, date});
+      showToast('Entry added');
+    }
+    save();
+    resetOtherIncomeForm();
+    renderOtherIncome();
+    renderSummary();
+  });
+
+  oiCancelBtn.addEventListener('click', resetOtherIncomeForm);
+
+  document.getElementById('otherIncomeList').addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    const month = getMonth(currentMonth);
+    if(!month.otherIncome) month.otherIncome = [];
+
+    if(action === 'edit-oi'){
+      const item = month.otherIncome.find(o=>o.id===id);
+      if(!item) return;
+      editingOtherIncomeId = id;
+      oiDesc.value = item.desc;
+      oiAmount.value = item.amount;
+      oiDate.value = item.date;
+      oiSubmitBtn.textContent = 'Save Changes';
+      oiCancelBtn.style.display = 'inline-block';
+      oiDesc.focus();
+    }
+
+    if(action === 'delete-oi'){
+      if(pendingDelete && pendingDelete.type==='otherIncome' && pendingDelete.id===id){
+        month.otherIncome = month.otherIncome.filter(o=>o.id!==id);
+        pendingDelete = null;
+        save();
+        if(editingOtherIncomeId === id) resetOtherIncomeForm();
+        renderOtherIncome();
+        renderSummary();
+        showToast('Entry deleted');
+      }else{
+        pendingDelete = {type:'otherIncome', id};
+        btn.textContent = '✓?';
+        showToast('Tap again to delete');
+        setTimeout(()=>{
+          if(pendingDelete && pendingDelete.id===id){ pendingDelete=null; }
+          btn.textContent = '✕';
+        }, 2500);
+      }
+    }
   });
 
   // ---- outflow ----
@@ -938,6 +1113,7 @@
   load();
   ensureMonthDefaults(currentMonth);
   resetOutflowForm();
+  resetOtherIncomeForm();
   renderAll();
 })();
 </script>

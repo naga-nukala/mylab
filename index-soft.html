@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1412">
+<title>Little Lab</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0e1412; --surface:#16201c; --ink:#e8f3ee; --muted:#8ba398; --line:#263530;
+  --mint:#a7e8c5; --coral:#ff8c70; --danger:#ff8c70; --radius:18px;
+  --font:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100%;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);line-height:1.4;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:22px 16px 80px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+h1{font-size:2rem;letter-spacing:-.02em}
+header p{color:var(--muted);font-size:.95rem}
+.tools{display:flex;gap:10px;flex:1 1 280px;justify-content:flex-end}
+.search{flex:1 1 160px;max-width:300px;padding:11px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface)}
+.btn{padding:11px 20px;border-radius:999px;background:var(--mint);color:#0b1a14;font-weight:700;white-space:nowrap}
+.btn.soft{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+section.cat{margin-bottom:26px;--a:var(--mint)}
+.cat-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--a);flex:none}
+.catname{font-size:1.25rem;font-weight:800;background:transparent;border:1.5px dashed transparent;border-radius:10px;padding:2px 8px;min-width:0;width:11ch;max-width:60%;field-sizing:content}
+.catname:hover,.catname:focus{border-color:var(--line);background:var(--surface)}
+.pen{color:var(--muted);font-size:.85rem}
+.count{margin-left:auto;color:var(--muted);font-size:.85rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card{background:var(--surface);border-radius:var(--radius);border:1.5px solid var(--line);border-left:6px solid var(--a);padding:12px 12px 10px 14px;display:flex;flex-direction:column;gap:8px;transition:transform .15s,box-shadow .15s}
+.card a.open{color:inherit;text-decoration:none;display:block;min-width:0}
+.card b{display:block;font-size:1.02rem;overflow-wrap:anywhere}
+.card small{color:var(--muted);font-size:.78rem;overflow-wrap:anywhere}
+.acts{display:flex;gap:6px}
+.mini{padding:5px 12px;border-radius:999px;background:var(--line);font-size:.8rem;font-weight:700}
+.mini.armed{background:var(--danger);color:#1a0b07}
+.empty{grid-column:1/-1;border:2px dashed var(--line);border-radius:var(--radius);padding:18px;text-align:center;color:var(--muted)}
+.empty button{color:var(--a);font-weight:800;padding:4px 8px}
+.none{text-align:center;color:var(--muted);padding:40px 0}
+@media (hover:hover) and (pointer:fine){
+  .card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.45)}
+  .mini:hover{background:#31453c} .mini.armed:hover{background:var(--danger)}
+  .btn:hover{opacity:.88}
+}
+.newcat{display:block;margin:6px auto 0;padding:12px 22px;border-radius:999px;border:2px dashed var(--line);color:var(--mint);font-weight:800}
+@media (hover:hover) and (pointer:fine){.newcat:hover,.tab.add:hover{border-color:var(--mint)}}
+/* overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.overlay[hidden]{display:none}
+.panel{background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0));animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(24px);opacity:0}}
+@media (min-width:700px){.overlay{align-items:center}.panel{border-radius:24px}}
+@media (prefers-reduced-motion:reduce){.panel{animation:none}}
+.phead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.phead h2{font-size:1.25rem}
+.pick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.pick label{cursor:pointer}
+.pick input{position:absolute;opacity:0;width:1px;height:1px}
+.pick input:focus-visible + span{outline:3px solid var(--mint);outline-offset:2px}
+.hint{color:var(--muted);font-size:.82rem;margin-bottom:12px}
+.tabs{display:flex;gap:6px;background:var(--bg);padding:5px;border-radius:14px;margin-bottom:12px;overflow-x:auto;scrollbar-width:thin}
+.tab{flex:0 0 auto;max-width:150px;padding:8px 14px;border-radius:10px;border-bottom:3px solid transparent;font-weight:700;font-size:.85rem;display:flex;flex-direction:column;align-items:center;gap:2px;--a:var(--mint)}
+.tab.add{color:var(--mint);justify-content:center}
+.tab span.l{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab i{font-style:normal;font-size:.72rem;color:var(--muted)}
+.tab[aria-selected="true"]{background:#1f2d27;border-bottom-color:var(--a)}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;font-size:.82rem;color:var(--muted);font-weight:700}
+.field input,.field select,.row select{padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-weight:400;font-size:.95rem}
+.row{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.row b{overflow-wrap:anywhere} .row small{color:var(--muted);display:block;overflow-wrap:anywhere}
+.row .acts{grid-column:1/-1;align-items:center}
+.row select{padding:5px 8px;font-size:.82rem;border-radius:999px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0));transform:translate(-50%,20px);background:var(--mint);color:#0b1a14;font-weight:700;padding:10px 18px;border-radius:999px;font-size:.9rem;opacity:0;pointer-events:none;transition:.2s;z-index:40;max-width:90vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Little Lab</h1><p>Your tools, grouped your way. Nothing leaves this device.</p></div>
+    <div class="tools">
+      <input class="search" id="search" type="search" placeholder="Search tools" aria-label="Search tools">
+      <button class="btn" data-act="open-add">Add pages</button>
+    </div>
+  </header>
+  <main id="board"></main>
+  <button class="newcat" data-act="new-cat">+ New group</button>
+</div>
+
+<div class="overlay" id="addSheet" hidden>
+  <div class="panel" role="dialog" aria-label="Add pages">
+    <div class="phead"><h2>Add pages</h2><button class="mini" data-act="close">Done</button></div>
+    <div class="pick">
+      <label class="btn"><input type="file" id="pickFolder" webkitdirectory multiple><span>Choose folder</span></label>
+      <label class="btn soft"><input type="file" id="pickFiles" accept=".html,.htm" multiple><span>Choose files</span></label>
+    </div>
+    <p class="hint" id="addHint"></p>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <label class="field">Rename this group<input id="sheetName" maxlength="24" autocomplete="off"></label>
+    <div class="acts" style="margin-bottom:8px"><button class="mini" data-act="del-cat">Delete this group</button></div>
+    <div id="list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="editSheet" hidden>
+  <div class="panel" role="dialog" aria-label="Edit page">
+    <div class="phead"><h2>Edit page</h2></div>
+    <label class="field">Name<input id="eTitle" maxlength="60" autocomplete="off"></label>
+    <label class="field">File path<input id="ePath" autocomplete="off" autocapitalize="off"></label>
+    <label class="field">Group<select id="eCat"></select></label>
+    <div class="acts" style="margin-top:14px"><button class="btn" data-act="save-edit">Save changes</button><button class="btn soft" data-act="cancel-edit">Cancel</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY='as_index_v1';
+  var COLORS=['#a7e8c5','#ff8c70','#7fd6e0','#f5d380','#c3a6ff','#ff9ec4','#9fd47f','#8fb8ff'];
+  function col(i){return COLORS[i%COLORS.length]}
+  var DEFAULT={cats:['Money','Health','Productivity','Fun'],pages:[],active:0};
+  var state=load();
+  var q='', editId=null, toastT;
+
+  function load(){
+    try{
+      var s=JSON.parse(localStorage.getItem(KEY));
+      if(s&&Array.isArray(s.cats)&&s.cats.length>=1&&Array.isArray(s.pages)){s.active=s.active||0;return s}
+    }catch(e){}
+    return JSON.parse(JSON.stringify(DEFAULT));
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function catName(i){return state.cats[i]||('Group '+(i+1))}
+  function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show')},2200)}
+  function href(p){return esc(encodeURI(p))}
+
+  /* ---------- board ---------- */
+  function renderBoard(){
+    var term=q.trim().toLowerCase(), out='', shown=0;
+    state.cats.forEach(function(name,i){
+      var items=state.pages.filter(function(p){return p.cat===i&&(!term||(p.title+' '+p.path).toLowerCase().indexOf(term)>-1)});
+      if(term&&!items.length)return;
+      shown+=items.length;
+      out+='<section class="cat" data-cat="'+i+'" style="--a:'+col(i)+'"><div class="cat-head"><span class="dot"></span>'
+        +'<input class="catname" data-role="catname" data-cat="'+i+'" value="'+esc(name)+'" maxlength="24" aria-label="Group name (tap to rename)">'
+        +'<span class="pen" aria-hidden="true">&#9998;</span><span class="count">'+items.length+(items.length===1?' tool':' tools')+'</span></div><div class="grid">';
+      if(!items.length)out+='<div class="empty">Nothing here yet. <button data-act="open-add" data-cat="'+i+'">Add pages</button></div>';
+      items.forEach(function(p){
+        out+='<div class="card"><a class="open" href="'+href(p.path)+'"><b>'+esc(p.title)+'</b><small>'+esc(p.path)+'</small></a>'
+          +'<div class="acts"><button class="mini" data-act="edit" data-id="'+p.id+'">Edit</button>'
+          +'<button class="mini" data-act="del" data-id="'+p.id+'">Delete</button></div></div>';
+      });
+      out+='</div></section>';
+    });
+    if(term&&!shown)out='<p class="none">No tools match "'+esc(q)+'".</p>';
+    $('board').innerHTML=out;
+  }
+
+  /* ---------- add sheet ---------- */
+  function renderSheet(){
+    var a=state.active;
+    $('addHint').textContent='New pages go into "'+catName(a)+'". Use the menu on each page to move it to another group.';
+    $('tabs').innerHTML=state.cats.map(function(n,i){
+      var c=state.pages.filter(function(p){return p.cat===i}).length;
+      return '<button class="tab" role="tab" data-act="tab" data-cat="'+i+'" style="--a:'+col(i)+'" aria-selected="'+(i===a)+'"><span class="l" data-role="tablabel" data-cat="'+i+'">'+esc(n)+'</span><i>'+c+'</i></button>';
+    }).join('')+'<button class="tab add" data-act="new-cat">+ Group</button>';
+    $('sheetName').value=catName(a);
+    var items=state.pages.filter(function(p){return p.cat===a});
+    $('list').innerHTML=items.length?items.map(function(p){
+      return '<div class="row"><div><b>'+esc(p.title)+'</b><small>'+esc(p.path)+'</small></div>'
+        +'<select data-role="move" data-id="'+p.id+'" aria-label="Move to group">'+state.cats.map(function(n,i){return '<option value="'+i+'"'+(i===p.cat?' selected':'')+'>'+esc(n)+'</option>'}).join('')+'</select>'
+        +'<div class="acts"><button class="mini" data-act="edit" data-id="'+p.id+'">Edit</button><button class="mini" data-act="del" data-id="'+p.id+'">Delete</button></div></div>';
+    }).join(''):'<p class="hint" style="padding:14px 0">No pages in this group. Choose a folder or files above.</p>';
+  }
+  function refresh(){renderBoard();if(!$('addSheet').hidden)renderSheet()}
+  function openAdd(cat){if(cat!=null)state.active=+cat;save();$('addSheet').hidden=false;renderSheet()}
+
+  /* ---------- adding files ---------- */
+  function pretty(name){
+    return name.replace(/\.html?$/i,'').replace(/[-_]+/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase()});
+  }
+  function readTitle(f){
+    return f.slice(0,8000).text().then(function(t){
+      var m=t.match(/<title[^>]*>([^<]{1,80})<\/title>/i);
+      return m&&m[1].trim()?m[1].trim():pretty(f.name);
+    }).catch(function(){return pretty(f.name)});
+  }
+  function handleFiles(list){
+    var files=Array.prototype.slice.call(list).filter(function(f){
+      return /\.html?$/i.test(f.name)&&!/^index/i.test(f.name);
+    });
+    var seen={};state.pages.forEach(function(p){seen[p.path]=1});
+    var fresh=files.map(function(f){
+      var rel=f.webkitRelativePath?f.webkitRelativePath.split('/').slice(1).join('/'):f.name;
+      return {f:f,path:rel||f.name};
+    }).filter(function(x){if(seen[x.path])return false;seen[x.path]=1;return true});
+    if(!fresh.length){toast('No new pages found');return}
+    Promise.all(fresh.map(function(x){return readTitle(x.f)})).then(function(titles){
+      fresh.forEach(function(x,i){
+        state.pages.push({id:Date.now().toString(36)+i+Math.random().toString(36).slice(2,5),title:titles[i],path:x.path,cat:state.active});
+      });
+      save();refresh();
+      toast('Added '+fresh.length+(fresh.length===1?' page':' pages')+' to '+catName(state.active));
+    });
+  }
+
+  /* ---------- edit ---------- */
+  function openEdit(id){
+    var p=state.pages.filter(function(x){return x.id===id})[0];if(!p)return;
+    editId=id;$('eTitle').value=p.title;$('ePath').value=p.path;
+    $('eCat').innerHTML=state.cats.map(function(n,i){return '<option value="'+i+'"'+(i===p.cat?' selected':'')+'>'+esc(n)+'</option>'}).join('');
+    $('editSheet').hidden=false;$('eTitle').focus();
+  }
+  function closeEdit(){$('editSheet').hidden=true;editId=null}
+
+  /* ---------- events (delegated) ---------- */
+  document.addEventListener('click',function(e){
+    var el=e.target.closest('[data-act]');
+    if(!el){if(e.target.classList&&e.target.classList.contains('overlay')){e.target.hidden=true;editId=null}return}
+    var act=el.dataset.act;
+    if(act==='open-add')openAdd(el.dataset.cat);
+    else if(act==='close'){$('addSheet').hidden=true}
+    else if(act==='tab'){state.active=+el.dataset.cat;save();renderSheet()}
+    else if(act==='new-cat'){
+      state.cats.push('New group');state.active=state.cats.length-1;save();renderBoard();
+      if($('addSheet').hidden){var h=document.querySelector('.catname[data-cat="'+state.active+'"]');if(h){h.scrollIntoView({block:'center',behavior:'smooth'});h.focus();h.select()}}
+      else{renderSheet();$('sheetName').focus();$('sheetName').select()}
+      toast('Group added. Give it a name');
+    }
+    else if(act==='del-cat'){
+      if(state.cats.length<2){toast('Keep at least one group');return}
+      if(el.dataset.armed===String(state.active)){
+        var i=state.active,dest=i===0?1:0,destName=state.cats[dest],n=0;
+        state.pages.forEach(function(p){if(p.cat===i){p.cat=dest;n++}});
+        state.cats.splice(i,1);
+        state.pages.forEach(function(p){if(p.cat>i)p.cat--});
+        state.active=Math.min(i,state.cats.length-1);
+        delete el.dataset.armed;el.classList.remove('armed');el.textContent='Delete this group';
+        save();refresh();
+        toast(n?'Group deleted. '+n+(n===1?' page':' pages')+' moved to '+destName:'Group deleted');
+      }else{
+        el.dataset.armed=String(state.active);el.classList.add('armed');el.textContent='Tap to confirm';toast('Tap again to delete this group');
+        setTimeout(function(){if(el.isConnected){delete el.dataset.armed;el.classList.remove('armed');el.textContent='Delete this group'}},2500);
+      }
+    }
+    else if(act==='edit')openEdit(el.dataset.id);
+    else if(act==='cancel-edit')closeEdit();
+    else if(act==='save-edit'){
+      var p=state.pages.filter(function(x){return x.id===editId})[0];
+      if(p){
+        var t=$('eTitle').value.trim(),path=$('ePath').value.trim();
+        if(!t||!path){toast('Name and file path are required');return}
+        p.title=t;p.path=path;p.cat=+$('eCat').value;save();refresh();toast('Saved');
+      }
+      closeEdit();
+    }
+    else if(act==='del'){
+      if(el.dataset.armed){
+        state.pages=state.pages.filter(function(x){return x.id!==el.dataset.id});
+        save();refresh();toast('Removed from your list');
+      }else{
+        el.dataset.armed='1';el.classList.add('armed');el.textContent='Tap to confirm';toast('Tap again to remove');
+        setTimeout(function(){if(el.isConnected){delete el.dataset.armed;el.classList.remove('armed');el.textContent='Delete'}},2500);
+      }
+    }
+  });
+  document.addEventListener('input',function(e){
+    var el=e.target,role=el.dataset&&el.dataset.role;
+    if(el.id==='search'){q=el.value;renderBoard();return}
+    var i=null;
+    if(role==='catname')i=+el.dataset.cat;
+    else if(el.id==='sheetName')i=state.active;
+    if(i===null)return;
+    state.cats[i]=el.value;save();
+    // in-place updates only, so typing never loses focus
+    var b=document.querySelector('.catname[data-cat="'+i+'"]');if(b&&b!==el)b.value=el.value;
+    if(el.id!=='sheetName'){var s=$('sheetName');if(state.active===i)s.value=el.value}
+    var tl=document.querySelector('[data-role="tablabel"][data-cat="'+i+'"]');if(tl)tl.textContent=el.value||('Group '+(i+1));
+  });
+  document.addEventListener('change',function(e){
+    var el=e.target;
+    if(el.dataset&&el.dataset.role==='move'){
+      var p=state.pages.filter(function(x){return x.id===el.dataset.id})[0];
+      if(p){p.cat=+el.value;save();refresh();toast('Moved to '+catName(p.cat))}
+    }
+    if(el.id==='pickFolder'||el.id==='pickFiles'){handleFiles(el.files);el.value=''}
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){if(!$('editSheet').hidden)closeEdit();else $('addSheet').hidden=true}
+    if(e.key==='Enter'&&e.target.id&&/^(eTitle|ePath)$/.test(e.target.id))document.querySelector('[data-act="save-edit"]').click();
+  });
+
+  renderBoard();
+})();
+</script>
+</body>
+</html>
