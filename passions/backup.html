@@ -81,31 +81,44 @@
   <div class="card">
     <h2>2. Restore</h2>
     <label for="fileInput">Choose a backup file</label>
-    <input type="file" id="fileInput" accept=".json,application/json">
+    <input type="file" id="fileInput" accept=".json,.txt,application/json,text/plain">
     <div class="divider">or paste the copied text</div>
     <textarea id="pasteBox" placeholder="Paste backup text here" aria-label="Paste backup text"></textarea>
     <div id="importPreview" aria-live="polite"></div>
 
-    <label class="radio"><input type="radio" name="mode" value="merge" checked><span>Merge<small>Overwrites tools present in the backup. Keeps other tools untouched.</small></span></label>
+    <label class="radio"><input type="radio" name="mode" value="merge" checked><span>Merge<small>Combines with this device. Per item, the newer edit wins; deletions carry over. Nothing is lost.</small></span></label>
     <label class="radio"><input type="radio" name="mode" value="replace"><span>Replace everything<small>Clears all data on this device first, then loads the backup.</small></span></label>
 
     <button class="btn danger" data-action="restore" id="restoreBtn" disabled style="width:100%;margin-top:8px;">Restore data</button>
   </div>
 
+  <div class="card" id="syncCard" hidden>
+    <h2>3. Auto-sync file (desktop Chrome / Edge)</h2>
+    <p class="hint">Link one file inside a synced folder (Google Drive, OneDrive, Syncthing). Changes merge into it automatically while this page is open; on your phone use Back up / Restore with the same file.</p>
+    <p class="hint" id="syncText"></p>
+    <div class="btn-row">
+      <button class="btn primary" data-action="linksync" id="linkBtn">Link sync file</button>
+      <button class="btn primary" data-action="syncnow" id="syncNowBtn" hidden>Sync now</button>
+      <button class="btn" data-action="unlink" id="unlinkBtn" hidden>Unlink</button>
+    </div>
+  </div>
+
   <div class="card">
-    <h2>3. Protect from auto-clean</h2>
+    <h2>4. Protect from auto-clean</h2>
     <p class="hint" id="persistText">Checking storage protection…</p>
     <div class="btn-row"><button class="btn" data-action="persist" id="persistBtn">Ask browser to protect data</button></div>
   </div>
 
-  <div class="note">Backups do not sync automatically. Back up after every monthly review, and before changing phone or clearing browser data.</div>
+  <div class="note">Restore merges by default, so it is safe to import the same file on any device. Keep this page open in a pinned desktop tab for automatic sync.</div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 const APP_ID = 'savings-lab';
-const FORMAT_VERSION = 1;
+const FORMAT_VERSION = 2;
 const META_KEY = 'as_backup_meta';
+const SYNC_KEY = 'as_sync_state';   // per-item timestamps + tombstones (never exported as data)
+const TOMB_DAYS = 90;
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_KEYS = 500;
 const STALE_DAYS = 30;
@@ -166,7 +179,7 @@ function readAll(){
   try{
     for(let i = 0; i < localStorage.length; i++){
       const key = localStorage.key(i);
-      if(key === META_KEY) continue;
+      if(key === META_KEY || key === SYNC_KEY) continue;
       data[key] = localStorage.getItem(key);
     }
   }catch(e){}
@@ -235,8 +248,8 @@ function render(){
 
 /* ---------- export ---------- */
 function buildPayload(){
-  const data = readAll();
-  return {app:APP_ID, version:FORMAT_VERSION, exportedAt:new Date().toISOString(), keyCount:Object.keys(data).length, data};
+  const {data, reg} = scan();
+  return {app:APP_ID, version:FORMAT_VERSION, exportedAt:new Date().toISOString(), keyCount:Object.keys(data).length, data, sync:{keys:reg.keys}};
 }
 function payloadText(payload){ return JSON.stringify(payload, null, 1); }
 function fileName(){ return 'savings-lab-backup-' + isoDay(new Date()) + '.json'; }
@@ -256,13 +269,16 @@ function doDownload(){
 async function doShare(){
   const payload = buildPayload();
   if(!payload.keyCount){ showToast('Nothing to back up yet.'); return; }
+  const file = new File([payloadText(payload)], fileName(), {type:'application/json'});
   try{
-    const file = new File([payloadText(payload)], fileName(), {type:'application/json'});
-    await navigator.share({files:[file], title:'Savings Lab backup'});
+    // must be the first await after the tap, or the browser drops the user gesture
+    await navigator.share({files:[file]});
     setMeta(payload.keyCount); render();
     showToast('Backup shared.');
   }catch(e){
-    if(e && e.name !== 'AbortError') showToast('Sharing failed. Use Download instead.');
+    if(e && e.name === 'AbortError') return;
+    doDownload();
+    showToast('Share failed (' + ((e && e.name) || 'unsupported') + '). Downloaded instead; upload it to Drive.');
   }
 }
 async function doCopy(){
@@ -289,7 +305,8 @@ function parseBackup(text){
   const keys = Object.keys(obj.data);
   if(!keys.length) return {ok:false, error:'This backup is empty.'};
   if(keys.length > MAX_KEYS) return {ok:false, error:'This backup has too many items to be valid.'};
-  if(keys.some(k => typeof obj.data[k] !== 'string' || k === META_KEY))
+  if(obj.sync && (typeof obj.sync !== 'object' || !obj.sync.keys || typeof obj.sync.keys !== 'object')) delete obj.sync;
+  if(keys.some(k => typeof obj.data[k] !== 'string' || k === META_KEY || k === SYNC_KEY))
     return {ok:false, error:'This backup has invalid entries and was not loaded.'};
   return {ok:true, payload:obj};
 }
@@ -314,24 +331,22 @@ function selectedMode(){ return document.querySelector('input[name="mode"]:check
 function doRestore(){
   if(!pending) return;
   const mode = selectedMode();
-  const snapshot = readAll();
-  try{
-    if(mode === 'replace') clearAllExceptMeta();
-    Object.keys(pending.data).forEach(k => localStorage.setItem(k, pending.data[k]));
-  }catch(e){
-    // roll back to what was there before
-    try{ clearAllExceptMeta(); Object.keys(snapshot).forEach(k => localStorage.setItem(k, snapshot[k])); }catch(_){}
-    showToast('Restore failed (storage full?). Your existing data is unchanged.');
+  const snapshot = readAll(), snapReg = localStorage.getItem(SYNC_KEY);
+  let n;
+  try{ n = applyBundle(pending, mode); }
+  catch(e){
+    try{ clearAllExceptMeta(); Object.keys(snapshot).forEach(k => localStorage.setItem(k, snapshot[k])); if(snapReg) localStorage.setItem(SYNC_KEY, snapReg); }catch(_){}
+    showToast('Restore failed (storage full or damaged file). Your existing data is unchanged.');
     render();
     return;
   }
-  const count = Object.keys(pending.data).length;
   pending = null;
   document.getElementById('fileInput').value = '';
   document.getElementById('pasteBox').value = '';
   setPending({ok:false, error:''});
   render();
-  showToast('Restored ' + fmtNum(count) + ' items. Open any tool to see your data.');
+  showToast(mode === 'replace' ? 'Restored ' + fmtNum(n) + ' items. Open any tool to see your data.'
+    : n ? 'Merged. ' + fmtNum(n) + ' tool' + (n === 1 ? '' : 's') + ' updated.' : 'Already up to date.');
 }
 
 /* ---------- tap-twice confirm ---------- */
@@ -377,6 +392,156 @@ async function doPersist(){
   refreshPersist();
 }
 
+/* ---------- merge engine ---------- */
+// Registry per key: whole-key {h,t}  or  list-of-{id} items {items:{id:{h,t}|{del:1,t}}}. h = content hash, t = time first seen.
+function hash(str){ let h = 5381; for(let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0) + ':' + str.length; }
+function parseArr(v){ try{ const a = JSON.parse(v); return Array.isArray(a) ? a : null; }catch(e){ return null; } }
+function itemMap(arr){
+  const m = new Map();
+  for(const o of arr){ if(!o || typeof o !== 'object' || o.id == null || m.has(String(o.id))) return null; m.set(String(o.id), o); }
+  return m;
+}
+function loadReg(){ try{ const s = JSON.parse(localStorage.getItem(SYNC_KEY)); if(s && s.keys) return s; }catch(e){} return {v:1, keys:{}}; }
+function saveReg(s){ try{ localStorage.setItem(SYNC_KEY, JSON.stringify(s)); }catch(e){} }
+function track(data, reg, now){
+  const K = reg.keys, cut = Date.now() - TOMB_DAYS * 86400000;
+  Object.keys(data).forEach(k => {
+    const v = data[k], prev = K[k] || {}, arr = parseArr(v);
+    let m = arr ? itemMap(arr) : null;
+    if(m && !m.size && !prev.items) m = null;
+    if(m){
+      const old = prev.items || {}, out = {};
+      m.forEach((o, id) => { const h = hash(JSON.stringify(o)), p = old[id]; out[id] = (p && !p.del && p.h === h) ? p : {h, t:now}; });
+      Object.keys(old).forEach(id => { if(!m.has(id)){ const p = old[id]; if(!p.del) out[id] = {del:1, t:now}; else if(p.t > cut) out[id] = p; } });
+      K[k] = {items:out};
+    } else {
+      const h = hash(v);
+      K[k] = (prev.h === h && !prev.items) ? prev : {h, t:now};
+    }
+  });
+}
+function scan(){ const data = readAll(), reg = loadReg(); track(data, reg, Date.now()); saveReg(reg); return {data, reg}; }
+function remoteReg(b){
+  const r = {keys: (b.sync && b.sync.keys) || {}};
+  track(b.data, r, b.sync ? 0 : (Date.parse(b.exportedAt) || 0));
+  return r;
+}
+// Returns number of keys changed on this device
+function mergeBundle(b){
+  const local = scan(), LK = local.reg.keys, rr = remoteReg(b), RK = rr.keys, writes = {};
+  Object.keys(b.data).forEach(k => {
+    const rv = b.data[k], lv = local.data[k], l = LK[k], r = RK[k];
+    if(lv === undefined){ writes[k] = rv; LK[k] = r; return; }
+    if(l.items && r.items){
+      const lm = itemMap(parseArr(lv) || []) || new Map(), rm = itemMap(parseArr(rv) || []) || new Map();
+      const ids = new Set([...Object.keys(l.items), ...Object.keys(r.items)]), win = {}, items = {};
+      ids.forEach(id => {
+        const a = l.items[id], c = r.items[id];
+        win[id] = (c && (!a || c.t > a.t)) ? {e:c, o:rm.get(id)} : {e:a, o:lm.get(id)};
+        items[id] = win[id].e;
+      });
+      const order = [...lm.keys(), ...[...rm.keys()].filter(id => !lm.has(id))];
+      const merged = order.map(id => win[id]).filter(w => w && !w.e.del && w.o).map(w => w.o);
+      const out = JSON.stringify(merged);
+      if(out !== lv) writes[k] = out;
+      LK[k] = {items};
+    } else if(r.h !== l.h && r.t > l.t){ writes[k] = rv; LK[k] = r; }
+  });
+  Object.keys(writes).forEach(k => localStorage.setItem(k, writes[k]));
+  saveReg(local.reg);
+  return Object.keys(writes).length;
+}
+function applyBundle(b, mode){
+  if(mode !== 'replace') return mergeBundle(b);
+  const rr = remoteReg(b);
+  clearAllExceptMeta();
+  Object.keys(b.data).forEach(k => localStorage.setItem(k, b.data[k]));
+  const reg = loadReg(); reg.keys = rr.keys; saveReg(reg);
+  return Object.keys(b.data).length;
+}
+
+/* ---------- auto-sync file (File System Access API) ---------- */
+const FS_OK = 'showSaveFilePicker' in window;
+let fsHandle = null, syncChain = Promise.resolve(), syncDebounce;
+function idb(mode, fn){
+  return new Promise((res, rej) => {
+    const o = indexedDB.open('lab-sync', 1);
+    o.onupgradeneeded = () => o.result.createObjectStore('kv');
+    o.onerror = () => rej(o.error);
+    o.onsuccess = () => {
+      const tx = o.result.transaction('kv', mode), r = fn(tx.objectStore('kv'));
+      tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error);
+    };
+  });
+}
+async function hasPerm(ask){
+  const o = {mode:'readwrite'};
+  if(await fsHandle.queryPermission(o) === 'granted') return true;
+  return !!ask && await fsHandle.requestPermission(o) === 'granted';
+}
+function fmtTime(v){ const d = new Date(v); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function syncFile(ask){
+  syncChain = syncChain.then(() => runSync(ask)).catch(() => showToast('Sync failed. Try Sync now.')).then(() => { render(); renderSync(); });
+  return syncChain;
+}
+async function runSync(ask){
+  if(!fsHandle) return;
+  if(!(await hasPerm(ask))) return;
+  const text = await (await fsHandle.getFile()).text();
+  let remote = null;
+  if(text.trim()){
+    const r = parseBackup(text);
+    if(!r.ok){ showToast('Sync file is not a valid backup. Left untouched.'); return; }
+    remote = r.payload;
+    mergeBundle(remote);
+  }
+  const p = buildPayload();
+  const same = remote && JSON.stringify([remote.data, remote.sync && remote.sync.keys]) === JSON.stringify([p.data, p.sync.keys]);
+  if(p.keyCount && !same){
+    const w = await fsHandle.createWritable();
+    await w.write(payloadText(p)); await w.close();
+  }
+  const reg = loadReg(); reg.last = Date.now(); reg.fm = (await fsHandle.getFile()).lastModified; saveReg(reg);
+}
+async function linkFile(){
+  try{
+    const h = await showSaveFilePicker({suggestedName:'savings-lab-sync.json', types:[{description:'Savings Lab sync file', accept:{'application/json':['.json']}}]});
+    fsHandle = h; await idb('readwrite', s => s.put(h, 'h'));
+    await syncFile(true);
+    showToast('Linked. Changes now sync to this file.');
+  }catch(e){ if(!e || e.name !== 'AbortError') showToast('Could not link the file.'); }
+}
+async function unlinkFile(){
+  fsHandle = null;
+  try{ await idb('readwrite', s => s.delete('h')); }catch(e){}
+  renderSync(); showToast('Unlinked. The file itself is untouched.');
+}
+async function renderSync(){
+  document.getElementById('syncCard').hidden = !FS_OK;
+  if(!FS_OK) return;
+  let granted = false;
+  if(fsHandle){ try{ granted = await fsHandle.queryPermission({mode:'readwrite'}) === 'granted'; }catch(e){} }
+  const st = loadReg();
+  document.getElementById('syncText').textContent = !fsHandle ? 'Not linked.'
+    : 'Linked to ' + fsHandle.name + '. ' + (st.last ? 'Last synced ' + fmtDate(st.last) + ', ' + fmtTime(st.last) + '.' : 'Not synced yet.')
+      + (granted ? '' : ' The browser needs permission again: tap Sync now.');
+  document.getElementById('linkBtn').hidden = !!fsHandle;
+  document.getElementById('syncNowBtn').hidden = document.getElementById('unlinkBtn').hidden = !fsHandle;
+}
+async function pollFile(){
+  if(!fsHandle || document.hidden) return;
+  try{
+    if(await fsHandle.queryPermission({mode:'readwrite'}) !== 'granted') return;
+    if((await fsHandle.getFile()).lastModified !== loadReg().fm) syncFile(false);
+  }catch(e){}
+}
+window.addEventListener('storage', e => {
+  if(e.key === SYNC_KEY || e.key === META_KEY) return;
+  render();
+  if(fsHandle){ clearTimeout(syncDebounce); syncDebounce = setTimeout(() => syncFile(false), 1000); }
+});
+document.addEventListener('visibilitychange', () => { if(!document.hidden && fsHandle) syncFile(false); });
+
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
@@ -387,6 +552,9 @@ document.addEventListener('click', e => {
   else if(action === 'copy') doCopy();
   else if(action === 'restore') confirmTap(btn, doRestore);
   else if(action === 'persist') doPersist();
+  else if(action === 'linksync') linkFile();
+  else if(action === 'syncnow') syncFile(true);
+  else if(action === 'unlink') unlinkFile();
 });
 document.getElementById('fileInput').addEventListener('change', e => {
   const file = e.target.files[0];
@@ -410,8 +578,12 @@ try{
   if(navigator.canShare && navigator.canShare({files:[probe]})) document.getElementById('shareBtn').hidden = false;
 }catch(e){}
 
-render();
-refreshPersist();
+(async () => {
+  if(FS_OK){ try{ fsHandle = (await idb('readonly', s => s.get('h'))) || null; }catch(e){} }
+  scan(); render(); refreshPersist(); renderSync();
+  if(fsHandle) syncFile(false);
+  setInterval(pollFile, 30000);
+})();
 </script>
 </body>
 </html>
