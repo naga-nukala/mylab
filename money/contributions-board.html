@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Contributions Board</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--card2:#162033;--acc:#22c55e;--mint:#a7e8c5;--coral:#ff8c70;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px 20px 80px;}
+  .wrap{max-width:680px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;}
+  p.sub{color:var(--sub);font-size:13px;margin:0 0 16px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  input:focus{outline:2px solid var(--acc);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:110px;}
+  .btn{padding:10px 14px;border:none;border-radius:8px;background:var(--acc);color:#052e16;font-weight:700;font-size:13px;cursor:pointer;}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt);font-weight:600;}
+  button:focus-visible{outline:2px solid var(--mint);outline-offset:2px;}
+
+  .summary{display:flex;gap:10px;}
+  .summary .box{flex:1;text-align:center;background:var(--bg);border-radius:10px;padding:12px 6px;}
+  .summary .n{font-size:18px;font-weight:800;color:var(--acc);}
+  .summary .l{font-size:10px;color:var(--sub);margin-top:2px;}
+
+  .section-title{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);margin:18px 2px 8px;}
+  .add-board{display:flex;gap:8px;align-items:flex-end;}
+  .add-board .field{min-width:0;}
+
+  /* Flip cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+  .flip{height:150px;perspective:900px;cursor:pointer;}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.2,.75,.25,1);transform-style:preserve-3d;}
+  .flip.flipped .flip-inner{transform:rotateY(180deg);}
+  @media (hover:hover) and (pointer:fine){.flip:hover .flip-inner{transform:rotateY(180deg);}}
+  .face{position:absolute;inset:0;border-radius:14px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--line);}
+  .front{background:linear-gradient(145deg,#243447,var(--card));}
+  .back{background:var(--mint);color:#10181b;border-color:var(--mint);transform:rotateY(180deg);}
+  .flip.active .front{border-color:var(--coral);box-shadow:0 0 0 2px #ff8c7040;}
+  .bname{font-size:16px;font-weight:700;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
+  .btotal{font-size:20px;font-weight:800;color:var(--mint);}
+  .bmeta{font-size:11px;color:var(--sub);}
+  .hint-flip{font-size:10px;color:var(--coral);font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+  .back .bname{color:#10181b;}
+  .back-actions{display:flex;flex-direction:column;gap:6px;}
+  .back-actions button{padding:7px;border-radius:7px;border:1px solid #31574b;background:transparent;color:#10181b;font-size:12px;font-weight:700;cursor:pointer;}
+  .back-actions button.primary{background:#10181b;color:var(--mint);}
+  .back-actions button.confirming{background:var(--bad);border-color:var(--bad);color:#fff;}
+
+  /* Year stacks */
+  .detail-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px;}
+  .detail-head h2{font-size:16px;margin:0;}
+  .detail-head .tot{font-weight:800;color:var(--acc);}
+  .year{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--card2);}
+  .year-head{width:100%;display:flex;align-items:center;gap:8px;padding:11px 12px;background:transparent;border:0;color:var(--txt);cursor:pointer;font-size:14px;text-align:left;}
+  .year-head .chev{transition:transform .2s;color:var(--sub);font-size:12px;}
+  .year.open .chev{transform:rotate(90deg);}
+  .year-head .yr{font-weight:800;}
+  .year-head .cnt{color:var(--sub);font-size:11px;}
+  .year-head .ytot{margin-left:auto;font-weight:800;color:var(--acc);}
+  .year-body{display:none;border-top:1px solid var(--line);}
+  .year.open .year-body{display:block;}
+  .entry{display:grid;grid-template-columns:104px auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px;white-space:nowrap;}
+  .entry:last-child{border-bottom:none;}
+  .e-date{color:var(--sub);font-size:12px;}
+  .e-amt{font-weight:700;color:var(--acc);}
+  .e-note{color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .e-note.none{color:var(--sub);}
+  .acts{display:flex;gap:4px;}
+  .ibtn{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;}
+  .ibtn.del{color:var(--bad);}
+  .ibtn.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;}
+  @media(max-width:480px){.entry{grid-template-columns:92px auto minmax(0,1fr) auto;gap:6px;padding:9px 8px;font-size:12px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🤝 Contributions Board</h1>
+  <p class="sub">Create a board for any pooled cause — flip a card to manage it, tap it to open. Contributions stack up year by year.</p>
+
+  <div class="card">
+    <div class="summary">
+      <div class="box"><div class="n" id="sumTotal">₹0</div><div class="l">All Contributions</div></div>
+      <div class="box"><div class="n" id="sumBoards">0</div><div class="l">Boards</div></div>
+      <div class="box"><div class="n" id="sumEntries">0</div><div class="l">Entries</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="add-board">
+      <div class="field"><label for="boardName" id="boardLabel">New Board Name</label><input type="text" id="boardName" maxlength="40" placeholder="e.g. Family Fund, Temple Renovation"></div>
+      <button class="btn" id="boardBtn" data-action="save-board">+ Add Board</button>
+    </div>
+  </div>
+
+  <div class="section-title">Boards <span style="text-transform:none;letter-spacing:0;">· tap a card to flip</span></div>
+  <div class="grid" id="boards"></div>
+
+  <div id="detail"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const KEY = 'contributions_board_v1';
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let state = load();
+let flipped = new Set();
+let editingBoard = null, editingEntry = null;
+let pending = {}, toastTimer;
+
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.boards)) return { boards:s.boards, selected:s.selected||null, open:s.open||{} };
+  }catch(e){}
+  return { boards:[], selected:null, open:{} };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function esc(s){ const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+function money(n){ return '₹' + Number(n).toLocaleString('en-IN',{maximumFractionDigits:2}); }
+function ordinal(d){ if(d%100>=11 && d%100<=13) return 'th'; return ({1:'st',2:'nd',3:'rd'})[d%10] || 'th'; }
+function fmtDate(iso){
+  const p = String(iso).split('-').map(Number);
+  if(p.length!==3 || p.some(isNaN)) return iso;
+  return p[2] + ordinal(p[2]) + ' ' + MON[p[1]-1] + ' ' + p[0];
+}
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function boardTotal(b){ return b.entries.reduce((s,e)=>s+e.amount,0); }
+function current(){ return state.boards.find(b=>b.id===state.selected); }
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.style.display='none';},2200);
+}
+// tap-twice confirm: returns true on the second tap
+function confirmTap(key, btn){
+  if(pending[key]){ clearTimeout(pending[key].t); delete pending[key]; return true; }
+  const orig = btn.textContent;
+  btn.classList.add('confirming'); btn.textContent = '✔ Sure?';
+  toast('Tap again to confirm delete');
+  pending[key] = { t:setTimeout(()=>{ delete pending[key]; btn.classList.remove('confirming'); btn.textContent=orig; },2500) };
+  return false;
+}
+
+/* ---------- Render ---------- */
+function renderSummary(){
+  const all = state.boards.reduce((s,b)=>s+boardTotal(b),0);
+  document.getElementById('sumTotal').textContent = money(all);
+  document.getElementById('sumBoards').textContent = state.boards.length;
+  document.getElementById('sumEntries').textContent = state.boards.reduce((s,b)=>s+b.entries.length,0);
+}
+function renderBoards(){
+  const el = document.getElementById('boards');
+  if(!state.boards.length){ el.innerHTML = '<div class="empty" style="grid-column:1/-1;">No boards yet. Add your first board above.</div>'; return; }
+  el.innerHTML = state.boards.map(b=>`
+    <div class="flip${flipped.has(b.id)?' flipped':''}${state.selected===b.id?' active':''}" data-action="flip" data-id="${b.id}" tabindex="0">
+      <div class="flip-inner">
+        <div class="face front">
+          <div class="bname">${esc(b.name)}</div>
+          <div><div class="btotal">${money(boardTotal(b))}</div><div class="bmeta">${b.entries.length} contribution${b.entries.length===1?'':'s'}</div></div>
+          <div class="hint-flip">Flip for actions</div>
+        </div>
+        <div class="face back">
+          <div class="bname">${esc(b.name)}</div>
+          <div class="back-actions">
+            <button class="primary" data-action="open" data-id="${b.id}">Open board</button>
+            <button data-action="rename" data-id="${b.id}">Rename</button>
+            <button data-action="del-board" data-id="${b.id}">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function renderDetail(){
+  const el = document.getElementById('detail');
+  const b = current();
+  if(!b){ el.innerHTML = state.boards.length ? '<div class="empty">Open a board to add and view contributions.</div>' : ''; return; }
+
+  const byYear = {};
+  b.entries.forEach(e=>{ const y=e.date.slice(0,4); (byYear[y]=byYear[y]||[]).push(e); });
+  const years = Object.keys(byYear).sort((a,c)=>c-a);
+  const openMap = state.open[b.id] || {};
+
+  const stacks = years.length ? years.map((y,i)=>{
+    const list = byYear[y].sort((a,c)=>c.date.localeCompare(a.date));
+    const isOpen = y in openMap ? openMap[y] : i===0;
+    return `<div class="year${isOpen?' open':''}">
+      <button class="year-head" data-action="toggle-year" data-year="${y}"><span class="chev">▶</span><span class="yr">${y}</span><span class="cnt">${list.length} entr${list.length===1?'y':'ies'}</span><span class="ytot">${money(list.reduce((s,e)=>s+e.amount,0))}</span></button>
+      <div class="year-body">${list.map(e=>`
+        <div class="entry">
+          <span class="e-date">${fmtDate(e.date)}</span>
+          <span class="e-amt">${money(e.amount)}</span>
+          <span class="e-note${e.notes?'':' none'}" title="${esc(e.notes)}">${e.notes?esc(e.notes):'—'}</span>
+          <span class="acts"><button class="ibtn" data-action="edit-entry" data-id="${e.id}">✎</button><button class="ibtn del" data-action="del-entry" data-id="${e.id}">✕</button></span>
+        </div>`).join('')}</div>
+    </div>`;
+  }).join('') : '<div class="empty">No contributions yet. Add the first one above.</div>';
+
+  el.innerHTML = `
+    <div class="section-title">Board</div>
+    <div class="card">
+      <div class="detail-head"><h2>${esc(b.name)}</h2><span class="tot">${money(boardTotal(b))}</span></div>
+      <div class="row">
+        <div class="field"><label for="eDate">Date</label><input type="date" id="eDate" value="${todayISO()}"></div>
+        <div class="field"><label for="eAmt">Contribution (₹)</label><input type="number" id="eAmt" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 5000"></div>
+      </div>
+      <div class="row"><div class="field"><label for="eNotes">Notes</label><input type="text" id="eNotes" maxlength="120" placeholder="e.g. Paid via UPI by Ravi"></div></div>
+      <div class="row"><button class="btn" id="entryBtn" data-action="save-entry" style="flex:1;">+ Add Contribution</button><button class="btn ghost" id="entryCancel" data-action="cancel-entry" style="display:none;">Cancel</button></div>
+    </div>
+    ${stacks}`;
+}
+function renderAll(){ renderSummary(); renderBoards(); renderDetail(); }
+
+/* ---------- Actions ---------- */
+function saveBoard(){
+  const input = document.getElementById('boardName');
+  const name = input.value.trim();
+  if(!name){ toast('Enter a board name.'); return; }
+  if(editingBoard){
+    const b = state.boards.find(x=>x.id===editingBoard); if(b) b.name = name;
+    resetBoardForm();
+  } else {
+    const b = { id:uid(), name, entries:[] };
+    state.boards.push(b); state.selected = b.id; input.value='';
+  }
+  save(); renderAll();
+}
+function resetBoardForm(){
+  editingBoard = null;
+  document.getElementById('boardName').value='';
+  document.getElementById('boardBtn').textContent='+ Add Board';
+  document.getElementById('boardLabel').textContent='New Board Name';
+}
+function saveEntry(){
+  const b = current(); if(!b) return;
+  const date = document.getElementById('eDate').value;
+  const amount = parseFloat(document.getElementById('eAmt').value);
+  const notes = document.getElementById('eNotes').value.trim();
+  if(!date || !Number.isFinite(amount) || amount<=0){ toast('Enter a date and an amount above zero.'); return; }
+  if(editingEntry){
+    const e = b.entries.find(x=>x.id===editingEntry);
+    if(e){ e.date=date; e.amount=amount; e.notes=notes; }
+    editingEntry = null; toast('Contribution updated');
+  } else {
+    b.entries.push({ id:uid(), date, amount, notes });
+    const y = date.slice(0,4); state.open[b.id] = state.open[b.id]||{}; state.open[b.id][y] = true;
+  }
+  save(); renderAll();
+}
+
+document.addEventListener('click', ev=>{
+  const t = ev.target.closest('[data-action]'); if(!t) return;
+  const a = t.dataset.action, id = t.dataset.id;
+  if(a==='flip'){ if(ev.target.closest('button')) return; flipped.has(id)?flipped.delete(id):flipped.add(id); t.classList.toggle('flipped'); return; }
+  if(a==='open'){ state.selected=id; save(); renderAll(); document.getElementById('detail').scrollIntoView({behavior:'smooth'}); return; }
+  if(a==='rename'){
+    const b = state.boards.find(x=>x.id===id); if(!b) return;
+    editingBoard=id; const inp=document.getElementById('boardName'); inp.value=b.name; inp.focus();
+    document.getElementById('boardBtn').textContent='✓ Update Board'; document.getElementById('boardLabel').textContent='Rename Board';
+    window.scrollTo({top:0,behavior:'smooth'}); return;
+  }
+  if(a==='del-board'){
+    if(!confirmTap('b'+id,t)) return;
+    state.boards = state.boards.filter(x=>x.id!==id); delete state.open[id]; flipped.delete(id);
+    if(state.selected===id) state.selected=null;
+    if(editingBoard===id) resetBoardForm();
+    save(); renderAll(); toast('Board deleted'); return;
+  }
+  if(a==='save-board'){ saveBoard(); return; }
+  if(a==='save-entry'){ saveEntry(); return; }
+  if(a==='cancel-entry'){ editingEntry=null; renderDetail(); return; }
+  if(a==='toggle-year'){
+    const b=current(); const y=t.dataset.year; if(!b) return;
+    state.open[b.id]=state.open[b.id]||{};
+    state.open[b.id][y] = !t.parentElement.classList.contains('open');
+    t.parentElement.classList.toggle('open'); save(); return;
+  }
+  if(a==='edit-entry'){
+    const b=current(); const e=b&&b.entries.find(x=>x.id===id); if(!e) return;
+    document.getElementById('eDate').value=e.date; document.getElementById('eAmt').value=e.amount; document.getElementById('eNotes').value=e.notes||'';
+    editingEntry=id; document.getElementById('entryBtn').textContent='✓ Update Contribution'; document.getElementById('entryCancel').style.display='';
+    document.getElementById('eAmt').focus(); return;
+  }
+  if(a==='del-entry'){
+    if(!confirmTap('e'+id,t)) return;
+    const b=current(); if(!b) return;
+    b.entries = b.entries.filter(x=>x.id!==id);
+    if(editingEntry===id) editingEntry=null;
+    save(); renderAll(); toast('Contribution deleted'); return;
+  }
+});
+document.addEventListener('keydown', ev=>{
+  if(ev.key==='Enter' && ev.target.id==='boardName') saveBoard();
+  if(ev.key==='Enter' && ['eDate','eAmt','eNotes'].includes(ev.target.id)) saveEntry();
+  if((ev.key==='Enter'||ev.key===' ') && ev.target.classList.contains('flip')){ ev.preventDefault(); ev.target.click(); }
+});
+
+if(!state.selected && state.boards.length) state.selected = state.boards[0].id;
+renderAll();
+</script>
+</body>
+</html>

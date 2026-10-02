@@ -106,6 +106,12 @@
   .day.filled{
     background:var(--mint); border-color:var(--mint); color:#0f0f10; font-weight:700;
   }
+  .day.today{
+    box-shadow:0 0 0 2px var(--coral);
+  }
+  .day.today.filled{
+    box-shadow:0 0 0 2px var(--coral);
+  }
   @media (hover:hover) and (pointer:fine){
     .day:hover{border-color:var(--mint);}
   }
@@ -217,8 +223,13 @@
     const pct = Math.round((doneCount/21)*100);
     const isConfirming = confirmingId === h.id;
 
+    const msPerDay = 24*60*60*1000;
+    const startMidnight = new Date(h.createdAt); startMidnight.setHours(0,0,0,0);
+    const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+    const todayIndex = Math.round((todayMidnight - startMidnight) / msPerDay);
+
     const dots = h.days.map((v,i) => `
-      <div class="day ${v ? 'filled' : ''}" data-id="${h.id}" data-day="${i}">${v ? '✓' : i+1}</div>
+      <div class="day ${v ? 'filled' : ''} ${i === todayIndex ? 'today' : ''}" data-id="${h.id}" data-day="${i}">${v ? '✓' : i+1}</div>
     `).join('');
 
     return `

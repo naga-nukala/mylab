@@ -122,6 +122,14 @@
     margin:18px 0 8px;
   }
   .day-heading:first-of-type{margin-top:4px;}
+  .sub-heading{
+    color:var(--muted);
+    font-size:.66rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    margin:10px 2px 6px;
+    opacity:.75;
+  }
 
   .idea{
     background:var(--card);
@@ -131,29 +139,28 @@
     margin-bottom:8px;
   }
   .idea.done{opacity:.55;}
+  .idea.dismissed{opacity:.6;}
   .idea-top{display:flex;gap:10px;align-items:flex-start;}
-  .idea-check{margin-top:2px;accent-color:var(--mint);width:17px;height:17px;flex-shrink:0;}
   .idea-text{flex:1;font-size:.94rem;line-height:1.4;word-break:break-word;}
   .idea.done .idea-text{text-decoration:line-through;color:var(--muted);}
   .idea-meta{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
   .idea-time{color:var(--muted);font-size:.7rem;}
-  .idea-tag{
-    background:rgba(255,140,112,.12);
-    color:var(--coral);
-    border-radius:999px;
-    padding:2px 9px;
-    font-size:.68rem;
-    font-weight:600;
-  }
-  .hashtag{color:var(--coral);font-weight:600;}
-  .idea-pending{
-    background:rgba(167,232,197,.12);
+  .status-select{
+    background:var(--card2);
+    border:1px solid var(--border);
     color:var(--mint);
     border-radius:999px;
-    padding:2px 9px;
+    padding:3px 8px;
     font-size:.68rem;
     font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
   }
+  .status-select.status-done,
+  .status-select.status-discard,
+  .status-select.status-not_important,
+  .status-select.status-obsolete{color:var(--muted);}
+  .hashtag{color:var(--coral);font-weight:600;}
   .idea-actions{display:flex;gap:14px;margin-left:auto;}
   .idea-actions button{
     background:none;color:var(--muted);font-size:.75rem;padding:2px 0;
@@ -214,7 +221,7 @@
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   let state = load();
-  let activeFilter = 'all';   // 'all' | 'pending' | tag name
+  let activeFilter = 'pending';   // 'all' | 'pending' | tag name
   let editingId = null;
   let pendingDeleteId = null;
   let pendingTagDelete = null;
@@ -224,12 +231,23 @@
     return [...new Set(matches.map(m=>m.slice(1)))];
   }
 
+  const STATUS_LABELS = { pending:'Pending', done:'Done', discard:'Discard', not_important:'Not important', obsolete:'Obsolete' };
+
   function load(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         const parsed = JSON.parse(raw);
-        if(parsed && Array.isArray(parsed.items)) return parsed;
+        if(parsed && Array.isArray(parsed.items)){
+          parsed.items.forEach(it=>{
+            if(it.isTask && !it.status){
+              it.status = it.done ? 'done' : 'pending';
+            }
+            delete it.done;
+          });
+          if(!Array.isArray(parsed.tags)) parsed.tags = [];
+          return parsed;
+        }
       }
     }catch(e){}
     return { items: [], tags: [] };
@@ -268,12 +286,12 @@
     showToast._t = setTimeout(()=>t.classList.remove('show'), 2200);
   }
 
-  // ---- rollover: pending tasks not done, whose date isn't today, move to today ----
+  // ---- rollover: pending tasks not resolved, whose date isn't today, move to today ----
   function rollover(){
     const today = todayKey();
     let moved = 0;
     state.items.forEach(it=>{
-      if(it.isTask && !it.done && it.date !== today){
+      if(it.isTask && it.status==='pending' && it.date !== today){
         it.date = today;
         moved++;
       }
@@ -306,9 +324,9 @@
   // ---- render ----
   function renderSummary(){
     const total = state.items.length;
-    const pending = state.items.filter(i=>i.isTask && !i.done).length;
+    const pending = state.items.filter(i=>i.isTask && i.status==='pending').length;
     const today = todayKey();
-    const doneToday = state.items.filter(i=>i.done && i.date===today).length;
+    const doneToday = state.items.filter(i=>i.status==='done' && i.date===today).length;
     const tagCount = state.tags.length;
     document.getElementById('summary').innerHTML = `
       <div class="stat"><b>${total}</b><small>Ideas</small></div>
@@ -335,12 +353,55 @@
   function visibleItems(){
     let items = state.items.slice();
     if(activeFilter === 'pending'){
-      items = items.filter(i=>i.isTask && !i.done);
+      items = items.filter(i=>i.isTask && i.status==='pending');
     } else if(activeFilter !== 'all'){
       items = items.filter(i=>i.tags.includes(activeFilter));
     }
     items.sort((a,b)=> b.createdAt - a.createdAt);
     return items;
+  }
+
+  function groupByDate(items){
+    const map = new Map();
+    items.forEach(it=>{
+      if(!map.has(it.date)) map.set(it.date, []);
+      map.get(it.date).push(it);
+    });
+    const today = todayKey();
+    const keys = [...map.keys()].sort((a,b)=>{
+      if(a===today) return -1;
+      if(b===today) return 1;
+      return a < b ? 1 : (a > b ? -1 : 0);
+    });
+    return keys.map(k=>({ date:k, items:map.get(k) }));
+  }
+
+  function statusOptions(current){
+    return Object.keys(STATUS_LABELS).map(v=>
+      `<option value="${v}" ${v===current?'selected':''}>${STATUS_LABELS[v]}</option>`
+    ).join('');
+  }
+
+  function renderIdeaRow(it){
+    const isDelConfirm = pendingDeleteId === it.id;
+    const statusControl = it.isTask
+      ? `<select class="status-select status-${it.status}" data-role="status-select">${statusOptions(it.status)}</select>`
+      : '';
+    const rowCls = it.status==='done' ? 'done' : (it.isTask && it.status && it.status!=='pending' ? 'dismissed' : '');
+    return `
+        <div class="idea ${rowCls}" data-id="${it.id}">
+          <div class="idea-top">
+            <div class="idea-text">${highlightTags(it.text)}</div>
+          </div>
+          <div class="idea-meta">
+            ${statusControl}
+            <span class="idea-time">${formatTime(new Date(it.createdAt))}</span>
+            <span class="idea-actions">
+              <button data-role="edit" type="button">Edit</button>
+              <button data-role="delete" type="button" class="${isDelConfirm?'del-confirm':''}">${isDelConfirm?'Tap to confirm':'Delete'}</button>
+            </span>
+          </div>
+        </div>`;
   }
 
   function renderList(){
@@ -350,29 +411,31 @@
       list.innerHTML = '<div class="empty">No ideas here yet.</div>';
       return;
     }
+
+    // Pending view: everything here always sits on today (rollover guarantees it) —
+    // skip date headings entirely, just show the time per item.
+    if(activeFilter === 'pending'){
+      list.innerHTML = items.map(renderIdeaRow).join('');
+      return;
+    }
+
+    const today = todayKey();
     let html = '';
-    let lastDate = null;
-    items.forEach(it=>{
-      if(it.date !== lastDate){
-        html += `<div class="day-heading">${it.date===todayKey() ? 'Today · '+formatDisplayDate(it.date) : formatDisplayDate(it.date)}</div>`;
-        lastDate = it.date;
+    groupByDate(items).forEach(g=>{
+      if(g.date === today){
+        const carried = g.items.filter(it=> it.isTask && it.status==='pending' && dateKey(new Date(it.createdAt)) !== today);
+        const rest = g.items.filter(it=> !(it.isTask && it.status==='pending' && dateKey(new Date(it.createdAt)) !== today));
+        html += `<div class="day-heading">Today · ${formatDisplayDate(g.date)}</div>`;
+        if(carried.length){
+          html += `<div class="sub-heading">Carried over</div>`;
+          html += carried.map(renderIdeaRow).join('');
+          if(rest.length) html += `<div class="sub-heading">Added today</div>`;
+        }
+        html += rest.map(renderIdeaRow).join('');
+      }else{
+        html += `<div class="day-heading">${formatDisplayDate(g.date)}</div>`;
+        html += g.items.map(renderIdeaRow).join('');
       }
-      const isDelConfirm = pendingDeleteId === it.id;
-      html += `
-        <div class="idea ${it.done?'done':''}" data-id="${it.id}">
-          <div class="idea-top">
-            ${it.isTask ? `<input type="checkbox" class="idea-check" data-role="toggle-done" ${it.done?'checked':''}>` : ''}
-            <div class="idea-text">${highlightTags(it.text)}</div>
-          </div>
-          <div class="idea-meta">
-            ${it.isTask ? `<span class="idea-pending">${it.done?'Done':'Pending'}</span>` : ''}
-            <span class="idea-time">${formatTime(new Date(it.createdAt))}</span>
-            <span class="idea-actions">
-              <button data-role="edit" type="button">Edit</button>
-              <button data-role="delete" type="button" class="${isDelConfirm?'del-confirm':''}">${isDelConfirm?'Tap to confirm':'Delete'}</button>
-            </span>
-          </div>
-        </div>`;
     });
     list.innerHTML = html;
   }
@@ -384,7 +447,7 @@
   }
 
   function esc(s){
-    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   }
   function escAttr(s){ return esc(s); }
 
@@ -413,7 +476,11 @@
         it.text = text;
         it.isTask = isTask;
         it.tags = tags;
-        if(!isTask) it.done = false;
+        if(isTask){
+          if(!it.status) it.status = 'pending';
+        }else{
+          delete it.status;
+        }
       }
       showToast('Idea updated');
     }else{
@@ -423,7 +490,7 @@
         text,
         tags,
         isTask,
-        done: false,
+        status: isTask ? 'pending' : undefined,
         createdAt: now.getTime(),
         date: dateKey(now)
       });
@@ -496,12 +563,13 @@
   });
 
   document.getElementById('list').addEventListener('change', e=>{
-    if(e.target.matches('[data-role="toggle-done"]')){
+    if(e.target.matches('[data-role="status-select"]')){
       const ideaEl = e.target.closest('.idea');
       const id = ideaEl.getAttribute('data-id');
       const it = state.items.find(i=>i.id===id);
       if(it){
-        it.done = e.target.checked;
+        it.status = e.target.value;
+        if(it.status === 'pending') it.date = todayKey();
         save();
         renderAll();
       }

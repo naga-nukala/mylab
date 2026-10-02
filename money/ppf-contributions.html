@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1311">
+<title>PPF Contributions</title>
+<style>
+:root{
+  --bg:#0e1311; --card:#161d1a; --card2:#1c2521; --line:#27322d; --text:#e9f2ed; --mut:#8c9c94;
+  --mint:#a7e8c5; --coral:#ff8c70;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(80px + env(safe-area-inset-bottom,0px));max-width:760px;margin:0 auto}
+a{color:var(--mint);text-decoration:none}
+h1{font-size:22px;margin:6px 0 2px;letter-spacing:.2px}
+.tag{color:var(--mut);font-size:13px;margin:0 0 14px}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%;min-width:0;color-scheme:dark}
+input:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+input::placeholder{color:#55655d}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+.hint{font-size:12px;color:var(--mut);margin-top:3px;min-height:1em}
+
+.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+@media(min-width:560px){.summary{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat .k{font-size:12px;color:var(--mut)}
+.stat .v{font-size:17px;font-weight:650;margin-top:2px;overflow-wrap:anywhere}
+.stat.hl .v{color:var(--mint)}
+
+.acc{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;overflow:hidden}
+.acc-head,.yr-head{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.acc-head{padding:14px}
+.acc-head .t{flex:1;min-width:0}
+.acc-head .name{font-weight:650;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-head .sub{font-size:12.5px;color:var(--mut)}
+.acc-head .bal{text-align:right}
+.acc-head .bal .v{color:var(--mint);font-weight:650}
+.acc-head .bal .k{font-size:11.5px;color:var(--mut)}
+.chev{width:10px;height:10px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s;flex:none}
+.open>.acc-head .chev,.open>.yr-head .chev{transform:rotate(45deg)}
+.acc-body{padding:0 14px 14px;border-top:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+@media(min-width:560px){.grid3{grid-template-columns:repeat(4,1fr)}}
+.info{margin-top:10px;font-size:12.5px;color:var(--mut);background:var(--card2);border-radius:10px;padding:8px 10px}
+.sect{margin:16px 0 8px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:space-between}
+
+.yr{background:var(--card2);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;position:relative}
+.yr-head{padding:10px 12px;align-items:stretch}
+.yr-head .fy{font-weight:650;min-width:66px;display:flex;align-items:center;color:var(--mint)}
+.yr-stats{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;min-width:0}
+.yr-stats div{min-width:0}
+.yr-stats .k{font-size:10.5px;color:var(--mut)}
+.yr-stats .v{font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
+.yr-head .chev{align-self:center}
+@media(max-width:430px){
+  .yr-head{flex-wrap:wrap;gap:6px}
+  .yr-head .fy{width:calc(100% - 20px)}
+  .yr-stats{flex:1 0 calc(100% - 20px)}
+  .yr-head .chev{position:absolute;right:12px;margin-top:6px}
+}
+.yr-body{padding:2px 12px 12px;border-top:1px solid var(--line)}
+
+.seg{display:flex;gap:6px;margin-top:6px}
+.seg button{flex:1;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--bg);font-size:13px;color:var(--mut)}
+.seg button.on{border-color:var(--mint);color:var(--mint);background:rgba(167,232,197,.08)}
+.psum{margin-top:10px;font-size:13px;color:var(--mut)}
+.psum b{color:var(--text)}
+.warn{color:var(--coral)}
+.mlab{font-size:11.5px;margin-bottom:3px;color:var(--mut)}
+
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px;font-size:13.5px}
+.btn.mint{border-color:var(--mint);color:var(--mint)}
+.btn.del{color:var(--coral);border-color:rgba(255,140,112,.35)}
+.btn.del.armed{background:var(--coral);color:#1a0d09;border-color:var(--coral);font-weight:650}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.addacc{width:100%;padding:13px;border-radius:14px;border:1px dashed var(--mint);background:transparent;color:var(--mint);font-weight:600}
+.empty{color:var(--mut);text-align:center;padding:24px 8px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--card2);border:1px solid var(--mint);color:var(--text);padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:9}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (hover:hover) and (pointer:fine){
+  .acc-head:hover,.yr-head:hover{background:rgba(167,232,197,.05)}
+  .btn:hover{border-color:var(--mint)}
+  .btn.del:hover{border-color:var(--coral)}
+}
+</style>
+</head>
+<body>
+<a href="../index.html">← Little Lab</a>
+<h1>PPF contributions</h1>
+<p class="tag">Public Provident Fund tracker. Saved only in this browser.</p>
+
+<div class="summary">
+  <div class="stat"><div class="k">Accounts</div><div class="v" data-role="s-accs">0</div></div>
+  <div class="stat"><div class="k">Total principal</div><div class="v" data-role="s-p">₹0</div></div>
+  <div class="stat"><div class="k">Interest credited</div><div class="v" data-role="s-i">₹0</div></div>
+  <div class="stat hl"><div class="k">Total balance</div><div class="v" data-role="s-b">₹0</div></div>
+</div>
+
+<div id="list"></div>
+<button class="addacc" data-act="add-acc">+ Add account</button>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='ppf_contributions_v1';
+var MON=['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var S={accs:[]};
+var $list=document.getElementById('list');
+
+function uid(){return Math.random().toString(36).slice(2,9);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function has(v){return v!==''&&v!=null&&isFinite(parseFloat(v));}
+function num(v){var n=parseFloat(v);return isFinite(n)?n:0;}
+function inr(n){return '₹'+(Math.round(n*100)/100).toLocaleString('en-IN',{maximumFractionDigits:2});}
+function pad(n){return (n<10?'0':'')+n;}
+function fmtDate(s){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');
+  if(!m)return '';
+  return pad(+m[3])+'th '+MN[+m[2]-1]+' '+m[1];
+}
+function fyLabel(fy){return has(fy)?(parseInt(fy,10)+'-'+pad((parseInt(fy,10)+1)%100)):'FY ?';}
+function monthLabel(fy,i){
+  if(!has(fy))return MON[i];
+  var y=parseInt(fy,10)+(i>=9?1:0);
+  return MON[i]+" '"+pad(y%100);
+}
+function currentFY(){var t=new Date();return t.getMonth()>=3?t.getFullYear():t.getFullYear()-1;}
+function openFY(s){var m=/^(\d{4})-(\d{2})/.exec(s||'');return m?(+m[2]>=4?+m[1]:+m[1]-1):null;}
+
+/* ---------- state ---------- */
+function load(){
+  try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&Array.isArray(o.accs))S=o;}}catch(e){}
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function accById(id){return S.accs.filter(function(k){return k.id===id;})[0];}
+function yearById(k,id){return k.years.filter(function(y){return y.id===id;})[0];}
+function newAcc(){return {id:uid(),name:'',bank:'',open:'',opening:'',collapsed:false,years:[]};}
+function sorted(k){
+  return k.years.slice().sort(function(a,b){return (has(a.fy)?+a.fy:9999)-(has(b.fy)?+b.fy:9999);});
+}
+function newYear(k){
+  var fy,rate='';
+  if(k.years.length){
+    var s=sorted(k),last=s[s.length-1];
+    fy=has(last.fy)?parseInt(last.fy,10)+1:currentFY();rate=last.rate||'';
+  }else{
+    var o=openFY(k.open);fy=o!==null?o:currentFY();
+  }
+  return {id:uid(),fy:String(fy),mode:'same',same:'',n:'12',months:['','','','','','','','','','','',''],interest:'',rate:rate,balance:'',collapsed:false};
+}
+
+/* ---------- calc ---------- */
+function principal(y){
+  if(y.mode==='each')return (y.months||[]).reduce(function(s,v){return s+num(v);},0);
+  var n=has(y.n)?Math.max(0,Math.min(12,parseInt(y.n,10))):12;
+  return num(y.same)*n;
+}
+function calcAcc(k){
+  var prev=num(k.opening),rows={},totP=0,totI=0;
+  sorted(k).forEach(function(y){
+    var p=principal(y),i=num(y.interest),auto=prev+p+i,eff=has(y.balance)?num(y.balance):auto;
+    rows[y.id]={p:p,i:i,auto:auto,eff:eff};
+    totP+=p;totI+=i;prev=eff;
+  });
+  return {rows:rows,totP:totP,totI:totI,bal:prev};
+}
+
+/* ---------- render (structure) ---------- */
+function field(label,f,val,extra,ph){
+  return '<div><label>'+label+'</label><input data-f="'+f+'" value="'+esc(val)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+' '+(extra||'')+'></div>';
+}
+function numAttr(){return 'type="number" inputmode="decimal" step="any" min="0"';}
+
+function yearHTML(y){
+  var h='<div class="yr'+(y.collapsed?'':' open')+'" data-year="'+y.id+'">'+
+    '<div class="yr-head" data-act="toggle-year"><div class="fy" data-role="yr-title">'+fyLabel(y.fy)+'</div>'+
+    '<div class="yr-stats">'+
+      '<div><div class="k">Principal</div><div class="v" data-role="yr-p"></div></div>'+
+      '<div><div class="k">Interest</div><div class="v" data-role="yr-i"></div></div>'+
+      '<div><div class="k">Balance</div><div class="v" data-role="yr-b"></div></div>'+
+      '<div><div class="k">Rate</div><div class="v" data-role="yr-r"></div></div>'+
+    '</div><span class="chev"></span></div>';
+  if(!y.collapsed){
+    h+='<div class="yr-body"><div class="grid2">'+
+      field('FY starting Apr of','fy',y.fy,'type="number" inputmode="numeric" step="1"')+
+      field('Interest credited (₹)','interest',y.interest,numAttr())+
+      field('Interest rate (% p.a.)','rate',y.rate,numAttr())+
+      field('Balance at end of Mar (₹)','balance',y.balance,numAttr(),'auto')+
+    '</div><div class="hint">Leave balance blank to auto-calculate (previous balance + principal + interest). Type the passbook figure to override.</div>'+
+    '<div class="sect" style="margin-top:14px">Monthly contributions</div>'+
+    '<div class="seg"><button data-act="mode" data-mode="same" class="'+(y.mode==='each'?'':'on')+'">Same every month</button>'+
+    '<button data-act="mode" data-mode="each" class="'+(y.mode==='each'?'on':'')+'">Different each month</button></div>';
+    if(y.mode==='each'){
+      h+='<div class="grid3">';
+      for(var i=0;i<12;i++){
+        h+='<div><div class="mlab">'+monthLabel(y.fy,i)+'</div>'+
+          '<input data-f="month" data-m="'+i+'" value="'+esc(y.months[i])+'" '+numAttr()+' placeholder="0"></div>';
+      }
+      h+='</div>';
+    }else{
+      h+='<div class="grid2">'+field('Amount per month (₹)','same',y.same,numAttr())+
+        field('Months contributed','n',y.n,'type="number" inputmode="numeric" min="0" max="12" step="1"','12')+'</div>';
+    }
+    h+='<div class="psum" data-role="yr-psum"></div>'+
+      '<div class="row"><button class="btn del" data-act="del-year" data-key="y'+y.id+'">Delete FY</button></div></div>';
+  }
+  return h+'</div>';
+}
+
+function accHTML(k){
+  var h='<section class="acc'+(k.collapsed?'':' open')+'" data-acc="'+k.id+'">'+
+    '<div class="acc-head" data-act="toggle-acc"><div class="t"><div class="name" data-role="k-name"></div>'+
+    '<div class="sub" data-role="k-sub"></div></div>'+
+    '<div class="bal"><div class="v" data-role="k-bal"></div><div class="k">balance</div></div><span class="chev"></span></div>';
+  if(!k.collapsed){
+    h+='<div class="acc-body"><div class="grid2">'+
+      field('Account holder','name',k.name,'type="text" autocomplete="off"')+
+      field('Bank / post office','bank',k.bank,'type="text" autocomplete="off"')+
+      '<div><label>Account open date</label><input data-f="open" type="date" value="'+esc(k.open)+'"><div class="hint" data-role="open-fmt"></div></div>'+
+      field('Opening balance before first FY (₹)','opening',k.opening,numAttr(),'0')+
+    '</div><div class="info" data-role="k-info"></div>'+
+    '<div class="sect"><span>Financial years</span><span class="hint" style="margin:0">tap a year to expand</span></div>';
+    var ys=sorted(k);
+    if(!ys.length)h+='<div class="empty">No years yet. Add the first FY.</div>';
+    ys.forEach(function(y){h+=yearHTML(y);});
+    h+='<div class="row"><button class="btn mint" data-act="add-year">+ Add FY</button>'+
+      '<button class="btn del" data-act="del-acc" data-key="k'+k.id+'">Delete account</button></div></div>';
+  }
+  return h+'</section>';
+}
+
+function render(){
+  var sy=window.scrollY;
+  $list.innerHTML=S.accs.length?S.accs.map(accHTML).join(''):'<div class="empty">No accounts yet. Add one to start tracking.</div>';
+  update();
+  window.scrollTo(0,sy);
+}
+
+/* ---------- update (in place, no rebuild) ---------- */
+function setRole(root,role,txt){var e=root.querySelector('[data-role="'+role+'"]');if(e&&e.textContent!==txt)e.textContent=txt;}
+function update(){
+  var tp=0,ti=0,tb=0;
+  S.accs.forEach(function(k){
+    var el=$list.querySelector('[data-acc="'+k.id+'"]');
+    var c=calcAcc(k);tp+=c.totP;ti+=c.totI;tb+=c.bal;
+    if(!el)return;
+    var od=fmtDate(k.open);
+    setRole(el,'k-name',k.name||'Unnamed account');
+    setRole(el,'k-sub',[k.bank,od?'Opened '+od:''].filter(Boolean).join(' • ')||'Add details');
+    setRole(el,'k-bal',inr(c.bal));
+    setRole(el,'open-fmt',od);
+    var o=openFY(k.open);
+    setRole(el,'k-info',o!==null?'Matures on '+fmtDate((o+16)+'-03-31')+' (15 FYs after the opening year). Can be extended in 5-year blocks.':'Set the open date to see the maturity date.');
+    k.years.forEach(function(y){
+      var ye=el.querySelector('[data-year="'+y.id+'"]');if(!ye)return;
+      var r=c.rows[y.id];
+      setRole(ye,'yr-title',fyLabel(y.fy));
+      setRole(ye,'yr-p',inr(r.p));
+      setRole(ye,'yr-i',inr(r.i));
+      setRole(ye,'yr-b',inr(r.eff));
+      setRole(ye,'yr-r',has(y.rate)?num(y.rate)+'%':'—');
+      var b=ye.querySelector('[data-f="balance"]');if(b)b.placeholder='auto: '+inr(r.auto);
+      var ps=ye.querySelector('[data-role="yr-psum"]');
+      if(ps){
+        var n=y.mode==='each'?(y.months||[]).filter(has).length:(has(y.n)?parseInt(y.n,10):12);
+        ps.innerHTML='Principal this FY: <b>'+inr(r.p)+'</b>'+(y.mode==='each'?' over '+n+' month'+(n===1?'':'s'):(num(y.same)?' ('+inr(num(y.same))+' × '+n+')':''))+
+          (r.p>150000?'<div class="warn">Above the ₹1,50,000 yearly limit.</div>':'');
+      }
+    });
+  });
+  setRole(document,'s-accs',String(S.accs.length));
+  setRole(document,'s-p',inr(tp));
+  setRole(document,'s-i',inr(ti));
+  setRole(document,'s-b',inr(tb));
+}
+
+/* ---------- toast + tap-twice ---------- */
+var tt;
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},1800);}
+var armedBtn=null,armedTimer;
+function disarm(){
+  if(armedBtn){armedBtn.classList.remove('armed');armedBtn.textContent=armedBtn.dataset.label;}
+  armedBtn=null;clearTimeout(armedTimer);
+}
+function armed(btn){
+  if(armedBtn===btn)return true;
+  disarm();
+  btn.dataset.label=btn.textContent;
+  btn.classList.add('armed');btn.textContent='Tap again to delete';
+  armedBtn=btn;armedTimer=setTimeout(disarm,3000);
+  toast('Tap again to confirm delete');
+  return false;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act]');
+  if(!t){disarm();return;}
+  var act=t.dataset.act;
+  var kEl=t.closest('[data-acc]'),yEl=t.closest('[data-year]');
+  var k=kEl?accById(kEl.dataset.acc):null,y=(k&&yEl)?yearById(k,yEl.dataset.year):null;
+  if(act!=='del-acc'&&act!=='del-year')disarm();
+
+  if(act==='add-acc'){var na=newAcc();S.accs.push(na);save();render();
+    var inp=$list.querySelector('[data-acc="'+na.id+'"] [data-f="name"]');if(inp)inp.focus();}
+  else if(act==='toggle-acc'&&k){k.collapsed=!k.collapsed;save();render();}
+  else if(act==='toggle-year'&&y){y.collapsed=!y.collapsed;save();render();}
+  else if(act==='add-year'&&k){k.years.push(newYear(k));save();render();}
+  else if(act==='mode'&&y){
+    var m=t.dataset.mode;
+    if(m!==y.mode){
+      if(m==='each'&&!y.months.some(has)&&has(y.same)){
+        var n=has(y.n)?Math.max(0,Math.min(12,parseInt(y.n,10))):12;
+        y.months=y.months.map(function(_,i){return i<n?y.same:'';});
+      }
+      y.mode=m;save();render();
+    }
+  }
+  else if(act==='del-year'&&k&&y){
+    if(armed(t)){k.years=k.years.filter(function(x){return x.id!==y.id;});armedBtn=null;save();render();toast('FY deleted');}
+  }
+  else if(act==='del-acc'&&k){
+    if(armed(t)){S.accs=S.accs.filter(function(x){return x.id!==k.id;});armedBtn=null;save();render();toast('Account deleted');}
+  }
+});
+
+document.addEventListener('input',function(e){
+  var el=e.target,f=el.dataset&&el.dataset.f;if(!f)return;
+  var kEl=el.closest('[data-acc]');if(!kEl)return;
+  var k=accById(kEl.dataset.acc);if(!k)return;
+  var yEl=el.closest('[data-year]');
+  if(yEl){
+    var y=yearById(k,yEl.dataset.year);if(!y)return;
+    if(f==='month')y.months[+el.dataset.m]=el.value;else y[f]=el.value;
+  }else k[f]=el.value;
+  save();update();
+});
+
+/* re-sort years and refresh month labels once FY is committed (on blur) */
+document.addEventListener('change',function(e){
+  if(e.target.dataset&&e.target.dataset.f==='fy'){render();}
+});
+
+load();render();
+})();
+</script>
+</body>
+</html>

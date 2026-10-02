@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1311">
+<title>Salary Hike</title>
+<style>
+:root{
+  --bg:#0e1311; --card:#161d1a; --card2:#1c2521; --line:#27322d; --text:#e9f2ed; --mut:#8c9c94;
+  --mint:#a7e8c5; --coral:#ff8c70;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(80px + env(safe-area-inset-bottom,0px));max-width:760px;margin:0 auto}
+a{color:var(--mint);text-decoration:none}
+h1{font-size:22px;margin:6px 0 2px;letter-spacing:.2px}
+.tag{color:var(--mut);font-size:13px;margin:0 0 14px}
+button{font:inherit;color:inherit;cursor:pointer}
+input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%;min-width:0;color-scheme:dark}
+input:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+input::placeholder{color:#55655d}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+.pos{color:var(--mint)} .neg{color:var(--coral)}
+
+.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+@media(min-width:560px){.summary{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat .k{font-size:12px;color:var(--mut)}
+.stat .v{font-size:17px;font-weight:650;margin-top:2px;overflow-wrap:anywhere}
+.stat .s{font-size:12px;color:var(--mut);margin-top:1px}
+.stat.hl .v{color:var(--mint)}
+
+.formcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.formcard.editing{border-color:var(--mint)}
+.formcard h2{font-size:15px;margin:0 0 10px;font-weight:650}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2 .full{grid-column:1/-1}
+.preview{margin-top:10px;font-size:13px;color:var(--mut);background:var(--card2);border-radius:10px;padding:8px 10px;min-height:2.4em}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 14px;font-size:13.5px}
+.btn.mint{border-color:var(--mint);color:#0e1311;background:var(--mint);font-weight:650}
+.btn.del{color:var(--coral);border-color:rgba(255,140,112,.35)}
+.btn.del.armed{background:var(--coral);color:#1a0d09;border-color:var(--coral);font-weight:650}
+
+.sect{margin:4px 0 8px;font-weight:600;font-size:14px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.item.editing{border-color:var(--mint)}
+.item-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.item-top .co{font-weight:650;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-top .yr{color:var(--mut);font-size:13px;flex:none}
+.chip{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut);margin-top:4px}
+.chip.sw{border-color:var(--mint);color:var(--mint)}
+.ctc{font-size:20px;font-weight:700;margin-top:6px}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+@media(min-width:520px){.metrics{grid-template-columns:repeat(4,1fr)}}
+.metrics .k{font-size:11.5px;color:var(--mut)}
+.metrics .v{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.empty{color:var(--mut);text-align:center;padding:24px 8px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--card2);border:1px solid var(--mint);color:var(--text);padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:9}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover{border-color:var(--mint)}
+  .btn.del:hover{border-color:var(--coral)}
+}
+</style>
+</head>
+<body>
+<a href="../index.html">← Little Lab</a>
+<h1>Salary hike</h1>
+<p class="tag">Track CTC, take-home and tax across jobs. Saved only in this browser.</p>
+
+<div class="summary">
+  <div class="stat hl"><div class="k">Current CTC</div><div class="v" data-role="s-ctc">—</div><div class="s" data-role="s-ctc-sub"></div></div>
+  <div class="stat"><div class="k">Total CTC growth</div><div class="v" data-role="s-growth">—</div><div class="s" data-role="s-cagr"></div></div>
+  <div class="stat"><div class="k">Current take-home</div><div class="v" data-role="s-take">—</div><div class="s" data-role="s-take-sub"></div></div>
+  <div class="stat"><div class="k">Total tax paid</div><div class="v" data-role="s-tax">₹0</div><div class="s" data-role="s-tax-sub"></div></div>
+</div>
+
+<div class="formcard" id="formcard">
+  <h2 id="formtitle">Add a salary entry</h2>
+  <div class="grid2">
+    <div class="full"><label>Company</label><input data-f="company" type="text" autocomplete="off"></div>
+    <div><label>Year</label><input data-f="year" type="number" inputmode="numeric" step="1"></div>
+    <div><label>CTC (₹ per year)</label><input data-f="ctc" type="number" inputmode="decimal" step="any" min="0"></div>
+    <div><label>Take-home (₹ per year)</label><input data-f="take" type="number" inputmode="decimal" step="any" min="0"></div>
+    <div><label>Tax paid (₹ per year)</label><input data-f="tax" type="number" inputmode="decimal" step="any" min="0"></div>
+  </div>
+  <div class="preview" id="preview"></div>
+  <div class="row">
+    <button class="btn mint" data-act="save" id="savebtn">Add entry</button>
+    <button class="btn" data-act="cancel" id="cancelbtn" hidden>Cancel</button>
+  </div>
+</div>
+
+<div class="sect" id="listhead" hidden>History</div>
+<div id="list"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='salary_hike_v1';
+var S={items:[]};
+var editing=null;
+var $list=document.getElementById('list'),$form=document.getElementById('formcard');
+
+function uid(){return Math.random().toString(36).slice(2,9);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function has(v){return v!==''&&v!=null&&isFinite(parseFloat(v));}
+function num(v){var n=parseFloat(v);return isFinite(n)?n:0;}
+function inr(n){return '₹'+(Math.round(n*100)/100).toLocaleString('en-IN',{maximumFractionDigits:2});}
+function fmtPct(p){return p==null?'—':(p>0?'+':'')+(Math.round(p*10)/10).toLocaleString('en-IN')+'%';}
+function cls(p){return p==null?'':(p>=0?'pos':'neg');}
+function pct(cur,prev){return prev>0?(cur-prev)/prev*100:null;}
+function asc(list){return list.slice().sort(function(a,b){return (a.year-b.year)||(a.ord-b.ord);});}
+function f(name){return document.querySelector('[data-f="'+name+'"]');}
+
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&Array.isArray(o.items))S=o;}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+
+var tt;
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},1800);}
+function setRole(role,txt){var e=document.querySelector('[data-role="'+role+'"]');if(e)e.textContent=txt;}
+
+/* metrics for entry at index i of ascending list */
+function metrics(list,i){
+  var c=list[i],p=i>0?list[i-1]:null;
+  return {
+    hike:p?pct(c.ctc,p.ctc):null,
+    chg:(p&&c.take>0&&p.take>0)?pct(c.take,p.take):null,
+    sw:!!(p&&c.company&&p.company&&c.company.trim().toLowerCase()!==p.company.trim().toLowerCase()),
+    taxPct:(c.tax>0&&c.ctc>0)?c.tax/c.ctc*100:null
+  };
+}
+
+/* ---------- summary ---------- */
+function renderSummary(){
+  var a=asc(S.items);
+  if(!a.length){
+    setRole('s-ctc','—');setRole('s-ctc-sub','');setRole('s-growth','—');setRole('s-cagr','');
+    setRole('s-take','—');setRole('s-take-sub','');setRole('s-tax','₹0');setRole('s-tax-sub','');return;
+  }
+  var first=a[0],last=a[a.length-1];
+  setRole('s-ctc',inr(last.ctc));setRole('s-ctc-sub',[last.company,last.year].filter(Boolean).join(' • '));
+  var g=a.length>1?pct(last.ctc,first.ctc):null,yrs=last.year-first.year;
+  setRole('s-growth',fmtPct(g));
+  setRole('s-cagr',(g!=null&&yrs>0&&first.ctc>0)?fmtPct((Math.pow(last.ctc/first.ctc,1/yrs)-1)*100)+' per year':'');
+  document.querySelector('[data-role="s-growth"]').className='v '+cls(g);
+  setRole('s-take',last.take>0?inr(last.take):'—');
+  setRole('s-take-sub',last.take>0?inr(last.take/12)+' per month':'');
+  var tx=a.reduce(function(s,x){return s+x.tax;},0);
+  setRole('s-tax',inr(tx));
+  setRole('s-tax-sub',a.length+' entr'+(a.length===1?'y':'ies'));
+}
+
+/* ---------- list ---------- */
+function renderList(){
+  var a=asc(S.items);
+  document.getElementById('listhead').hidden=!a.length;
+  if(!a.length){$list.innerHTML='<div class="empty">No entries yet. Add your first company and CTC above.</div>';return;}
+  var h='';
+  for(var i=a.length-1;i>=0;i--){
+    var c=a[i],m=metrics(a,i);
+    h+='<div class="item'+(editing===c.id?' editing':'')+'" data-id="'+c.id+'">'+
+      '<div class="item-top"><div class="co">'+esc(c.company||'Unnamed company')+'</div><div class="yr">'+c.year+'</div></div>'+
+      (i===0?'<span class="chip">Starting point</span>':'<span class="chip'+(m.sw?' sw':'')+'">'+(m.sw?'Job switch':'Same company')+'</span>')+
+      '<div class="ctc">'+inr(c.ctc)+' <span style="font-size:12px;color:var(--mut);font-weight:400">CTC</span></div>'+
+      '<div class="metrics">'+
+        '<div><div class="k">Hike</div><div class="v '+cls(m.hike)+'">'+fmtPct(m.hike)+'</div></div>'+
+        '<div><div class="k">Take-home</div><div class="v">'+(c.take>0?inr(c.take):'—')+'</div></div>'+
+        '<div><div class="k">Take-home change</div><div class="v '+cls(m.chg)+'">'+fmtPct(m.chg)+'</div></div>'+
+        '<div><div class="k">Tax paid</div><div class="v">'+(c.tax>0?inr(c.tax):'—')+'</div>'+
+          (m.taxPct!=null?'<div class="k">'+(Math.round(m.taxPct*10)/10)+'% of CTC</div>':'')+'</div>'+
+      '</div>'+
+      '<div class="row"><button class="btn" data-act="edit" data-id="'+c.id+'">Edit</button>'+
+      '<button class="btn del" data-act="del" data-id="'+c.id+'">Delete</button></div></div>';
+  }
+  $list.innerHTML=h;
+}
+
+function renderAll(){renderSummary();renderList();}
+
+/* ---------- form ---------- */
+function readForm(){
+  return {company:f('company').value.trim(),year:parseInt(f('year').value,10),ctc:num(f('ctc').value),take:num(f('take').value),tax:num(f('tax').value)};
+}
+function updatePreview(){
+  var d=readForm(),p=document.getElementById('preview');
+  if(!(d.ctc>0)||!isFinite(d.year)){p.textContent='Enter year and CTC to see the hike.';return;}
+  var others=S.items.filter(function(x){return x.id!==editing;});
+  var ord=editing?(S.items.filter(function(x){return x.id===editing;})[0].ord):Date.now();
+  d.id='draft';d.ord=ord;
+  var a=asc(others.concat([d])),i=a.map(function(x){return x.id;}).indexOf('draft'),m=metrics(a,i);
+  if(i===0){p.textContent='First entry, so there is no earlier salary to compare with.';return;}
+  p.innerHTML='Hike <b class="'+cls(m.hike)+'">'+fmtPct(m.hike)+'</b>'+(m.chg!=null?' • Take-home <b class="'+cls(m.chg)+'">'+fmtPct(m.chg)+'</b>':'')+(m.sw?' • Job switch':'');
+}
+function resetForm(keepYear){
+  editing=null;
+  var y=keepYear!=null?keepYear:new Date().getFullYear();
+  f('company').value='';f('year').value=y;f('ctc').value='';f('take').value='';f('tax').value='';
+  document.getElementById('formtitle').textContent='Add a salary entry';
+  document.getElementById('savebtn').textContent='Add entry';
+  document.getElementById('cancelbtn').hidden=true;
+  $form.classList.remove('editing');
+  updatePreview();
+}
+function startEdit(id){
+  var c=S.items.filter(function(x){return x.id===id;})[0];if(!c)return;
+  editing=id;
+  f('company').value=c.company;f('year').value=c.year;f('ctc').value=c.ctc;
+  f('take').value=c.take>0?c.take:'';f('tax').value=c.tax>0?c.tax:'';
+  document.getElementById('formtitle').textContent='Edit entry';
+  document.getElementById('savebtn').textContent='Save changes';
+  document.getElementById('cancelbtn').hidden=false;
+  $form.classList.add('editing');
+  updatePreview();renderList();
+  $form.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function saveEntry(){
+  var d=readForm();
+  if(!isFinite(d.year)||d.year<1980||d.year>2100){toast('Enter a valid year');f('year').focus();return;}
+  if(!(d.ctc>0)){toast('Enter the CTC');f('ctc').focus();return;}
+  if(editing){
+    var c=S.items.filter(function(x){return x.id===editing;})[0];
+    if(c){c.company=d.company;c.year=d.year;c.ctc=d.ctc;c.take=d.take;c.tax=d.tax;}
+    toast('Entry updated');
+  }else{
+    d.id=uid();d.ord=Date.now();S.items.push(d);toast('Entry added');
+  }
+  save();resetForm(d.year);renderAll();
+}
+
+/* ---------- tap-twice delete ---------- */
+var armedBtn=null,armedTimer;
+function disarm(){
+  if(armedBtn&&armedBtn.isConnected){armedBtn.classList.remove('armed');armedBtn.textContent=armedBtn.dataset.label;}
+  armedBtn=null;clearTimeout(armedTimer);
+}
+function armed(btn){
+  if(armedBtn===btn)return true;
+  disarm();
+  btn.dataset.label=btn.textContent;btn.classList.add('armed');btn.textContent='Tap again to delete';
+  armedBtn=btn;armedTimer=setTimeout(disarm,3000);toast('Tap again to confirm delete');
+  return false;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act]');
+  if(!t){disarm();return;}
+  var act=t.dataset.act;
+  if(act!=='del')disarm();
+  if(act==='save')saveEntry();
+  else if(act==='cancel'){resetForm();renderList();}
+  else if(act==='edit')startEdit(t.dataset.id);
+  else if(act==='del'){
+    if(armed(t)){
+      S.items=S.items.filter(function(x){return x.id!==t.dataset.id;});
+      armedBtn=null;
+      if(editing===t.dataset.id)resetForm();
+      save();renderAll();toast('Entry deleted');
+    }
+  }
+});
+$form.addEventListener('input',updatePreview);
+$form.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();saveEntry();}});
+
+load();
+resetForm(S.items.length?asc(S.items)[S.items.length-1].year:null);
+renderAll();
+})();
+</script>
+</body>
+</html>
