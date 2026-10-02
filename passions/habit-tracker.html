@@ -112,6 +112,9 @@
   .day.today.filled{
     box-shadow:0 0 0 2px var(--coral);
   }
+  .day.disabled{
+    opacity:.35; cursor:default; pointer-events:none;
+  }
   @media (hover:hover) and (pointer:fine){
     .day:hover{border-color:var(--mint);}
   }
@@ -228,9 +231,11 @@
     const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
     const todayIndex = Math.round((todayMidnight - startMidnight) / msPerDay);
 
-    const dots = h.days.map((v,i) => `
-      <div class="day ${v ? 'filled' : ''} ${i === todayIndex ? 'today' : ''}" data-id="${h.id}" data-day="${i}">${v ? '✓' : i+1}</div>
-    `).join('');
+    const dots = h.days.map((v,i) => {
+      const isToday = i === todayIndex;
+      const isFuture = i > todayIndex;
+      return `<div class="day ${v ? 'filled' : ''} ${isToday ? 'today' : ''} ${isFuture ? 'disabled' : ''}" data-id="${h.id}" data-day="${i}">${v ? '✓' : i+1}</div>`;
+    }).join('');
 
     return `
       <div class="habit ${isComplete ? 'done' : ''}" data-habit-id="${h.id}">
