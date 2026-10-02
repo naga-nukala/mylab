@@ -52,6 +52,50 @@
     margin-bottom:14px;
   }
 
+  .metrics-title{
+    color:var(--muted);
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin-bottom:10px;
+  }
+  .bar-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:9px;
+  }
+  .bar-row:last-child{margin-bottom:0;}
+  .bar-label{
+    width:88px;
+    flex-shrink:0;
+    font-size:.74rem;
+    color:var(--muted);
+  }
+  .bar-track{
+    flex:1;
+    height:8px;
+    background:var(--card2);
+    border-radius:999px;
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    border-radius:999px;
+    background:var(--coral);
+  }
+  .bar-fill.status-done{background:var(--mint);}
+  .bar-fill.status-not_important{background:var(--coral);opacity:.65;}
+  .bar-fill.status-obsolete{background:var(--coral);opacity:.4;}
+  .bar-count{
+    width:22px;
+    text-align:right;
+    flex-shrink:0;
+    font-size:.78rem;
+    font-weight:600;
+    color:var(--text);
+  }
+
   textarea, input[type=text]{
     width:100%;
     background:var(--card2);
@@ -195,6 +239,10 @@
   <h1>Quick <span>Ideas</span></h1>
 
   <div class="summary" id="summary"></div>
+  <div class="card metrics-card">
+    <div class="metrics-title">Status breakdown</div>
+    <div id="statusBreakdown"></div>
+  </div>
 
   <div class="card">
     <textarea id="ideaText" rows="2" placeholder="Capture an idea... use #tag anywhere, e.g. Idea to do #Money"></textarea>
@@ -263,9 +311,19 @@
     return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
   }
 
+  function ordinalSuffix(n){
+    if(n>=11 && n<=13) return 'th';
+    switch(n%10){
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  }
+
   function formatDisplayDate(key){
     const [y,m,d] = key.split('-').map(Number);
-    return d+'th '+MONTHS[m-1]+' '+y;
+    return d+ordinalSuffix(d)+' '+MONTHS[m-1]+' '+y;
   }
 
   function formatTime(d){
@@ -336,10 +394,25 @@
     `;
   }
 
+  function renderStatusBreakdown(){
+    const statuses = ['done','discard','not_important','obsolete'];
+    const counts = statuses.map(s => state.items.filter(i=>i.isTask && i.status===s).length);
+    const max = Math.max(1, ...counts);
+    document.getElementById('statusBreakdown').innerHTML = statuses.map((s,i)=>{
+      const pct = Math.round((counts[i]/max)*100);
+      return `<div class="bar-row">
+        <span class="bar-label">${STATUS_LABELS[s]}</span>
+        <div class="bar-track"><div class="bar-fill status-${s}" style="width:${pct}%"></div></div>
+        <span class="bar-count">${counts[i]}</span>
+      </div>`;
+    }).join('');
+  }
+
   function renderFilterRow(){
     const row = document.getElementById('filterRow');
     let html = `<span class="chip ${activeFilter==='all'?'active':''}" data-role="filter" data-filter="all">All</span>`;
     html += `<span class="chip ${activeFilter==='pending'?'active':''}" data-role="filter" data-filter="pending">Pending</span>`;
+    html += `<span class="chip ${activeFilter==='done'?'active':''}" data-role="filter" data-filter="done">Done</span>`;
     state.tags.forEach(t=>{
       const isDel = pendingTagDelete === t;
       html += `<span class="chip ${activeFilter===t?'active':''} ${isDel?'danger':''}" data-role="filter" data-filter="${escAttr(t)}">
@@ -354,6 +427,8 @@
     let items = state.items.slice();
     if(activeFilter === 'pending'){
       items = items.filter(i=>i.isTask && i.status==='pending');
+    } else if(activeFilter === 'done'){
+      items = items.filter(i=>i.isTask && i.status==='done');
     } else if(activeFilter !== 'all'){
       items = items.filter(i=>i.tags.includes(activeFilter));
     }
@@ -442,6 +517,7 @@
 
   function renderAll(){
     renderSummary();
+    renderStatusBreakdown();
     renderFilterRow();
     renderList();
   }
