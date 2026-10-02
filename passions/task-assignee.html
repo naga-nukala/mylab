@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Task vs Assignee · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#2a352f;--text:#e8efe9;--mute:#8a9b90;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:20px;margin:0 0 12px;color:var(--mint)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.sum{display:flex;gap:18px;flex-wrap:wrap}
+.sum div b{display:block;font-size:22px;color:var(--mint)}
+.sum div span{color:var(--mute);font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+input{width:100%;background:#0f1412;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;color-scheme:dark}
+input:focus{outline:2px solid var(--mint);outline-offset:0}
+.opt{color:var(--mute)}
+.actions{display:flex;gap:8px;margin-top:12px}
+button{font:inherit;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:8px;padding:9px 14px;cursor:pointer}
+button.primary{background:var(--mint);color:#0f1412;border-color:var(--mint);font-weight:600}
+button.confirm{background:var(--coral);border-color:var(--coral);color:#0f1412}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}button.primary:hover{filter:brightness(1.08)}}
+.head,.row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:start}
+.head{padding:0 14px 6px;color:var(--mute);font-size:12px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.row.slid{animation:slide .28s ease-out}
+@keyframes slide{from{transform:translateY(34px);opacity:.5}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.row.slid{animation:none}}
+.cell{min-width:0;overflow-wrap:anywhere}
+.dates{color:var(--mute);font-size:12px;margin-top:4px}
+.tools{display:flex;gap:4px}
+.tools button{padding:6px 9px;font-size:13px}
+.empty{color:var(--mute);text-align:center;padding:22px 0}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+@media (max-width:420px){.head,.row{grid-template-columns:1fr 1fr}.tools{grid-column:1/-1;justify-content:flex-end}.head span:last-child{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Task vs Assignee</h1>
+
+  <div class="card sum" id="sum"></div>
+
+  <div class="card">
+    <div class="grid">
+      <div><label for="task">Task</label><input id="task" placeholder="What needs doing" autocomplete="off"></div>
+      <div><label for="who">Assignee</label><input id="who" placeholder="Who owns it" autocomplete="off"></div>
+      <div><label for="start">Start date <span class="opt">(optional)</span></label><input id="start" type="date"></div>
+      <div><label for="end">End date <span class="opt">(optional)</span></label><input id="end" type="date"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" data-act="save" id="saveBtn">Add task</button>
+      <button data-act="cancel" id="cancelBtn" hidden>Cancel edit</button>
+    </div>
+  </div>
+
+  <div class="head"><span>Task</span><span>Assignee</span><span></span></div>
+  <div id="list"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var KEY='as_task_assignee_v1';
+  var items=[], editId=null, armed=null, armTimer=null, slidId=null;
+  var $=function(id){return document.getElementById(id)};
+
+  function load(){
+    try{var s=JSON.parse(localStorage.getItem(KEY)||'{}');items=Array.isArray(s.items)?s.items:[];}catch(e){items=[];}
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({items:items}));}catch(e){}}
+
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmt(d){
+    if(!d)return '';
+    var p=d.split('-');if(p.length!==3)return '';
+    return p[2]+'th '+M[+p[1]-1]+' '+p[0];
+  }
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
+  var tt;
+  function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show')},1800);}
+
+  function renderSummary(){
+    var people={},dated=0;
+    items.forEach(function(i){if(i.who)people[i.who.toLowerCase()]=1;if(i.start||i.end)dated++;});
+    $('sum').innerHTML=
+      '<div><b>'+items.length+'</b><span>Tasks</span></div>'+
+      '<div><b>'+Object.keys(people).length+'</b><span>Assignees</span></div>'+
+      '<div><b>'+dated+'</b><span>With dates</span></div>';
+  }
+
+  function renderList(){
+    var h='';
+    if(!items.length){h='<div class="empty">No tasks yet. Add one above.</div>';}
+    items.forEach(function(i,idx){
+      var dates='';
+      if(i.start||i.end){dates='<div class="dates">'+(i.start?fmt(i.start):'…')+' to '+(i.end?fmt(i.end):'…')+'</div>';}
+      h+='<div class="row'+(i.id===slidId?' slid':'')+'" data-id="'+i.id+'">'+
+        '<div class="cell">'+esc(i.task)+dates+'</div>'+
+        '<div class="cell">'+esc(i.who)+'</div>'+
+        '<div class="tools">'+
+          '<button data-act="up" title="Slide up"'+(idx===0?' disabled style="opacity:.35"':'')+'>▲</button>'+
+          '<button data-act="edit">Edit</button>'+
+          '<button data-act="del" data-role="del">'+(armed===i.id?'Sure?':'Delete')+'</button>'+
+        '</div></div>';
+    });
+    $('list').innerHTML=h;
+    slidId=null;
+    renderSummary();
+  }
+
+  function resetForm(){
+    editId=null;
+    ['task','who','start','end'].forEach(function(k){$(k).value='';});
+    $('saveBtn').textContent='Add task';
+    $('cancelBtn').hidden=true;
+  }
+
+  function disarm(){armed=null;clearTimeout(armTimer);}
+
+  $('saveBtn').addEventListener('click',function(){
+    var task=$('task').value.trim(),who=$('who').value.trim(),s=$('start').value,e=$('end').value;
+    if(!task||!who){toast('Task and assignee are required');return;}
+    if(s&&e&&e<s){toast('End date is before start date');return;}
+    if(editId){
+      items.forEach(function(i){if(i.id===editId){i.task=task;i.who=who;i.start=s;i.end=e;}});
+      toast('Updated');
+    }else{
+      items.push({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),task:task,who:who,start:s,end:e});
+      toast('Added');
+    }
+    save();resetForm();renderList();
+  });
+  $('cancelBtn').addEventListener('click',resetForm);
+
+  ['task','who'].forEach(function(k){
+    $(k).addEventListener('keydown',function(ev){if(ev.key==='Enter')$('saveBtn').click();});
+  });
+
+  $('list').addEventListener('click',function(ev){
+    var btn=ev.target.closest('button[data-act]');if(!btn)return;
+    var row=btn.closest('.row');var id=row.getAttribute('data-id');
+    var idx=items.findIndex(function(i){return i.id===id});if(idx<0)return;
+    var act=btn.getAttribute('data-act');
+
+    if(act==='up'){
+      if(idx>0){var t=items[idx-1];items[idx-1]=items[idx];items[idx]=t;slidId=id;disarm();save();renderList();}
+    }else if(act==='edit'){
+      var it=items[idx];editId=id;disarm();
+      $('task').value=it.task;$('who').value=it.who;$('start').value=it.start||'';$('end').value=it.end||'';
+      $('saveBtn').textContent='Save changes';$('cancelBtn').hidden=false;
+      $('task').focus();window.scrollTo({top:0,behavior:'smooth'});renderList();
+    }else if(act==='del'){
+      if(armed===id){
+        items.splice(idx,1);disarm();
+        if(editId===id)resetForm();
+        save();renderList();toast('Deleted');
+      }else{
+        disarm();armed=id;renderList();
+        armTimer=setTimeout(function(){armed=null;renderList();},2500);
+      }
+    }
+  });
+
+  load();renderList();
+})();
+</script>
+</body>
+</html>

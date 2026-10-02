@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cost Estimator · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#2a352f;--text:#e8efe9;--mute:#8a9b90;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:20px;margin:0 0 12px;color:var(--mint)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sum b{display:block;font-size:20px;color:var(--mint);overflow-wrap:anywhere}
+.sum span{color:var(--mute);font-size:12px}
+.over{color:var(--coral)!important}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+input{width:100%;background:#0f1412;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}
+input:focus{outline:2px solid var(--mint)}
+.name{font-weight:600}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.tot{font-size:13px;color:var(--mute)}
+.tot b{color:var(--text);font-weight:600}
+button{font:inherit;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--mint);color:#0f1412;border-color:var(--mint);font-weight:600}
+button.confirm{background:var(--coral);border-color:var(--coral);color:#0f1412}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}button.primary:hover{filter:brightness(1.08)}}
+.empty{color:var(--mute);text-align:center;padding:22px 0}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+@media (max-width:480px){.sum{grid-template-columns:1fr 1fr}.sum div:first-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cost Estimator</h1>
+  <div class="card sum" id="sum"></div>
+  <div id="list"></div>
+  <button class="primary" data-act="add" id="addBtn">+ Add item</button>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var KEY='as_cost_estimator_v1';
+  var items=[],armed=null,armTimer=null;
+  var $=function(id){return document.getElementById(id)};
+
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY)||'{}');items=Array.isArray(s.items)?s.items:[];}catch(e){items=[];}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({items:items}));}catch(e){}}
+  function num(v){var n=parseFloat(v);return isNaN(n)?0:n;}
+  function has(v){return v!==''&&v!=null&&!isNaN(parseFloat(v));}
+  function money(n){var r=Math.round(n*100)/100;return (r<0?'-':'')+'₹'+Math.abs(r).toLocaleString('en-IN');}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show')},1600);}
+
+  function estTotal(i){return num(i.qty)*num(i.est);}
+  function actTotal(i){return has(i.act)?num(i.qty)*num(i.act):null;}
+
+  function updateSummary(){
+    var est=0,act=0,estDone=0;
+    items.forEach(function(i){
+      est+=estTotal(i);
+      var a=actTotal(i);
+      if(a!==null){act+=a;estDone+=estTotal(i);}
+    });
+    var v=act-estDone;
+    $('sum').innerHTML=
+      '<div><b>'+money(est)+'</b><span>Estimated total</span></div>'+
+      '<div><b>'+money(act)+'</b><span>Actual so far</span></div>'+
+      '<div><b class="'+(v>0?'over':'')+'">'+(v>0?'+':'')+money(v)+'</b><span>'+(v>0?'Over estimate':'Vs estimate')+'</span></div>';
+  }
+
+  function updateRow(id){
+    var i=items.find(function(x){return x.id===id});
+    var row=document.querySelector('.row[data-id="'+id+'"]');
+    if(!i||!row)return;
+    var a=actTotal(i),e=estTotal(i);
+    row.querySelector('[data-role="etot"]').textContent=money(e);
+    var at=row.querySelector('[data-role="atot"]');
+    at.textContent=a===null?'—':money(a);
+    var vr=row.querySelector('[data-role="var"]');
+    if(a===null){vr.textContent='';}
+    else{var d=a-e;vr.textContent=(d>0?'+':'')+money(d);vr.className=d>0?'over':'';}
+  }
+
+  function render(){
+    var h='';
+    if(!items.length)h='<div class="empty">No items yet. Add your first one.</div>';
+    items.forEach(function(i){
+      h+='<div class="card row" data-id="'+i.id+'">'+
+        '<label>Item / Task</label><input class="name" data-role="name" value="'+esc(i.name)+'" placeholder="e.g. Plumbing work" autocomplete="off">'+
+        '<div class="grid">'+
+          '<div><label>Quantity / hours</label><input data-role="qty" type="number" inputmode="decimal" min="0" step="any" value="'+esc(i.qty)+'"></div>'+
+          '<div><label>Est cost / time</label><input data-role="est" type="number" inputmode="decimal" min="0" step="any" value="'+esc(i.est)+'"></div>'+
+          '<div><label>Actual cost / time</label><input data-role="act" type="number" inputmode="decimal" min="0" step="any" value="'+esc(i.act)+'" placeholder="optional"></div>'+
+        '</div>'+
+        '<div class="foot"><div class="tot">Est <b data-role="etot"></b> · Actual <b data-role="atot"></b> <b data-role="var"></b></div>'+
+        '<button data-act="del">Delete</button></div></div>';
+    });
+    $('list').innerHTML=h;
+    items.forEach(function(i){updateRow(i.id);});
+    updateSummary();
+  }
+
+  function disarm(){armed=null;clearTimeout(armTimer);}
+
+  $('list').addEventListener('input',function(ev){
+    var inp=ev.target.closest('input[data-role]');if(!inp)return;
+    var id=inp.closest('.row').getAttribute('data-id');
+    var i=items.find(function(x){return x.id===id});if(!i)return;
+    var r=inp.getAttribute('data-role');
+    i[r==='name'?'name':r]=inp.value;
+    save();updateRow(id);updateSummary();
+  });
+
+  $('list').addEventListener('click',function(ev){
+    var btn=ev.target.closest('button[data-act="del"]');if(!btn)return;
+    var id=btn.closest('.row').getAttribute('data-id');
+    if(armed===id){
+      items=items.filter(function(x){return x.id!==id});
+      disarm();save();render();toast('Deleted');
+    }else{
+      if(armed){var old=document.querySelector('.row[data-id="'+armed+'"] [data-act="del"]');if(old){old.textContent='Delete';old.classList.remove('confirm');}}
+      disarm();armed=id;btn.textContent='Tap again to delete';btn.classList.add('confirm');
+      armTimer=setTimeout(function(){btn.textContent='Delete';btn.classList.remove('confirm');armed=null;},2500);
+    }
+  });
+
+  $('addBtn').addEventListener('click',function(){
+    var id='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    items.push({id:id,name:'',qty:'1',est:'',act:''});
+    save();render();
+    var inp=document.querySelector('.row[data-id="'+id+'"] [data-role="name"]');
+    if(inp)inp.focus();
+  });
+
+  load();render();
+})();
+</script>
+</body>
+</html>
