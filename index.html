@@ -206,6 +206,37 @@ async function mergeFromManifest(raw){
   });
   return added;
 }
+function normFile(p){ return (typeof p === 'string' ? p : (p && p.file) || '').toLowerCase(); }
+function findKeyCI(obj, key){
+  if(!obj) return undefined;
+  const k = Object.keys(obj).find(x => x.toLowerCase() === key.toLowerCase());
+  return k ? obj[k] : undefined;
+}
+// Merges a category's local pages against what pages.json said last time (prevArr)
+// and what it says now (nowArr):
+//  - local page still listed now, or never seen upstream at all (local-only add) -> kept
+//  - local page was in the PREVIOUS snapshot but missing from the CURRENT one -> it was
+//    deleted upstream, so it's dropped
+//  - page present now but not yet known locally -> added
+// This is what lets "Full resync" remove deleted pages without discarding pending local adds.
+function reconcilePages(localArr, prevArr, nowArr){
+  const prevSet = new Set((prevArr || []).map(normFile));
+  const nowSet = new Set((nowArr || []).map(normFile));
+  const result = []; const seen = new Set();
+  (localArr || []).forEach(p => {
+    const key = (p.file || '').toLowerCase();
+    if(nowSet.has(key) || !prevSet.has(key)){ result.push(p); seen.add(key); }
+  });
+  (nowArr || []).forEach(raw => {
+    const key = normFile(raw);
+    if(!key || seen.has(key)) return;
+    const file = typeof raw === 'string' ? raw : raw.file;
+    const name = typeof raw === 'string' ? titleCase(raw) : (raw.name || titleCase(raw.file));
+    result.push({ id: (raw && raw.id) || uid(), name, file });
+    seen.add(key);
+  });
+  return result;
+}
 // Live directory listing via GitHub's public contents API (read-only, no token needed for a public repo).
 // Unauthenticated requests are capped at 60/hour per IP — this only fires when an Add-page box opens.
 async function fetchFolderFiles(cat){
@@ -459,9 +490,28 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
     btn.textContent = '↻ Full resync'; btn.classList.remove('confirming');
     const [discovered, raw] = await Promise.all([discoverCategories(), fetchManifest()]);
     if(!discovered && !raw){ toast('Could not reach GitHub'); return; }
-    CATS = await resolveCategories(discovered, raw);
-    state.categories = normalizeManifest(raw);
-    save(); buildGrid(); renderAll(); toast('Resynced categories and pages from GitHub');
+    const prevManifest = (state.lastSynced && state.lastSynced.manifest) || {};
+    const prevFolders = (state.lastSynced && state.lastSynced.folders) || [];
+    const discoveredNow = discovered || prevFolders;
+    const rawNow = raw || prevManifest;
+
+    const allKeys = new Set([...discoveredNow, ...Object.keys(rawNow), ...Object.keys(state.categories)]);
+    const newCategories = {};
+    allKeys.forEach(cat => {
+      const existingKey = Object.keys(state.categories).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
+      const localArr = state.categories[existingKey] || [];
+      const prevArr = findKeyCI(prevManifest, cat) || [];
+      const nowArr = findKeyCI(rawNow, cat) || [];
+      const merged = reconcilePages(localArr, prevArr, nowArr);
+      const stillExists = discoveredNow.some(f => f.toLowerCase() === cat.toLowerCase()) || Object.keys(rawNow).some(k => k.toLowerCase() === cat.toLowerCase());
+      if(!stillExists && merged.length === 0) return; // genuinely gone upstream, nothing local to keep
+      newCategories[existingKey] = merged;
+    });
+    state.categories = newCategories;
+    CATS = Object.keys(newCategories);
+    state.lastSynced = { folders: discovered || prevFolders, manifest: raw || prevManifest };
+    save(); buildGrid(); renderAll();
+    toast('Resynced — kept pending local pages, removed ones deleted upstream');
   } else {
     btn.textContent = 'Tap again to overwrite local edits'; btn.classList.add('confirming');
     syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Full resync'; btn.classList.remove('confirming'); }, 2500);
@@ -488,11 +538,15 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   if(!state){
     state = seedDefault();
     if(raw) state.categories = normalizeManifest(raw);
+    state.lastSynced = { folders: discovered || [], manifest: raw || {} };
     save();
   } else {
     CATS.forEach(c => { if(!state.categories[c]) state.categories[c] = []; });
     const added = await mergeFromManifest(raw);
-    if(added){ save(); toast('Picked up new pages from pages.json'); }
+    if(discovered) state.lastSynced = { ...(state.lastSynced || {}), folders: discovered };
+    if(raw) state.lastSynced = { ...(state.lastSynced || {}), manifest: raw };
+    save();
+    if(added) toast('Picked up new pages from pages.json');
   }
   buildGrid();
   if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
