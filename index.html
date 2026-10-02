@@ -91,107 +91,7 @@
     <span class="stat-line" id="statLine">0 tools across 4 categories</span>
   </header>
 
-  <div class="grid" id="grid">
-    <div class="flip" data-cat="money" id="card-money">
-      <div class="flip-inner">
-        <div class="face front" data-role="front">
-          <div class="badge">💰</div><div class="nm">Money</div>
-          <div class="desc">Budgets, calculators &amp; planning</div>
-          <div class="ct" data-role="count">0 tools</div>
-        </div>
-        <div class="face back">
-          <div class="back-head"><b>💰 Money</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
-          <ul class="plist" data-role="list"></ul>
-          <details class="addbox">
-            <summary>+ Add page</summary>
-            <div class="af-pick" data-role="pick"></div>
-            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
-            <div class="af-row" data-role="manual-row">
-              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
-              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
-            </div>
-            <div class="af-err"></div>
-            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
-          </details>
-        </div>
-      </div>
-    </div>
-
-    <div class="flip" data-cat="health" id="card-health">
-      <div class="flip-inner">
-        <div class="face front" data-role="front">
-          <div class="badge">🩺</div><div class="nm">Health</div>
-          <div class="desc">Fitness &amp; wellness tools</div>
-          <div class="ct" data-role="count">0 tools</div>
-        </div>
-        <div class="face back">
-          <div class="back-head"><b>🩺 Health</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
-          <ul class="plist" data-role="list"></ul>
-          <details class="addbox">
-            <summary>+ Add page</summary>
-            <div class="af-pick" data-role="pick"></div>
-            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
-            <div class="af-row" data-role="manual-row">
-              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
-              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
-            </div>
-            <div class="af-err"></div>
-            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
-          </details>
-        </div>
-      </div>
-    </div>
-
-    <div class="flip" data-cat="career" id="card-career">
-      <div class="flip-inner">
-        <div class="face front" data-role="front">
-          <div class="badge">💼</div><div class="nm">Career</div>
-          <div class="desc">Growth &amp; productivity</div>
-          <div class="ct" data-role="count">0 tools</div>
-        </div>
-        <div class="face back">
-          <div class="back-head"><b>💼 Career</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
-          <ul class="plist" data-role="list"></ul>
-          <details class="addbox">
-            <summary>+ Add page</summary>
-            <div class="af-pick" data-role="pick"></div>
-            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
-            <div class="af-row" data-role="manual-row">
-              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
-              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
-            </div>
-            <div class="af-err"></div>
-            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
-          </details>
-        </div>
-      </div>
-    </div>
-
-    <div class="flip" data-cat="passions" id="card-passions">
-      <div class="flip-inner">
-        <div class="face front" data-role="front">
-          <div class="badge">🎨</div><div class="nm">Passions</div>
-          <div class="desc">Hobbies &amp; side projects</div>
-          <div class="ct" data-role="count">0 tools</div>
-        </div>
-        <div class="face back">
-          <div class="back-head"><b>🎨 Passions</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
-          <ul class="plist" data-role="list"></ul>
-          <details class="addbox">
-            <summary>+ Add page</summary>
-            <div class="af-pick" data-role="pick"></div>
-            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
-            <div class="af-row" data-role="manual-row">
-              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
-              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
-            </div>
-            <div class="af-err"></div>
-            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
-          </details>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="grid" id="grid"></div>
 
   <div class="tools">
     <button class="ghost" id="syncBtn" type="button" title="New pages sync automatically. Use this only to also remove pages that were deleted from pages.json.">↻ Full resync</button>
@@ -208,7 +108,25 @@ const REPO_NAME = 'mylab';
 const REPO_BRANCH = 'main';
 
 const KEY = 'mylab_index_v1';
-const CATS = ['money','health','career','passions'];
+// Last-resort fallback only — used if GitHub can't be reached AND there's no
+// local state AND pages.json is unavailable (e.g. first-ever load, offline).
+const DEFAULT_CATS = ['money','health','career','passions'];
+// Populated at load time by discovering folders in the repo. New folders on
+// GitHub appear automatically next load (or via Full resync) — nothing here
+// needs editing when a category is added.
+let CATS = [];
+// Optional per-category styling. Any category without an entry here still
+// works — it just gets a generic folder icon/description.
+const CATEGORY_META = {
+  money:    { icon: '💰', desc: 'Budgets, calculators & planning' },
+  health:   { icon: '🩺', desc: 'Fitness & wellness tools' },
+  career:   { icon: '💼', desc: 'Growth & productivity' },
+  passions: { icon: '🎨', desc: 'Hobbies & side projects' },
+  DB:       { icon: '🗄️', desc: 'Database scripts & references' }
+};
+function metaFor(cat){
+  return CATEGORY_META[cat] || { icon: '📁', desc: 'Files in /' + cat };
+}
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const grid = document.getElementById('grid');
 
@@ -265,14 +183,16 @@ async function fetchManifest(){
   return null;
 }
 // Non-destructive: adds any pages present in pages.json but missing locally.
-// Never removes or overwrites local entries — that's what the "Full resync" button is for.
-async function mergeFromManifest(){
-  const raw = await fetchManifest();
+// Never removes or overwrites local entries — that's what "Full resync" is for.
+// Accepts an already-fetched manifest to avoid a duplicate request during init.
+async function mergeFromManifest(raw){
+  if(raw === undefined) raw = await fetchManifest();
   if(!raw) return false;
   let added = false;
   CATS.forEach(k => {
     const arr = raw[k];
     if(!Array.isArray(arr)) return;
+    if(!state.categories[k]) state.categories[k] = [];
     const localArr = state.categories[k];
     const have = new Set(localArr.map(p => p.file.toLowerCase()));
     arr.forEach(p => {
@@ -298,6 +218,57 @@ async function fetchFolderFiles(cat){
     return data.filter(f => f.type === 'file' && /\.html?$/i.test(f.name)).map(f => f.name);
   }catch(e){ return null; }
 }
+// Lists top-level folders in the repo, so newly added folders show up as
+// categories automatically without any code change.
+async function discoverCategories(){
+  try{
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/?ref=${REPO_BRANCH}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!Array.isArray(data)) return null;
+    return data.filter(f => f.type === 'dir').map(f => f.name);
+  }catch(e){ return null; }
+}
+
+function cardTemplate(cat){
+  const meta = metaFor(cat);
+  const idSafe = cat.replace(/[^a-zA-Z0-9_-]/g, '-');
+  return `
+    <div class="flip" data-cat="${esc(cat)}" id="card-${esc(idSafe)}">
+      <div class="flip-inner">
+        <div class="face front" data-role="front">
+          <div class="badge">${meta.icon}</div><div class="nm">${esc(titleCase(cat))}</div>
+          <div class="desc">${esc(meta.desc)}</div>
+          <div class="ct" data-role="count">0 tools</div>
+        </div>
+        <div class="face back">
+          <div class="back-head"><b>${meta.icon} ${esc(titleCase(cat))}</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
+          <ul class="plist" data-role="list"></ul>
+          <details class="addbox">
+            <summary>+ Add page</summary>
+            <div class="af-pick" data-role="pick"></div>
+            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
+            <div class="af-row" data-role="manual-row">
+              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
+              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
+            </div>
+            <div class="af-err"></div>
+            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
+          </details>
+        </div>
+      </div>
+    </div>`;
+}
+function idFor(cat){ return 'card-' + cat.replace(/[^a-zA-Z0-9_-]/g, '-'); }
+function buildGrid(){
+  grid.innerHTML = CATS.map(cardTemplate).join('');
+  // The 'toggle' event on <details> doesn't bubble, so each box needs its own listener.
+  grid.querySelectorAll('details.addbox').forEach(box => {
+    const cat = box.closest('.flip').dataset.cat;
+    box.addEventListener('toggle', () => { if(box.open) loadPicker(cat, box); });
+  });
+}
 // Confirms a linked page actually resolves on the live site (same-origin, so no CORS issue).
 // Catches typos and files added manually that don't exist / haven't deployed yet.
 async function checkFileExists(cat, file){
@@ -322,7 +293,7 @@ function updateStatLine(){
 
 function renderList(cat){
   const arr = state.categories[cat];
-  const card = document.getElementById('card-' + cat);
+  const card = document.getElementById(idFor(cat));
   card.querySelector('[data-role="count"]').textContent = arr.length + (arr.length === 1 ? ' tool' : ' tools');
   const ul = card.querySelector('[data-role="list"]');
   if(!arr.length){ ul.innerHTML = '<li class="empty">No pages yet</li>'; }
@@ -468,23 +439,29 @@ grid.addEventListener('click', e => {
   }
 });
 
-// Fetch the folder listing each time an Add-page box is opened
-document.querySelectorAll('details.addbox').forEach(box => {
-  const cat = box.closest('.flip').dataset.cat;
-  box.addEventListener('toggle', () => { if(box.open) loadPicker(cat, box); });
-});
+// Combines every known source of category names: live GitHub folders,
+// pages.json keys, and whatever's already in local state. Union, not
+// intersection — nothing gets dropped just because one source is unreachable.
+async function resolveCategories(discovered, raw){
+  const pagesKeys = raw ? Object.keys(raw) : [];
+  const localKeys = state ? Object.keys(state.categories) : [];
+  const set = new Set([...(discovered || []), ...pagesKeys, ...localKeys]);
+  if(set.size === 0) DEFAULT_CATS.forEach(c => set.add(c));
+  return Array.from(set);
+}
 
-// Sync from pages.json (tap-twice, destructive)
+// Sync from pages.json + live GitHub folder list (tap-twice, destructive)
 let syncPending = null;
 document.getElementById('syncBtn').addEventListener('click', async () => {
   const btn = document.getElementById('syncBtn');
   if(syncPending){
     clearTimeout(syncPending); syncPending = null;
     btn.textContent = '↻ Full resync'; btn.classList.remove('confirming');
-    const raw = await fetchManifest();
-    if(!raw){ toast('Could not load pages.json'); return; }
+    const [discovered, raw] = await Promise.all([discoverCategories(), fetchManifest()]);
+    if(!discovered && !raw){ toast('Could not reach GitHub'); return; }
+    CATS = await resolveCategories(discovered, raw);
     state.categories = normalizeManifest(raw);
-    save(); renderAll(); toast('Reloaded from pages.json');
+    save(); buildGrid(); renderAll(); toast('Resynced categories and pages from GitHub');
   } else {
     btn.textContent = 'Tap again to overwrite local edits'; btn.classList.add('confirming');
     syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Full resync'; btn.classList.remove('confirming'); }, 2500);
@@ -505,15 +482,19 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 (async function init(){
+  const [discovered, raw] = await Promise.all([discoverCategories(), fetchManifest()]);
+  CATS = await resolveCategories(discovered, raw);
+
   if(!state){
-    const raw = await fetchManifest();
     state = seedDefault();
     if(raw) state.categories = normalizeManifest(raw);
     save();
   } else {
-    const added = await mergeFromManifest();
+    CATS.forEach(c => { if(!state.categories[c]) state.categories[c] = []; });
+    const added = await mergeFromManifest(raw);
     if(added){ save(); toast('Picked up new pages from pages.json'); }
   }
+  buildGrid();
   if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
   renderAll();
 })();
