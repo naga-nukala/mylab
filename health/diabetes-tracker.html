@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1412">
+<title>Diabetes Tracker · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#2a352f;--tx:#e8efe9;--mut:#8fa196;--mint:#a7e8c5;--coral:#ff8c70;--amber:#ffd27a;--r:14px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:max(16px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px}
+.sub{color:var(--mut);margin:0 0 16px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:480px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat b{display:block;font-size:22px;color:var(--mint);font-variant-numeric:tabular-nums}
+.stat span{color:var(--mut);font-size:12px}
+#spark{margin-top:14px}
+#spark svg{width:100%;height:90px;display:block}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+input,select,textarea{width:100%;background:#0f1412;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;min-height:42px}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+.f{margin-bottom:10px}
+.btns{display:flex;gap:8px;margin-top:4px}
+button{font:inherit;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;min-height:42px}
+.pri{background:var(--mint);color:#0f1412;font-weight:600;flex:1}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--tx)}
+.item{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.val{min-width:74px;text-align:center;border-radius:10px;padding:6px 4px;font-weight:700;font-size:18px;font-variant-numeric:tabular-nums}
+.val small{display:block;font-weight:500;font-size:11px}
+.in{background:rgba(167,232,197,.14);color:var(--mint)}
+.hi{background:rgba(255,140,112,.15);color:var(--coral)}
+.lo{background:rgba(255,210,122,.15);color:var(--amber)}
+.info{flex:1;min-width:0}
+.info div{font-size:13px;color:var(--mut)}
+.info .n{color:var(--tx);overflow-wrap:anywhere}
+.act{display:flex;gap:6px}
+.act button{padding:6px 10px;min-height:34px;font-size:13px;background:transparent;border:1px solid var(--line);color:var(--tx)}
+.act button.armed{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+@media (hover:hover) and (pointer:fine){.act button:hover{border-color:var(--mint)}.ghost:hover{border-color:var(--mint)}}
+.empty{color:var(--mut);text-align:center;padding:18px 0}
+.hint{font-size:12px;color:var(--mut);margin:10px 0 0}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--tx);color:#0f1412;padding:10px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;font-size:14px;z-index:9}
+#toast.on{opacity:1;transform:translateX(-50%)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+.note{color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Diabetes Tracker</h1>
+  <p class="sub">Blood sugar log. Stays on this device — nothing is uploaded.</p>
+
+  <section class="card" id="summary" aria-live="polite">
+    <div class="stats">
+      <div class="stat"><b data-role="latest">–</b><span>Latest (mg/dL)</span></div>
+      <div class="stat"><b data-role="avg">–</b><span>7-day average</span></div>
+      <div class="stat"><b data-role="inrange">–</b><span>In range, 7 days</span></div>
+      <div class="stat"><b data-role="a1c">–</b><span>Estimated HbA1c</span></div>
+    </div>
+    <div id="spark"></div>
+    <div class="row" style="margin-top:12px">
+      <div><label for="tmin">Target low (mg/dL)</label><input id="tmin" type="number" inputmode="numeric" data-range="min"></div>
+      <div><label for="tmax">Target high (mg/dL)</label><input id="tmax" type="number" inputmode="numeric" data-range="max"></div>
+    </div>
+    <p class="hint">Estimated HbA1c comes from your 7-day average and is only a rough guide. Confirm with a lab test. Set your target range with your doctor.</p>
+  </section>
+
+  <section class="card">
+    <div class="row">
+      <div class="f"><label for="fdate">Date</label><input id="fdate" type="date"></div>
+      <div class="f"><label for="ftime">Time</label><input id="ftime" type="time"></div>
+    </div>
+    <div class="row">
+      <div class="f"><label for="fval">Reading (mg/dL)</label><input id="fval" type="number" inputmode="numeric" min="20" max="600" placeholder="e.g. 110"></div>
+      <div class="f"><label for="fctx">When</label>
+        <select id="fctx">
+          <option>Fasting</option><option>Before meal</option><option>After meal</option><option>Bedtime</option><option>Random</option>
+        </select>
+      </div>
+    </div>
+    <div class="f"><label for="fnote">Note (meal, medicine, exercise)</label><input id="fnote" type="text" maxlength="120" placeholder="Optional"></div>
+    <div class="btns">
+      <button class="pri" data-action="save" id="savebtn">Add reading</button>
+      <button class="ghost" data-action="cancel" id="cancelbtn" hidden>Cancel edit</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div id="list"></div>
+  </section>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY='as_diabetes_tracker_v1';
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var state={items:[],min:70,max:180};
+  var editId=null, armedTimer=null, toastTimer=null;
+  var $=function(s,r){return (r||document).querySelector(s)};
+
+  function load(){
+    try{var s=JSON.parse(localStorage.getItem(KEY));
+      if(s&&Array.isArray(s.items)){state.items=s.items;state.min=+s.min||70;state.max=+s.max||180;}
+    }catch(e){}
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+  function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('on')},2200);}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function pad(n){return String(n).padStart(2,'0')}
+  function fmtDate(d){var p=d.split('-');return (+p[2])+'th '+MON[+p[1]-1]+' '+p[0];}
+  function fmtTime(t){var p=t.split(':'),h=+p[0];return (h%12||12)+':'+p[1]+' '+(h>=12?'PM':'AM');}
+  function ts(i){return new Date(i.date+'T'+i.time).getTime();}
+  function cls(v){return v<state.min?'lo':(v>state.max?'hi':'in');}
+  function lbl(v){return v<state.min?'Low':(v>state.max?'High':'In range');}
+
+  function setNow(){
+    var n=new Date();
+    $('#fdate').value=n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate());
+    $('#ftime').value=pad(n.getHours())+':'+pad(n.getMinutes());
+  }
+  function resetForm(){
+    editId=null;setNow();$('#fval').value='';$('#fnote').value='';$('#fctx').selectedIndex=0;
+    $('#savebtn').textContent='Add reading';$('#cancelbtn').hidden=true;
+  }
+
+  function sorted(){return state.items.slice().sort(function(a,b){return ts(b)-ts(a)});}
+
+  /* in-place: numbers only */
+  function updateSummary(){
+    var s=sorted(),now=Date.now(),wk=s.filter(function(i){return now-ts(i)<=7*864e5&&ts(i)<=now+864e5});
+    $('[data-role=latest]').textContent=s.length?s[0].value.toLocaleString('en-IN'):'–';
+    if(wk.length){
+      var avg=wk.reduce(function(a,i){return a+i.value},0)/wk.length;
+      var inr=wk.filter(function(i){return i.value>=state.min&&i.value<=state.max}).length;
+      $('[data-role=avg]').textContent=Math.round(avg).toLocaleString('en-IN');
+      $('[data-role=inrange]').textContent=Math.round(inr/wk.length*100)+'%';
+      $('[data-role=a1c]').textContent=((avg+46.7)/28.7).toFixed(1)+'%';
+    }else{
+      ['avg','inrange','a1c'].forEach(function(r){$('[data-role='+r+']').textContent='–'});
+    }
+    drawSpark();
+  }
+
+  function drawSpark(){
+    var pts=sorted().slice(0,14).reverse(),el=$('#spark');
+    if(pts.length<2){el.innerHTML='';return;}
+    var W=600,H=90,vals=pts.map(function(p){return p.value});
+    var lo=Math.min.apply(null,vals.concat(state.min))-10,hi=Math.max.apply(null,vals.concat(state.max))+10;
+    var y=function(v){return H-((v-lo)/(hi-lo))*H};
+    var x=function(i){return 8+i*(W-16)/(pts.length-1)};
+    var path=pts.map(function(p,i){return (i?'L':'M')+x(i).toFixed(1)+' '+y(p.value).toFixed(1)}).join(' ');
+    var dots=pts.map(function(p,i){var c=p.value<state.min?'#ffd27a':(p.value>state.max?'#ff8c70':'#a7e8c5');
+      return '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(p.value).toFixed(1)+'" r="4" fill="'+c+'"/>'}).join('');
+    el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="Last '+pts.length+' readings against your target range">'+
+      '<rect x="0" y="'+y(state.max).toFixed(1)+'" width="'+W+'" height="'+Math.max(0,y(state.min)-y(state.max)).toFixed(1)+'" fill="rgba(167,232,197,.08)"/>'+
+      '<path d="'+path+'" fill="none" stroke="#8fa196" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'+dots+'</svg>'+
+      '<div class="note">Last '+pts.length+' readings. Shaded band is your target range.</div>';
+  }
+
+  /* structural rebuild: add / edit / delete only */
+  function renderList(){
+    var s=sorted(),box=$('#list');
+    if(!s.length){box.innerHTML='<div class="empty">No readings yet. Enter your first reading above.</div>';updateSummary();return;}
+    box.innerHTML=s.map(function(i){
+      return '<div class="item" data-id="'+i.id+'">'+
+        '<div class="val '+cls(i.value)+'" data-role="val">'+i.value.toLocaleString('en-IN')+'<small>'+lbl(i.value)+'</small></div>'+
+        '<div class="info"><b>'+esc(i.ctx)+'</b><div>'+fmtDate(i.date)+', '+fmtTime(i.time)+'</div>'+(i.note?'<div class="n">'+esc(i.note)+'</div>':'')+'</div>'+
+        '<div class="act"><button data-action="edit" aria-label="Edit reading">Edit</button><button data-action="del" aria-label="Delete reading">Delete</button></div></div>';
+    }).join('');
+    updateSummary();
+  }
+
+  /* range typing: update labels in place, no list rebuild */
+  function refreshLabels(){
+    var byId={};state.items.forEach(function(i){byId[i.id]=i});
+    document.querySelectorAll('#list .item').forEach(function(row){
+      var it=byId[row.getAttribute('data-id')];if(!it)return;
+      var v=$('[data-role=val]',row);v.className='val '+cls(it.value);$('small',v).textContent=lbl(it.value);
+    });
+    updateSummary();
+  }
+
+  function disarm(){
+    clearTimeout(armedTimer);
+    document.querySelectorAll('button.armed').forEach(function(b){b.classList.remove('armed');b.textContent='Delete'});
+  }
+
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-action]');if(!b)return;
+    var a=b.getAttribute('data-action'),row=b.closest('.item'),id=row&&row.getAttribute('data-id');
+    if(a!=='del')disarm();
+    if(a==='save'){
+      var v=parseInt($('#fval').value,10),d=$('#fdate').value,t=$('#ftime').value;
+      if(!v||v<20||v>600){toast('Enter a reading between 20 and 600');$('#fval').focus();return;}
+      if(!d||!t){toast('Pick a date and time');return;}
+      var rec={id:editId||String(Date.now()),date:d,time:t,value:v,ctx:$('#fctx').value,note:$('#fnote').value.trim()};
+      if(editId){state.items=state.items.map(function(i){return i.id===editId?rec:i});toast('Changes saved');}
+      else{state.items.push(rec);toast('Reading added');}
+      save();resetForm();renderList();
+    }else if(a==='cancel'){resetForm();toast('Edit cancelled');
+    }else if(a==='edit'){
+      var it=state.items.filter(function(i){return i.id===id})[0];if(!it)return;
+      editId=id;$('#fdate').value=it.date;$('#ftime').value=it.time;$('#fval').value=it.value;$('#fctx').value=it.ctx;$('#fnote').value=it.note||'';
+      $('#savebtn').textContent='Save changes';$('#cancelbtn').hidden=false;
+      $('#fval').focus();window.scrollTo({top:$('#fval').getBoundingClientRect().top+scrollY-120,behavior:'smooth'});
+    }else if(a==='del'){
+      if(b.classList.contains('armed')){
+        state.items=state.items.filter(function(i){return i.id!==id});
+        if(editId===id)resetForm();
+        save();renderList();toast('Reading deleted');
+      }else{
+        disarm();b.classList.add('armed');b.textContent='Tap again';toast('Tap Delete again to confirm');
+        armedTimer=setTimeout(disarm,2500);
+      }
+    }
+  });
+
+  document.addEventListener('input',function(e){
+    var r=e.target.getAttribute&&e.target.getAttribute('data-range');if(!r)return;
+    var n=parseInt(e.target.value,10);if(!n)return;
+    state[r]=n;save();refreshLabels();
+  });
+
+  load();
+  $('#tmin').value=state.min;$('#tmax').value=state.max;
+  setNow();renderList();
+})();
+</script>
+</body>
+</html>
