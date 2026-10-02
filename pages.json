@@ -9,7 +9,7 @@
 	{ "name": "Financial Plan", "file": "financial-life-plan.html" }
   ],
   "health": [
-  { "name": "Vitamin Tracker", "file": "vitamin-tracker.html" }
+  { "name": "Vitamin Tracker", "file": "vitamins-tracker.html" }
   ],
   "career": [
   { "name": "Time Blocks", "file": "timeblocks.html" },
