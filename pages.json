@@ -9,16 +9,24 @@
 	{ "name": "Financial Plan", "file": "financial-life-plan.html" }
   ],
   "health": [
-  { "name": "Vitamin Tracker", "file": "vitamins-tracker.html" }
+  { "name": "Sleep Score", "file": "sleep-score.html" },
+  { "name": "Vitamins Tracker", "file": "vitamins-tracker.html" },
+  { "name": "Vitamin A", "file": "vitamin-a.html" },
+  { "name": "Vitamin C", "file": "vitamin-c.html" },
+  { "name": "Vitamin D", "file": "vitamin-d.html" },
+  { "name": "Family Health Record", "file": "family-health-record.html" }
   ],
   "career": [
   { "name": "Time Blocks", "file": "timeblocks.html" },
-  { "name": "Career Path", "file": "growth-paths.html" }
+  { "name": "Career Path", "file": "growth-paths.html" },
+  { "name": "Salary Hike Tracker", "file": "salary-hike.html" }
+  
   ],
   "passions": [
+  { "name": "Quick Ideas", "file": "quick-ideas.html" },
   { "name": "Day Planner", "file": "day-planner.html" },
-  { "name": "Apartment Maintenance", "file": "apartment-maintenance.html" },
   { "name": "Books Tracker", "file": "books.html" },
+  { "name": "Travel Checklist", "file": "travel-checklist.html" },
   { "name": "21 Days Habit Tracker", "file": "habit-tracker.html" }
   ]
 }

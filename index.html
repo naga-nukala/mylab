@@ -97,6 +97,17 @@
   button.ghost.confirming{border-color:var(--coral);color:var(--coral);}
   .tool-help{color:var(--sub);font-size:11px;line-height:1.5;margin:8px 2px 0;}
   .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:10px;}
+  .feedback{margin-top:26px;background:rgba(30,41,59,.4);border:1px solid var(--line);border-radius:16px;padding:16px;}
+  .feedback h2{font-size:17px;margin:0 0 6px;}
+  .feedback p{color:var(--sub);font-size:12px;line-height:1.5;margin:0 0 12px;}
+  .feedback label{display:block;color:var(--sub);font-size:12px;margin:10px 0 5px;}
+  .feedback textarea,.feedback input{display:block;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font:inherit;color:var(--txt);}
+  .feedback textarea{min-height:110px;resize:vertical;}
+  .feedback .fb-status{min-height:18px;margin:8px 0 0;}
+  .fb-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .fb-actions button{padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:12px;}
+  .fb-actions #feedbackCopy{border-color:var(--mint);color:var(--mint);}
+  .fb-actions #feedbackClear{color:var(--coral);}
 
   @media (hover:hover) and (pointer:fine){
     .tab:hover,.row:hover,.addrow:hover{border-color:var(--mint);}
@@ -170,6 +181,21 @@
     <b>Export:</b> Download the current page list as <code>pages.json</code>, including local changes, so you can replace the repository manifest.<br>
     <b>Reset local pages:</b> Clear this browser's saved page list and custom categories, then reload from GitHub. Does not delete or hide repository folders; categories such as Tax will return if present there.
   </p>
+  <section class="feedback" aria-labelledby="feedbackTitle">
+    <h2 id="feedbackTitle">Reach out / share feedback</h2>
+    <p>Your draft is saved only in this browser on this device. It is not sent anywhere. Copy or share it when you’re ready, or clear it below.</p>
+    <label for="feedbackMessage">Message</label>
+    <textarea id="feedbackMessage" maxlength="5000" placeholder="What would you like to share?" autocomplete="off"></textarea>
+    <label for="feedbackEmail">Email (optional, if you’d like a reply)</label>
+    <input id="feedbackEmail" type="text" maxlength="254" inputmode="email" autocomplete="email" placeholder="you@example.com">
+    <p class="fb-status" id="feedbackStatus" role="status" aria-live="polite"></p>
+    <div class="fb-actions">
+      <button id="feedbackCopy" type="button">Copy feedback</button>
+      <button id="feedbackMail" type="button">Open email draft</button>
+      <button id="feedbackShare" type="button" hidden>Share…</button>
+      <button id="feedbackClear" type="button">Clear saved draft</button>
+    </div>
+  </section>
   <div class="foot" id="savedFoot"></div>
 </div>
 <div class="overlay" id="chooser" hidden>
@@ -189,6 +215,8 @@ const REPO_BRANCH = 'main';
 
 const KEY = 'mylab_index_v1';
 const TAB_KEY = 'mylab_index_tab';
+const FEEDBACK_KEY = 'mylab_feedback_draft_v1';
+const FEEDBACK_TO = 'nnukala.ai@gmail.com';
 // Last-resort fallback only — used if GitHub can't be reached AND there's no
 // local state AND pages.json is unavailable (e.g. first-ever load, offline).
 const DEFAULT_CATS = ['money','health','career','passions'];
@@ -225,6 +253,45 @@ function toast(msg){
   t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+function feedbackText(){
+  const message = $('feedbackMessage').value.trim();
+  const email = $('feedbackEmail').value.trim();
+  return ['Feedback for My Lab', message, email ? 'Reply to: ' + email : ''].filter(Boolean).join('\n\n');
+}
+function updateFeedbackStatus(message){
+  $('feedbackStatus').textContent = message;
+  $('feedbackClear').disabled = !$('feedbackMessage').value && !$('feedbackEmail').value;
+}
+function saveFeedbackDraft(){
+  const message = $('feedbackMessage').value;
+  const email = $('feedbackEmail').value;
+  try{
+    if(!message && !email){
+      localStorage.removeItem(FEEDBACK_KEY);
+      updateFeedbackStatus('No draft saved.');
+    } else {
+      localStorage.setItem(FEEDBACK_KEY, JSON.stringify({ message, email }));
+      updateFeedbackStatus('Draft saved on this device.');
+    }
+  }catch(error){
+    console.error('Could not save feedback draft.', error);
+    updateFeedbackStatus('Could not save this draft. Check browser storage permissions.');
+  }
+}
+function loadFeedbackDraft(){
+  try{
+    const draft = JSON.parse(localStorage.getItem(FEEDBACK_KEY) || 'null');
+    if(draft && typeof draft === 'object'){
+      $('feedbackMessage').value = typeof draft.message === 'string' ? draft.message : '';
+      $('feedbackEmail').value = typeof draft.email === 'string' ? draft.email : '';
+    }
+    updateFeedbackStatus($('feedbackMessage').value || $('feedbackEmail').value ? 'Draft saved on this device.' : 'No draft saved.');
+  }catch(error){
+    console.error('Could not load feedback draft.', error);
+    updateFeedbackStatus('Could not read the saved draft from browser storage.');
+  }
 }
 
 function seedDefault(){
@@ -636,6 +703,72 @@ document.addEventListener('change', e => {
     save(); refreshCounts();
   }
 });
+
+['feedbackMessage', 'feedbackEmail'].forEach(id => {
+  $(id).addEventListener('input', saveFeedbackDraft);
+});
+$('feedbackCopy').addEventListener('click', async () => {
+  const text = feedbackText();
+  if(!$('feedbackMessage').value.trim()){
+    updateFeedbackStatus('Write a message before copying.');
+    $('feedbackMessage').focus();
+    return;
+  }
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const copyArea = document.createElement('textarea');
+      copyArea.value = text;
+      copyArea.style.position = 'fixed';
+      copyArea.style.opacity = '0';
+      document.body.appendChild(copyArea);
+      copyArea.select();
+      const copied = document.execCommand('copy');
+      copyArea.remove();
+      if(!copied) throw new Error('Clipboard access is unavailable.');
+    }
+    updateFeedbackStatus('Copied. Your feedback has not been sent.');
+  }catch(error){
+    console.error('Could not copy feedback.', error);
+    updateFeedbackStatus('Could not copy automatically. Select and copy your message manually.');
+  }
+});
+$('feedbackMail').addEventListener('click', () => {
+  if(!$('feedbackMessage').value.trim()){
+    updateFeedbackStatus('Write a message before opening an email draft.');
+    $('feedbackMessage').focus();
+    return;
+  }
+  const subject = encodeURIComponent('Feedback for My Lab');
+  const body = encodeURIComponent(feedbackText());
+  window.location.href = 'mailto:' + FEEDBACK_TO + '?subject=' + subject + '&body=' + body;
+  updateFeedbackStatus('Email draft opened if a mail app is configured. Review it and send it from your mail app.');
+});
+$('feedbackShare').hidden = typeof navigator.share !== 'function';
+$('feedbackShare').addEventListener('click', async () => {
+  if(!$('feedbackMessage').value.trim()){
+    updateFeedbackStatus('Write a message before sharing.');
+    $('feedbackMessage').focus();
+    return;
+  }
+  try{
+    await navigator.share({ title: 'My Lab feedback', text: feedbackText() });
+    updateFeedbackStatus('Share sheet opened. Your feedback is not sent unless you choose an app and recipient.');
+  }catch(error){
+    if(error.name !== 'AbortError'){
+      console.error('Could not open the feedback share sheet.', error);
+      updateFeedbackStatus('Could not open sharing on this device. Try Copy feedback instead.');
+    }
+  }
+});
+$('feedbackClear').addEventListener('click', () => {
+  $('feedbackMessage').value = '';
+  $('feedbackEmail').value = '';
+  saveFeedbackDraft();
+  $('feedbackMessage').focus();
+});
+loadFeedbackDraft();
 
 // Typing never re-renders the field being typed in: only in-place updates.
 document.addEventListener('input', e => {
