@@ -10,10 +10,10 @@
   ],
   "health": [
   { "name": "Sleep Score", "file": "sleep-score.html" },
-  { "name": "Vitamins Tracker", "file": "vitamins-tracker.html" },
   { "name": "Vitamin A", "file": "vitamin-a.html" },
   { "name": "Vitamin C", "file": "vitamin-c.html" },
   { "name": "Vitamin D", "file": "vitamin-d.html" },
+  { "name": "Vitamins Tracker", "file": "vitamins-tracker.html" },
   { "name": "Family Health Record", "file": "family-health-record.html" }
   ],
   "career": [
