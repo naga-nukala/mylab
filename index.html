@@ -162,6 +162,7 @@
   <div class="tools">
     <button class="ghost" id="syncBtn" type="button" title="New pages sync automatically. Use this only to also remove pages that were deleted from pages.json.">↻ Full resync</button>
     <button class="ghost" id="exportBtn" type="button">⬇ Export pages.json</button>
+    <button class="ghost" id="resetBtn" type="button" title="Clear pages saved in this browser and reload from GitHub.">↺ Reset local pages</button>
   </div>
   <div class="foot" id="savedFoot"></div>
 </div>
@@ -696,6 +697,19 @@ $('exportBtn').addEventListener('click', () => {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast('Downloaded. Commit it to replace pages.json in the repo');
+});
+
+$('resetBtn').addEventListener('click', () => {
+  if(!window.confirm('Clear locally saved pages, custom categories, and category names? The index will reload from GitHub folders and pages.json. This does not delete repository files.')) return;
+  try{
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(TAB_KEY);
+  }catch(error){
+    console.error('Could not clear saved index data.', error);
+    toast('Could not clear saved index data. Check browser storage permissions.');
+    return;
+  }
+  location.reload();
 });
 
 (async function init(){
