@@ -1,5 +1,5 @@
 {
-  "Financial Plan": [
+  "money": [
     { "name": "Per Day Cost", "file": "perday-cost-calculator.html" },
 	{ "name": "Emergency Fund Calculator", "file": "emergency-fund-calculator.html" },
 	{ "name": "Insurance Calculator", "file": "insurance-coverage-checker.html" },
@@ -7,22 +7,6 @@
 	{ "name": "Children Funds Allocation", "file": "children-corpus-planner.html" },
 	{ "name": "Retirment Planner", "file": "retirement-corpus-calculator.html" },
 	{ "name": "Financial Plan", "file": "financial-life-plan.html" }
-  ],
-  "Small Investment Trackers": [
-  { "name": "FD Tracker", "file": "fd-tracker.html" },
-  { "name": "SSY Tracker", "file": "ssy-contributions.html" },
-  { "name": "PPF Tracker", "file": "ppf-contributions.html" }
-  ],
-  "Little Savings": [
-  { "name": "Mobile Cost Calculator", "file": "mobile-cost-calculator.html" },
-  { "name": "Surplus Allocator", "file": "surplus-allocator.html" },
-  { "name": "Contributions Board", "file": "contributions-board.html" }
-  ],
-  "Tax": [
-  { "name": "Compare Tax Regime", "file": "tax-regime-comparator.html" }
-  ],
-  "money": [
-  { "name": "Flat Score Card", "file": "flat-scorecard.html" }
   ],
   "health": [
   { "name": "Vitamin Tracker", "file": "vitamins-tracker.html" }
