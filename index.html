@@ -95,6 +95,7 @@
   .tools{display:flex;gap:8px;margin-top:26px;}
   button.ghost{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:12px;}
   button.ghost.confirming{border-color:var(--coral);color:var(--coral);}
+  .tool-help{color:var(--sub);font-size:11px;line-height:1.5;margin:8px 2px 0;}
   .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:10px;}
 
   @media (hover:hover) and (pointer:fine){
@@ -164,6 +165,11 @@
     <button class="ghost" id="exportBtn" type="button">⬇ Export pages.json</button>
     <button class="ghost" id="resetBtn" type="button" title="Clear pages saved in this browser and reload from GitHub.">↺ Reset local pages</button>
   </div>
+  <p class="tool-help">
+    <b>Full resync:</b> Re-check GitHub folders and <code>pages.json</code>. Keeps pages added only in this browser; removes synced pages deleted from the manifest. Tap twice to confirm.<br>
+    <b>Export:</b> Download the current page list as <code>pages.json</code>, including local changes, so you can replace the repository manifest.<br>
+    <b>Reset local pages:</b> Clear this browser's saved page list and custom categories, then reload from GitHub. Does not delete or hide repository folders; categories such as Tax will return if present there.
+  </p>
   <div class="foot" id="savedFoot"></div>
 </div>
 <div class="overlay" id="chooser" hidden>
