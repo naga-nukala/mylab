@@ -28,6 +28,10 @@
   .summary .n{font-size:20px;font-weight:800;}
   .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
 
+  .bank-total{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #334155;font-size:13px;}
+  .bank-total:last-child{border-bottom:none;}
+  .bank-name{overflow-wrap:anywhere;}
+  .bank-amount{font-weight:700;white-space:nowrap;}
   .pay-item{border-bottom:1px solid #334155;padding:12px 0;}
   .pay-item:last-child{border-bottom:none;}
   .pay-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
@@ -53,6 +57,11 @@
       <div class="box"><div class="n" id="totalMonthly">₹0</div><div class="l">Monthly Outflow</div></div>
       <div class="box"><div class="n" id="dueSoon" style="color:var(--warn);">0</div><div class="l">Due in 7 Days</div></div>
     </div>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Monthly Amount by Bank</label>
+    <div id="bankTotals"></div>
   </div>
 
   <div class="card">
@@ -183,6 +192,16 @@ function daysUntil(dateStr){
 
 function render(){
   const container = document.getElementById('paymentsList');
+  const bankTotals = {};
+  payments.forEach(p=>{
+    const bank = p.account || 'Bank not specified';
+    bankTotals[bank] = (bankTotals[bank] || 0) + p.amount / p.freq;
+  });
+  document.getElementById('bankTotals').innerHTML = Object.entries(bankTotals).length
+    ? Object.entries(bankTotals).sort((a,b)=>a[0].localeCompare(b[0])).map(([bank, amount])=>
+        `<div class="bank-total"><span class="bank-name">${bank}</span><span class="bank-amount">₹${amount.toFixed(0)}/mo</span></div>`
+      ).join('')
+    : '<div class="empty">Add auto-debits to see the amount to keep in each bank.</div>';
 
   if(payments.length===0){
     container.innerHTML = '<div class="empty">No auto-debits added yet.</div>';
