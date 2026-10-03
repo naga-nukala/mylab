@@ -8,77 +8,100 @@
 <style>
   :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--coral:#ff8c70;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
   *{box-sizing:border-box;}
+  [hidden]{display:none!important;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:
     radial-gradient(1200px 500px at 50% -120px, rgba(167,232,197,.08), transparent),
     var(--bg);
     color:var(--txt);padding:28px 16px 80px;}
+  button,input{font:inherit;color:inherit;}
+  button{cursor:pointer;border:0;background:none;}
+  :focus-visible{outline:2px solid var(--mint);outline-offset:2px;}
   .wrap{max-width:760px;margin:0 auto;}
 
-  header{text-align:center;margin-bottom:26px;}
+  header{text-align:center;margin-bottom:20px;}
   .logo{font-size:34px;line-height:1;}
   h1{font-size:24px;margin:8px 0 4px;letter-spacing:.2px;}
   .tag{color:var(--sub);font-size:13px;margin:0 0 10px;}
   .stat-line{display:inline-block;font-size:11px;color:var(--mint);background:rgba(167,232,197,.1);border:1px solid rgba(167,232,197,.25);padding:4px 12px;border-radius:20px;}
 
-  .grid{display:grid;grid-template-columns:1fr;gap:14px;}
-  @media(min-width:480px){.grid{grid-template-columns:1fr 1fr;}}
-  @media(min-width:760px){.grid{grid-template-columns:repeat(4,1fr);gap:16px;}}
+  .search{width:100%;padding:11px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);margin-bottom:14px;}
 
-  .flip{perspective:1200px;height:190px;}
-  @media(min-width:480px){.flip{height:220px;}}
-  .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;}
-  .flip.open .flip-inner{transform:rotateY(180deg);}
-  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;display:flex;flex-direction:column;}
+  /* tabs */
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:thin;}
+  .tab{flex:none;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:600;display:flex;gap:6px;align-items:center;}
+  .tab em{font-style:normal;color:var(--sub);font-size:11px;}
+  .tab[aria-selected="true"]{border-color:var(--mint);color:var(--mint);background:rgba(167,232,197,.1);}
+  .tab.new{color:var(--mint);border-style:dashed;}
 
-  .front{background:linear-gradient(160deg,var(--card),#182335);align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid var(--line);padding:16px;transition:border-color .2s,transform .15s;}
-  .front:active{transform:scale(.98);}
-  @media (hover:hover) and (pointer:fine){.front:hover{border-color:var(--mint);}}
-  .badge{width:48px;height:48px;border-radius:50%;background:rgba(167,232,197,.12);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:10px;}
-  .front .nm{font-weight:700;font-size:16px;}
-  .front .desc{color:var(--sub);font-size:11px;margin-top:3px;max-width:150px;}
-  .front .ct{color:var(--mint);font-size:11px;margin-top:8px;font-weight:600;}
+  /* new category */
+  .newcat{background:var(--card);border:1px dashed var(--mint);border-radius:14px;padding:12px;margin-bottom:12px;}
+  .newcat p{margin:0 0 8px;color:var(--sub);font-size:12px;line-height:1.45;}
+  .newcat .r{display:flex;gap:8px;}
+  .newcat input,.field input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:14px;}
+  .err{color:var(--coral);font-size:12px;min-height:16px;margin-top:6px;}
 
-  .back{background:linear-gradient(160deg,var(--card),#182335);transform:rotateY(180deg);border:1px solid var(--mint);padding:12px;}
-  .back-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex:0 0 auto;}
-  .back-head b{font-size:13px;}
-  .closeb{background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;}
-  .closeb:focus-visible{outline:2px solid var(--mint);}
-
-  .plist{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0;}
-  .plist li{display:flex;align-items:center;gap:2px;padding:5px 2px;border-bottom:1px solid var(--line);}
-  .plist li.empty{border:none;color:var(--sub);font-size:11px;justify-content:center;padding:12px 0;}
-  .plist a{flex:1;min-width:0;color:var(--txt);text-decoration:none;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .plist a:active{color:var(--mint);}
-  .ib{flex:0 0 auto;width:22px;height:22px;border:none;background:none;color:var(--sub);font-size:12px;padding:0;cursor:pointer;}
-  .ib:focus-visible{outline:2px solid var(--mint);}
-  .ib.del{color:var(--coral);}
-  .ib.del.confirming{background:var(--coral);color:#2b0d05;border-radius:4px;}
+  /* panel */
+  .panel{background:rgba(30,41,59,.4);border:1px solid var(--line);border-radius:16px;padding:16px;}
+  .chead{display:flex;gap:12px;align-items:center;margin-bottom:12px;}
+  .big{width:44px;height:44px;border-radius:50%;background:rgba(167,232,197,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none;}
+  .cname{background:transparent;border:1px dashed transparent;border-radius:8px;padding:2px 8px;font-size:19px;font-weight:700;width:100%;max-width:280px;}
+  .cname:hover,.cname:focus{border-color:var(--line);background:var(--bg);}
+  .chead p{margin:2px 8px 0;color:var(--sub);font-size:12px;}
+  .panel.searching .chead,.panel.searching .addzone{display:none;}
+  .rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .row{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 8px 8px 12px;}
+  .row a{flex:1;min-width:0;color:var(--txt);text-decoration:none;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 0;}
+  .row a:active{color:var(--mint);}
+  .row .cl{color:var(--sub);font-size:11px;flex:none;}
+  .row.empty{justify-content:center;color:var(--sub);font-size:13px;border-style:dashed;padding:14px;}
+  .ib{width:30px;height:30px;border-radius:8px;color:var(--sub);font-size:14px;flex:none;}
   .ib.clr{color:var(--mint);}
+  .ib.del{color:var(--coral);}
+  .ib.del.confirming{background:var(--coral);color:#2b0d05;}
+  .addrow{margin-top:8px;width:100%;padding:11px;border:1.5px dashed var(--line);border-radius:12px;color:var(--mint);font-weight:700;font-size:13px;}
 
-  details.addbox{flex:0 0 auto;margin-top:6px;max-height:130px;overflow-y:auto;}
-  details.addbox summary{color:var(--mint);font-size:11px;cursor:pointer;list-style:none;}
-  details.addbox summary::-webkit-details-marker{display:none;}
-  .af-pick{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
-  .pick-note{color:var(--sub);font-size:10px;}
-  .pick-btn{border:1px solid var(--mint);background:transparent;color:var(--mint);border-radius:6px;padding:3px 6px;font-size:10px;cursor:pointer;}
-  .pick-btn:focus-visible{outline:2px solid var(--mint);}
-  .af-manual{color:var(--sub);font-size:10px;cursor:pointer;background:none;border:none;padding:4px 0;text-decoration:underline;}
-  .af-row{display:none;flex-direction:column;gap:4px;margin-top:6px;}
+  /* add / edit form */
+  .addform{margin-top:10px;border:1px solid var(--mint);border-radius:14px;padding:12px;background:var(--card);}
+  .addform h3{margin:0 0 8px;font-size:14px;}
+  .af-pick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  .pick-note{color:var(--sub);font-size:12px;}
+  .pick-btn{border:1px solid var(--mint);color:var(--mint);border-radius:8px;padding:6px 10px;font-size:12px;}
+  .af-manual{color:var(--sub);font-size:12px;text-decoration:underline;padding:4px 0;}
+  .af-row{display:none;flex-direction:column;gap:6px;margin-top:6px;}
   .af-row.show{display:flex;}
-  .af-row input{width:100%;padding:6px 7px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:12px;}
-  .af-row input:focus{outline:2px solid var(--mint);}
-  .af-err{color:var(--coral);font-size:10px;min-height:12px;margin-top:3px;}
-  .af-btns{display:flex;gap:6px;}
-  .af-save,.af-cancel{flex:1;padding:6px;border-radius:7px;font-size:11px;cursor:pointer;}
-  .af-save{border:none;background:var(--mint);color:#052e16;font-weight:700;}
-  .af-cancel{border:1px solid var(--line);background:transparent;color:var(--txt);}
+  .af-row input{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:14px;}
+  .af-btns{display:flex;gap:8px;margin-top:8px;}
+  .af-save,.af-cancel,.nc-save,.nc-cancel{padding:9px 14px;border-radius:10px;font-size:13px;}
+  .af-save,.nc-save{background:var(--mint);color:#052e16;font-weight:700;}
+  .af-save{flex:1;}
+  .af-cancel,.nc-cancel{border:1px solid var(--line);}
 
+  .arow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .arow .addrow{flex:1;margin-top:0;min-width:130px;}
+  .addrow.dng{color:var(--coral);}
+  .addrow.confirming{border-color:var(--coral);color:var(--coral);}
+  .fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub);margin-bottom:8px;}
+  .fld select{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:14px;color:var(--txt);}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:40;padding:14px;}
+  .sheet{background:var(--card);border:1px solid var(--line);border-radius:18px;width:min(560px,100%);max-height:85vh;overflow:auto;padding:16px;}
+  .sh-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;}
+  .sh-head h2{font-size:17px;margin:0;}
+  .chf{margin:14px 0 4px;font-size:13px;color:var(--mint);}
+  .chf small{color:var(--sub);font-weight:400;}
+  .chk{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer;}
+  .chk input{width:18px;height:18px;accent-color:var(--mint);flex:none;}
+  .chk span{flex:1;min-width:0;}
+  .chk small{color:var(--sub);font-size:11px;}
   .tools{display:flex;gap:8px;margin-top:26px;}
-  button.ghost{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--txt);font-size:12px;cursor:pointer;}
-  button.ghost:focus-visible{outline:2px solid var(--mint);}
+  button.ghost{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:12px;}
   button.ghost.confirming{border-color:var(--coral);color:var(--coral);}
   .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:10px;}
 
+  @media (hover:hover) and (pointer:fine){
+    .tab:hover,.row:hover,.addrow:hover{border-color:var(--mint);}
+    .ib:hover{background:var(--line);}
+    .pick-btn:hover{background:rgba(167,232,197,.12);}
+  }
   .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 16px;border-radius:16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none;z-index:50;max-width:90vw;text-align:center;}
 </style>
 </head>
@@ -87,17 +110,67 @@
   <header>
     <div class="logo">🧪</div>
     <h1>My Lab</h1>
-    <p class="tag">Personal tools, organised by category. Tap a card to open it.</p>
-    <span class="stat-line" id="statLine">0 tools across 4 categories</span>
+    <p class="tag">Personal tools, organised your way. Tap a tab, then a tool to open it.</p>
+    <span class="stat-line" id="statLine">0 tools across 0 categories</span>
   </header>
 
-  <div class="grid" id="grid"></div>
+  <input class="search" id="search" type="search" placeholder="Search all tools" aria-label="Search all tools" autocomplete="off">
+
+  <div class="tabs" id="tabs" role="tablist"></div>
+
+  <div class="newcat" id="newCat" hidden>
+    <p>Make a category of your own, then choose which of your tools go in it. Your tools stay in their GitHub folders. Nothing needs to change in GitHub.</p>
+    <div class="r">
+      <input id="ncName" type="text" placeholder="Category name, e.g. Daily" maxlength="24" autocomplete="off" aria-label="New category name">
+      <button class="nc-save" type="button" data-act="nc-save">Create</button>
+      <button class="nc-cancel" type="button" data-act="nc-cancel">Cancel</button>
+    </div>
+    <div class="err" id="ncErr"></div>
+  </div>
+
+  <section class="panel" id="panel">
+    <div class="chead">
+      <div class="big" id="catIcon"></div>
+      <div>
+        <input class="cname" id="catName" maxlength="24" autocomplete="off" aria-label="Category name (tap to rename)">
+        <p id="catDesc"></p>
+      </div>
+    </div>
+    <ul class="rows" id="rows"></ul>
+    <div class="addzone">
+      <div class="arow" id="addBtns">
+        <button class="addrow" type="button" data-act="add-open">+ Add page</button>
+        <button class="addrow" type="button" data-act="ch-open">☑ Choose pages</button>
+        <button class="addrow dng" id="delGroup" type="button" data-act="del-group" hidden>🗑 Delete category</button>
+      </div>
+      <div class="addform" id="addForm" hidden>
+        <h3 id="formTitle">Add page</h3>
+        <label class="fld" id="fFolderRow" hidden>Which GitHub folder is the file in?<select id="fFolder"></select></label>
+        <div class="af-pick" id="fPick"></div>
+        <button type="button" class="af-manual" data-act="manual-toggle">Type filename manually</button>
+        <div class="af-row" id="fManual">
+          <input type="text" id="fFile" placeholder="filename.html" maxlength="60" autocomplete="off" autocapitalize="off">
+          <input type="text" id="fName" placeholder="Display name (optional)" maxlength="40" autocomplete="off">
+        </div>
+        <label class="fld" id="fGroupRow" hidden style="margin-top:8px">Category<select id="fGroup"></select></label>
+        <div class="err" id="fErr"></div>
+        <div class="af-btns"><button class="af-save" type="button" data-act="save">Save</button><button class="af-cancel" type="button" data-act="cancel">Cancel</button></div>
+      </div>
+    </div>
+  </section>
 
   <div class="tools">
     <button class="ghost" id="syncBtn" type="button" title="New pages sync automatically. Use this only to also remove pages that were deleted from pages.json.">↻ Full resync</button>
     <button class="ghost" id="exportBtn" type="button">⬇ Export pages.json</button>
   </div>
   <div class="foot" id="savedFoot"></div>
+</div>
+<div class="overlay" id="chooser" hidden>
+  <div class="sheet" role="dialog" aria-label="Choose pages">
+    <div class="sh-head"><h2 id="chTitle"></h2><button class="nc-save" type="button" data-act="ch-close">Done</button></div>
+    <div class="pick-note">Tick the tools that belong here. Unticking sends a tool back to its folder category.</div>
+    <div id="chList"></div>
+  </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -108,15 +181,12 @@ const REPO_NAME = 'mylab';
 const REPO_BRANCH = 'main';
 
 const KEY = 'mylab_index_v1';
+const TAB_KEY = 'mylab_index_tab';
 // Last-resort fallback only — used if GitHub can't be reached AND there's no
 // local state AND pages.json is unavailable (e.g. first-ever load, offline).
 const DEFAULT_CATS = ['money','health','career','passions'];
-// Populated at load time by discovering folders in the repo. New folders on
-// GitHub appear automatically next load (or via Full resync) — nothing here
-// needs editing when a category is added.
+// Populated at load time by discovering folders in the repo.
 let CATS = [];
-// Optional per-category styling. Any category without an entry here still
-// works — it just gets a generic folder icon/description.
 const CATEGORY_META = {
   money:    { icon: '💰', desc: 'Budgets, calculators & planning' },
   health:   { icon: '🩺', desc: 'Fitness & wellness tools' },
@@ -128,7 +198,7 @@ function metaFor(cat){
   return CATEGORY_META[cat] || { icon: '📁', desc: 'Files in /' + cat };
 }
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const grid = document.getElementById('grid');
+const $ = id => document.getElementById(id);
 
 function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -143,7 +213,7 @@ function fmtDate(iso){
 }
 let toastTimer;
 function toast(msg){
-  const t = document.getElementById('toast');
+  const t = $('toast');
   t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2400);
@@ -183,8 +253,6 @@ async function fetchManifest(){
   return null;
 }
 // Non-destructive: adds any pages present in pages.json but missing locally.
-// Never removes or overwrites local entries — that's what "Full resync" is for.
-// Accepts an already-fetched manifest to avoid a duplicate request during init.
 async function mergeFromManifest(raw){
   if(raw === undefined) raw = await fetchManifest();
   if(!raw) return false;
@@ -213,12 +281,8 @@ function findKeyCI(obj, key){
   return k ? obj[k] : undefined;
 }
 // Merges a category's local pages against what pages.json said last time (prevArr)
-// and what it says now (nowArr):
-//  - local page still listed now, or never seen upstream at all (local-only add) -> kept
-//  - local page was in the PREVIOUS snapshot but missing from the CURRENT one -> it was
-//    deleted upstream, so it's dropped
-//  - page present now but not yet known locally -> added
-// This is what lets "Full resync" remove deleted pages without discarding pending local adds.
+// and what it says now (nowArr). Lets "Full resync" remove deleted pages without
+// discarding pending local adds.
 function reconcilePages(localArr, prevArr, nowArr){
   const prevSet = new Set((prevArr || []).map(normFile));
   const nowSet = new Set((nowArr || []).map(normFile));
@@ -238,10 +302,10 @@ function reconcilePages(localArr, prevArr, nowArr){
   return result;
 }
 // Live directory listing via GitHub's public contents API (read-only, no token needed for a public repo).
-// Unauthenticated requests are capped at 60/hour per IP — this only fires when an Add-page box opens.
+// Returns null if the folder doesn't exist or GitHub can't be reached.
 async function fetchFolderFiles(cat){
   try{
-    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${cat}?ref=${REPO_BRANCH}`;
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cat)}?ref=${REPO_BRANCH}`;
     const res = await fetch(url, { cache: 'no-store' });
     if(!res.ok) return null;
     const data = await res.json();
@@ -249,8 +313,7 @@ async function fetchFolderFiles(cat){
     return data.filter(f => f.type === 'file' && /\.html?$/i.test(f.name)).map(f => f.name);
   }catch(e){ return null; }
 }
-// Lists top-level folders in the repo, so newly added folders show up as
-// categories automatically without any code change.
+// Lists top-level folders in the repo, so newly added folders show up as categories automatically.
 async function discoverCategories(){
   try{
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/?ref=${REPO_BRANCH}`;
@@ -261,47 +324,7 @@ async function discoverCategories(){
     return data.filter(f => f.type === 'dir').map(f => f.name);
   }catch(e){ return null; }
 }
-
-function cardTemplate(cat){
-  const meta = metaFor(cat);
-  const idSafe = cat.replace(/[^a-zA-Z0-9_-]/g, '-');
-  return `
-    <div class="flip" data-cat="${esc(cat)}" id="card-${esc(idSafe)}">
-      <div class="flip-inner">
-        <div class="face front" data-role="front">
-          <div class="badge">${meta.icon}</div><div class="nm">${esc(titleCase(cat))}</div>
-          <div class="desc">${esc(meta.desc)}</div>
-          <div class="ct" data-role="count">0 tools</div>
-        </div>
-        <div class="face back">
-          <div class="back-head"><b>${meta.icon} ${esc(titleCase(cat))}</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
-          <ul class="plist" data-role="list"></ul>
-          <details class="addbox">
-            <summary>+ Add page</summary>
-            <div class="af-pick" data-role="pick"></div>
-            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
-            <div class="af-row" data-role="manual-row">
-              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
-              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
-            </div>
-            <div class="af-err"></div>
-            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
-          </details>
-        </div>
-      </div>
-    </div>`;
-}
-function idFor(cat){ return 'card-' + cat.replace(/[^a-zA-Z0-9_-]/g, '-'); }
-function buildGrid(){
-  grid.innerHTML = CATS.map(cardTemplate).join('');
-  // The 'toggle' event on <details> doesn't bubble, so each box needs its own listener.
-  grid.querySelectorAll('details.addbox').forEach(box => {
-    const cat = box.closest('.flip').dataset.cat;
-    box.addEventListener('toggle', () => { if(box.open) loadPicker(cat, box); });
-  });
-}
 // Confirms a linked page actually resolves on the live site (same-origin, so no CORS issue).
-// Catches typos and files added manually that don't exist / haven't deployed yet.
 async function checkFileExists(cat, file){
   try{
     const res = await fetch(`${cat}/${encodeURIComponent(file)}`, { method: 'HEAD', cache: 'no-store' });
@@ -310,169 +333,314 @@ async function checkFileExists(cat, file){
 }
 
 let state = loadLocal();
+let active = null, q = '', editing = null, editFolder = null;
+const pendingDel = {};
 
 function save(){
   state.updated = new Date().toISOString();
   try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
-  document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
+  $('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
 }
+function pages(cat){ return (state.categories && state.categories[cat]) || []; }
+function labelFor(cat){ return (state.labels && state.labels[cat]) || titleCase(cat); }
 
+/* Categories = one per GitHub folder (automatic) + any the user creates (state.groups).
+   A page lives in a folder but can be shown in any category via page.group. */
+function userGroups(){ return state.groups || []; }
+function allGroups(){
+  return CATS.map(c => ({ id: 'f:' + c })).concat(userGroups().map(g => ({ id: g.id })));
+}
+function groupExists(id){ return allGroups().some(g => g.id === id); }
+function isUser(id){ return !id.startsWith('f:'); }
+function gName(id){
+  if(!isUser(id)) return labelFor(id.slice(2));
+  const g = userGroups().find(x => x.id === id); return g ? g.name : '';
+}
+function gIcon(id){ return isUser(id) ? '⭐' : metaFor(id.slice(2)).icon; }
+function pageGroup(p, folder){ return (p.group && groupExists(p.group)) ? p.group : 'f:' + folder; }
+function pagesIn(gid){
+  const out = [];
+  CATS.forEach(f => pages(f).forEach(p => { if(pageGroup(p, f) === gid) out.push({ p, folder: f }); }));
+  return out;
+}
+function setGroup(p, folder, gid){ if(gid === 'f:' + folder) delete p.group; else p.group = gid; }
 function updateStatLine(){
-  const total = CATS.reduce((s, k) => s + state.categories[k].length, 0);
-  document.getElementById('statLine').textContent = total + (total === 1 ? ' tool across ' : ' tools across ') + CATS.length + ' categories';
+  const total = CATS.reduce((s, k) => s + pages(k).length, 0), n = allGroups().length;
+  $('statLine').textContent = total + (total === 1 ? ' tool across ' : ' tools across ') + n + (n === 1 ? ' category' : ' categories');
 }
 
-function renderList(cat){
-  const arr = state.categories[cat];
-  const card = document.getElementById(idFor(cat));
-  card.querySelector('[data-role="count"]').textContent = arr.length + (arr.length === 1 ? ' tool' : ' tools');
-  const ul = card.querySelector('[data-role="list"]');
-  if(!arr.length){ ul.innerHTML = '<li class="empty">No pages yet</li>'; }
-  else{
-    ul.innerHTML = arr.map(p => `
-      <li data-id="${p.id}">
-        <a href="${cat}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
-        <button class="ib clr" type="button" data-act="clearcache" title="Clear cached copy" aria-label="Clear cached copy of ${esc(p.name)}">⟳</button>
-        <button class="ib edit" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
-        <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
-      </li>`).join('');
+/* ---------- rendering ---------- */
+function renderTabs(){
+  $('tabs').innerHTML = allGroups().map(g =>
+    `<button class="tab" type="button" role="tab" data-act="tab" data-cat="${esc(g.id)}" aria-selected="${g.id === active && !q.trim()}">${gIcon(g.id)} <span data-lab="${esc(g.id)}">${esc(gName(g.id))}</span><em>${pagesIn(g.id).length}</em></button>`
+  ).join('') + '<button class="tab new" type="button" data-act="newtab">+ New</button>';
+}
+function renderRows(){
+  const ql = q.trim().toLowerCase();
+  let items;
+  if(ql){
+    items = [];
+    CATS.forEach(f => pages(f).forEach(p => {
+      if((p.name + ' ' + p.file).toLowerCase().includes(ql)) items.push({ p, folder: f });
+    }));
+  } else {
+    items = pagesIn(active);
   }
-  updateStatLine();
+  $('rows').innerHTML = items.length ? items.map(({p, folder}) => `
+    <li class="row" data-id="${esc(p.id)}" data-cat="${esc(folder)}">
+      <a href="${esc(folder)}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
+      ${ql ? `<span class="cl">${esc(gName(pageGroup(p, folder)))}</span>` : ''}
+      <button class="ib clr" type="button" data-act="clearcache" title="Clear cached copy" aria-label="Clear cached copy of ${esc(p.name)}">⟳</button>
+      <button class="ib" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
+      <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
+    </li>`).join('')
+    : `<li class="row empty">${ql ? 'No tools match your search' : 'Nothing here yet. Use "Choose pages" below.'}</li>`;
 }
-function renderAll(){ CATS.forEach(renderList); }
+function renderPanel(){
+  $('panel').classList.toggle('searching', !!q.trim());
+  if(active){
+    $('catIcon').textContent = gIcon(active);
+    $('catName').value = gName(active);
+    $('catDesc').textContent = isUser(active) ? 'Your own category. Mix tools from any folder.' : metaFor(active.slice(2)).desc + ' · folder /' + active.slice(2);
+    $('delGroup').hidden = !isUser(active);
+  }
+  renderRows();
+}
+function renderAll(){ renderTabs(); renderPanel(); updateStatLine(); }
+function refreshCounts(){ renderTabs(); renderRows(); updateStatLine(); }
+function buildUI(){
+  const ids = allGroups().map(g => g.id);
+  if(!ids.includes(active)){
+    let saved = null; try{ saved = localStorage.getItem(TAB_KEY); }catch(e){}
+    active = ids.includes(saved) ? saved : ids[0];
+  }
+  renderAll();
+}
+function selectTab(gid){
+  active = gid; q = ''; $('search').value = '';
+  try{ localStorage.setItem(TAB_KEY, gid); }catch(e){}
+  closeForm(); renderAll();
+  const el = document.querySelector('.tab[aria-selected="true"]');
+  if(el) el.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
 
-// Populate the "+ Add page" picker with files that exist in the folder but aren't listed yet
-async function loadPicker(cat, box){
-  const pick = box.querySelector('[data-role="pick"]');
-  pick.innerHTML = '<div class="pick-note">Checking /' + cat + ' on GitHub…</div>';
-  const files = await fetchFolderFiles(cat);
+/* ---------- add / edit form ---------- */
+function curFolder(){ return isUser(active) ? $('fFolder').value : active.slice(2); }
+function openForm(skipPicker){
+  const u = isUser(active);
+  if(u && !editing){
+    $('fFolder').innerHTML = CATS.map(c => `<option value="${esc(c)}">${esc(labelFor(c))} (/${esc(c)})</option>`).join('');
+  }
+  $('fFolderRow').hidden = !u || !!editing;
+  $('fGroupRow').hidden = !editing;
+  $('addForm').hidden = false; $('addBtns').hidden = true;
+  if(!skipPicker) loadPicker(curFolder());
+}
+function closeForm(){
+  editing = null; editFolder = null;
+  $('fFile').value = ''; $('fName').value = ''; $('fErr').textContent = '';
+  $('fManual').classList.remove('show'); $('fPick').innerHTML = '';
+  $('formTitle').textContent = 'Add page';
+  $('addForm').hidden = true; $('addBtns').hidden = false;
+}
+async function loadPicker(folder){
+  const pick = $('fPick');
+  pick.innerHTML = '<div class="pick-note">Checking /' + esc(folder) + ' on GitHub…</div>';
+  const files = await fetchFolderFiles(folder);
+  if(editing || folder !== curFolder()) return;
   if(files === null){
-    pick.innerHTML = '<div class="pick-note">Couldn\'t reach GitHub — use "Type filename manually" below.</div>';
+    pick.innerHTML = '<div class="pick-note">Couldn\'t reach GitHub. Use "Type filename manually" below.</div>';
     return;
   }
-  const have = new Set(state.categories[cat].map(p => p.file.toLowerCase()));
+  const have = new Set(pages(folder).map(p => p.file.toLowerCase()));
   const avail = files.filter(f => !have.has(f.toLowerCase()));
   if(!avail.length){
-    pick.innerHTML = '<div class="pick-note">Every .html file in /' + cat + ' is already listed.</div>';
+    pick.innerHTML = '<div class="pick-note">Every .html file in /' + esc(folder) + ' is already listed.</div>';
     return;
   }
-  pick.innerHTML = avail.map(f => `<button type="button" class="pick-btn" data-file="${esc(f)}">${esc(titleCase(f))}</button>`).join('');
+  pick.innerHTML = avail.map(f => `<button type="button" class="pick-btn" data-act="pick" data-file="${esc(f)}">${esc(titleCase(f))}</button>`).join('');
 }
 
-// Flip open/close, picker, and row actions (event delegation)
-const editing = {}; // cat -> id being edited, or null
-const pendingDel = {}; // "cat:id" -> timer
+/* ---------- choose pages sheet ---------- */
+function openChooser(){
+  $('chTitle').textContent = 'Choose pages for ' + gName(active);
+  const html = CATS.map(f => {
+    const ps = pages(f); if(!ps.length) return '';
+    return `<h4 class="chf">${metaFor(f).icon} ${esc(labelFor(f))} <small>/${esc(f)}</small></h4>` + ps.map(p => {
+      const g = pageGroup(p, f);
+      return `<label class="chk"><input type="checkbox" data-role="cb" data-cat="${esc(f)}" data-id="${esc(p.id)}"${g === active ? ' checked' : ''}><span>${esc(p.name)}</span><small>${g !== active && g !== 'f:' + f ? 'in ' + esc(gName(g)) : ''}</small></label>`;
+    }).join('');
+  }).join('');
+  $('chList').innerHTML = html || '<p class="pick-note">No pages yet. Add some from a folder category first.</p>';
+  $('chooser').hidden = false;
+}
+function closeChooser(){ $('chooser').hidden = true; }
 
-grid.addEventListener('click', e => {
-  const front = e.target.closest('[data-role="front"]');
-  if(front){ front.closest('.flip').classList.add('open'); return; }
+/* ---------- create a category (local, no GitHub folder needed) ---------- */
+function createGroup(){
+  const err = $('ncErr');
+  const name = $('ncName').value.trim();
+  if(!name){ err.textContent = 'Give it a name.'; return; }
+  if(allGroups().some(g => gName(g.id).toLowerCase() === name.toLowerCase())){ err.textContent = 'You already have a category with that name.'; return; }
+  const g = { id: 'g:' + uid(), name };
+  state.groups = userGroups().concat(g);
+  save();
+  $('newCat').hidden = true; $('ncName').value = ''; err.textContent = '';
+  selectTab(g.id); openChooser();
+  toast('Category created. Tick the tools to put in it');
+}
 
-  const close = e.target.closest('[data-role="close"]');
-  if(close){ close.closest('.flip').classList.remove('open'); return; }
+/* ---------- events (delegated) ---------- */
+document.addEventListener('click', e => {
+  if(e.target.id === 'chooser'){ closeChooser(); return; }
+  const el = e.target.closest('[data-act]'); if(!el) return;
+  const act = el.dataset.act;
 
-  const pickBtn = e.target.closest('.pick-btn');
-  if(pickBtn){
-    const box = pickBtn.closest('details.addbox');
-    const file = pickBtn.dataset.file;
-    box.querySelector('.af-file').value = file;
-    box.querySelector('.af-name').value = titleCase(file);
-    box.querySelector('.af-err').textContent = '';
-    box.querySelector('[data-role="manual-row"]').classList.add('show');
-    box.querySelector('.af-name').focus();
+  if(act === 'tab'){ selectTab(el.dataset.cat); return; }
+  if(act === 'newtab'){
+    const box = $('newCat'); box.hidden = !box.hidden;
+    if(!box.hidden) $('ncName').focus();
     return;
   }
-
-  const manualToggle = e.target.closest('[data-role="manual-toggle"]');
-  if(manualToggle){
-    manualToggle.closest('details.addbox').querySelector('[data-role="manual-row"]').classList.toggle('show');
-    return;
-  }
-
-  const btn = e.target.closest('[data-act]');
-  if(btn){
-    const flip = btn.closest('.flip'); const cat = flip.dataset.cat;
-    const li = btn.closest('li'); const id = li.dataset.id;
-    const arr = state.categories[cat];
-    const i = arr.findIndex(p => p.id === id); if(i < 0) return;
-    const key = cat + ':' + id;
-    if(btn.dataset.act === 'edit'){
-      const p = arr[i];
-      const box = flip.querySelector('details.addbox');
-      box.querySelector('.af-file').value = p.file;
-      box.querySelector('.af-name').value = p.name;
-      box.querySelector('.af-err').textContent = '';
-      box.querySelector('[data-role="manual-row"]').classList.add('show');
-      box.open = true;
-      editing[cat] = id;
-      box.querySelector('.af-file').focus();
-    } else if(btn.dataset.act === 'del'){
-      if(pendingDel[key]){
-        clearTimeout(pendingDel[key]); delete pendingDel[key];
-        arr.splice(i, 1); save(); renderList(cat); toast('Page removed');
-      } else {
-        btn.textContent = '✔'; btn.classList.add('confirming'); toast('Tap ✔ again to delete');
-        pendingDel[key] = setTimeout(() => { delete pendingDel[key]; btn.textContent = '✕'; btn.classList.remove('confirming'); }, 2500);
-      }
-    } else if(btn.dataset.act === 'clearcache'){
-      const p = arr[i];
-      const pageUrl = new URL(cat + '/' + p.file, location.href).href;
-      if(navigator.serviceWorker && navigator.serviceWorker.controller){
-        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ONE', url: pageUrl });
-      } else {
-        toast('Offline caching isn\'t active yet — reload this page once, then try again.');
-      }
+  if(act === 'nc-cancel'){ $('newCat').hidden = true; $('ncName').value = ''; $('ncErr').textContent = ''; return; }
+  if(act === 'nc-save'){ createGroup(); return; }
+  if(act === 'ch-open'){ openChooser(); return; }
+  if(act === 'ch-close'){ closeChooser(); return; }
+  if(act === 'del-group'){
+    if(pendingDel.grp){
+      clearTimeout(pendingDel.grp); delete pendingDel.grp;
+      const gid = active;
+      state.groups = userGroups().filter(g => g.id !== gid);
+      CATS.forEach(f => pages(f).forEach(p => { if(p.group === gid) delete p.group; }));
+      save(); selectTab('f:' + CATS[0]);
+      toast('Category deleted. Its tools went back to their folders');
+    } else {
+      el.textContent = 'Tap again to delete'; el.classList.add('confirming');
+      pendingDel.grp = setTimeout(() => { delete pendingDel.grp; el.textContent = '🗑 Delete category'; el.classList.remove('confirming'); }, 2500);
     }
     return;
   }
-
-  const cancel = e.target.closest('.af-cancel');
-  if(cancel){
-    const flip = cancel.closest('.flip'); const cat = flip.dataset.cat;
-    const box = cancel.closest('details.addbox');
-    box.querySelector('.af-file').value = ''; box.querySelector('.af-name').value = '';
-    box.querySelector('.af-err').textContent = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
-    box.open = false;
-    editing[cat] = null;
+  if(act === 'add-open'){ openForm(); return; }
+  if(act === 'manual-toggle'){ $('fManual').classList.toggle('show'); return; }
+  if(act === 'pick'){
+    $('fFile').value = el.dataset.file; $('fName').value = titleCase(el.dataset.file);
+    $('fErr').textContent = ''; $('fManual').classList.add('show'); $('fName').focus();
     return;
   }
-
-  const saveBtn = e.target.closest('.af-save');
-  if(saveBtn){
-    const flip = saveBtn.closest('.flip'); const cat = flip.dataset.cat;
-    const box = saveBtn.closest('details.addbox');
-    const fileIn = box.querySelector('.af-file'); const nameIn = box.querySelector('.af-name');
-    const errBox = box.querySelector('.af-err');
-    let file = fileIn.value.trim();
-    if(!file){ errBox.textContent = 'Pick a file above, or type one below.'; return; }
+  if(act === 'cancel'){ closeForm(); return; }
+  if(act === 'save'){
+    let file = $('fFile').value.trim();
+    if(!file){ $('fErr').textContent = 'Pick a file above, or type one below.'; return; }
     if(!/\.html?$/i.test(file)) file += '.html';
-    const name = nameIn.value.trim() || titleCase(file);
-    const arr = state.categories[cat];
-    const dupCheck = arr.find(p => p.file.toLowerCase() === file.toLowerCase() && p.id !== editing[cat]);
-    if(dupCheck){ errBox.textContent = 'That file is already listed.'; fileIn.focus(); return; }
-    errBox.textContent = '';
-    if(editing[cat]){
-      const p = arr.find(x => x.id === editing[cat]);
-      if(p){ p.file = file; p.name = name; }
+    const name = $('fName').value.trim() || titleCase(file);
+    const folder = editing ? editFolder : curFolder();
+    if(!state.categories[folder]) state.categories[folder] = [];
+    const arr = state.categories[folder];
+    if(arr.find(p => p.file.toLowerCase() === file.toLowerCase() && p.id !== editing)){
+      $('fErr').textContent = 'That file is already listed.'; $('fFile').focus(); return;
+    }
+    if(editing){
+      const p = arr.find(x => x.id === editing);
+      if(p){ p.file = file; p.name = name; setGroup(p, folder, $('fGroup').value); }
       toast('Page updated');
     } else {
-      arr.push({ id: uid(), name, file });
+      const np = { id: uid(), name, file };
+      if(isUser(active)) np.group = active;
+      arr.push(np);
       toast('Page added');
     }
-    editing[cat] = null;
-    fileIn.value = ''; nameIn.value = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
-    box.open = false;
-    save(); renderList(cat); loadPicker(cat, box);
+    closeForm(); save(); refreshCounts();
     // Confirm the link actually resolves on the live site; warn (don't block) if not.
     setTimeout(async () => {
-      const ok = await checkFileExists(cat, file);
-      if(ok === false) toast('Heads up: /' + cat + '/' + file + ' isn\'t live yet — check the name or wait for Pages to deploy.');
+      const ok = await checkFileExists(folder, file);
+      if(ok === false) toast('Heads up: /' + folder + '/' + file + ' isn\'t live yet. Check the name or wait for Pages to deploy.');
     }, 2600);
+    return;
+  }
+
+  // row actions
+  const li = el.closest('li.row'); if(!li) return;
+  const cat = li.dataset.cat, id = li.dataset.id;
+  const arr = state.categories[cat] || [];
+  const i = arr.findIndex(p => p.id === id); if(i < 0) return;
+  const key = cat + ':' + id;
+  if(act === 'edit'){
+    const p = arr[i], g = pageGroup(p, cat);
+    if(g !== active || q.trim()){ active = g; q = ''; $('search').value = ''; renderAll(); }
+    closeForm();
+    $('fFile').value = p.file; $('fName').value = p.name;
+    $('fManual').classList.add('show'); $('formTitle').textContent = 'Edit page';
+    editing = id; editFolder = cat;
+    $('fGroup').innerHTML = allGroups().map(x => `<option value="${esc(x.id)}">${esc(gName(x.id))}</option>`).join('');
+    openForm(true);
+    $('fGroup').value = g; $('fName').focus();
+  } else if(act === 'del'){
+    if(pendingDel[key]){
+      clearTimeout(pendingDel[key]); delete pendingDel[key];
+      arr.splice(i, 1); save(); refreshCounts(); toast('Page removed');
+    } else {
+      el.textContent = '✔'; el.classList.add('confirming'); toast('Tap ✔ again to delete');
+      pendingDel[key] = setTimeout(() => { delete pendingDel[key]; el.textContent = '✕'; el.classList.remove('confirming'); }, 2500);
+    }
+  } else if(act === 'clearcache'){
+    const p = arr[i];
+    const pageUrl = new URL(cat + '/' + p.file, location.href).href;
+    if(navigator.serviceWorker && navigator.serviceWorker.controller){
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ONE', url: pageUrl });
+    } else {
+      toast('Offline caching isn\'t active yet. Reload this page once, then try again.');
+    }
   }
 });
 
-// Combines every known source of category names: live GitHub folders,
-// pages.json keys, and whatever's already in local state. Union, not
-// intersection — nothing gets dropped just because one source is unreachable.
+document.addEventListener('change', e => {
+  const el = e.target;
+  if(el.id === 'fFolder'){ loadPicker(curFolder()); return; }
+  if(el.dataset && el.dataset.role === 'cb'){
+    const folder = el.dataset.cat;
+    const p = pages(folder).find(x => x.id === el.dataset.id); if(!p) return;
+    if(el.checked){
+      setGroup(p, folder, active);
+    } else {
+      if(active === 'f:' + folder){ el.checked = true; toast('Tick it inside another category to move it'); return; }
+      setGroup(p, folder, 'f:' + folder);
+    }
+    const g = pageGroup(p, folder);
+    const tag = el.closest('label').querySelector('small');
+    if(tag) tag.textContent = (g !== active && g !== 'f:' + folder) ? 'in ' + gName(g) : '';
+    save(); refreshCounts();
+  }
+});
+
+// Typing never re-renders the field being typed in: only in-place updates.
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el.id === 'search'){ q = el.value; renderTabs(); renderPanel(); return; }
+  if(el.id === 'catName' && active){
+    const v = el.value.trim();
+    if(isUser(active)){
+      const g = userGroups().find(x => x.id === active); if(g && v) g.name = v;
+    } else {
+      const f = active.slice(2);
+      state.labels = state.labels || {};
+      if(v && v !== titleCase(f)) state.labels[f] = v; else delete state.labels[f];
+    }
+    save();
+    const lab = document.querySelector('[data-lab="' + CSS.escape(active) + '"]');
+    if(lab) lab.textContent = v || gName(active);
+  }
+});
+document.addEventListener('focusout', e => {
+  if(e.target.id === 'catName' && !e.target.value.trim() && active) e.target.value = gName(active);
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && !$('chooser').hidden){ closeChooser(); return; }
+  if(e.key !== 'Enter') return;
+  if(e.target.id === 'ncName') createGroup();
+  else if(e.target.id === 'fFile' || e.target.id === 'fName') document.querySelector('[data-act="save"]').click();
+});
+
+/* ---------- sync / export (unchanged behaviour) ---------- */
 async function resolveCategories(discovered, raw){
   const pagesKeys = raw ? Object.keys(raw) : [];
   const localKeys = state ? Object.keys(state.categories) : [];
@@ -481,10 +649,9 @@ async function resolveCategories(discovered, raw){
   return Array.from(set);
 }
 
-// Sync from pages.json + live GitHub folder list (tap-twice, destructive)
 let syncPending = null;
-document.getElementById('syncBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('syncBtn');
+$('syncBtn').addEventListener('click', async () => {
+  const btn = $('syncBtn');
   if(syncPending){
     clearTimeout(syncPending); syncPending = null;
     btn.textContent = '↻ Full resync'; btn.classList.remove('confirming');
@@ -504,31 +671,30 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
       const nowArr = findKeyCI(rawNow, cat) || [];
       const merged = reconcilePages(localArr, prevArr, nowArr);
       const stillExists = discoveredNow.some(f => f.toLowerCase() === cat.toLowerCase()) || Object.keys(rawNow).some(k => k.toLowerCase() === cat.toLowerCase());
-      if(!stillExists && merged.length === 0) return; // genuinely gone upstream, nothing local to keep
+      if(!stillExists && merged.length === 0) return;
       newCategories[existingKey] = merged;
     });
     state.categories = newCategories;
     CATS = Object.keys(newCategories);
     state.lastSynced = { folders: discovered || prevFolders, manifest: raw || prevManifest };
-    save(); buildGrid(); renderAll();
-    toast('Resynced — kept pending local pages, removed ones deleted upstream');
+    save(); buildUI();
+    toast('Resynced. Kept pending local pages, removed ones deleted upstream');
   } else {
     btn.textContent = 'Tap again to overwrite local edits'; btn.classList.add('confirming');
     syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Full resync'; btn.classList.remove('confirming'); }, 2500);
   }
 });
 
-// Export current state as pages.json
-document.getElementById('exportBtn').addEventListener('click', () => {
+$('exportBtn').addEventListener('click', () => {
   const out = {};
-  CATS.forEach(k => { out[k] = state.categories[k].map(p => ({ name: p.name, file: p.file })); });
+  CATS.forEach(k => { out[k] = pages(k).map(p => ({ name: p.name, file: p.file })); });
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = 'pages.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast('Downloaded — commit it to replace pages.json in the repo');
+  toast('Downloaded. Commit it to replace pages.json in the repo');
 });
 
 (async function init(){
@@ -548,16 +714,15 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     save();
     if(added) toast('Picked up new pages from pages.json');
   }
-  buildGrid();
-  if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
-  renderAll();
+  buildUI();
+  if(state.updated) $('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
 })();
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(() => {});
   navigator.serviceWorker.addEventListener('message', e => {
     const d = e.data || {};
-    if(d.type === 'CLEAR_ONE_RESULT') toast(d.ok ? 'Cleared the cached copy — next open fetches the latest version.' : 'That page had no cached copy yet.');
+    if(d.type === 'CLEAR_ONE_RESULT') toast(d.ok ? 'Cleared the cached copy. Next open fetches the latest version.' : 'That page had no cached copy yet.');
     if(d.type === 'CLEAR_ALL_RESULT') toast(d.ok ? 'Offline cache cleared.' : 'Nothing to clear.');
   });
 }

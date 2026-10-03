@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<title>My Lab</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--coral:#ff8c70;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:
+    radial-gradient(1200px 500px at 50% -120px, rgba(167,232,197,.08), transparent),
+    var(--bg);
+    color:var(--txt);padding:28px 16px 80px;}
+  .wrap{max-width:760px;margin:0 auto;}
+
+  header{text-align:center;margin-bottom:26px;}
+  .logo{font-size:34px;line-height:1;}
+  h1{font-size:24px;margin:8px 0 4px;letter-spacing:.2px;}
+  .tag{color:var(--sub);font-size:13px;margin:0 0 10px;}
+  .stat-line{display:inline-block;font-size:11px;color:var(--mint);background:rgba(167,232,197,.1);border:1px solid rgba(167,232,197,.25);padding:4px 12px;border-radius:20px;}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:480px){.grid{grid-template-columns:1fr 1fr;}}
+  @media(min-width:760px){.grid{grid-template-columns:repeat(4,1fr);gap:16px;}}
+
+  .flip{perspective:1200px;height:190px;}
+  @media(min-width:480px){.flip{height:220px;}}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .45s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;}
+  .flip.open .flip-inner{transform:rotateY(180deg);}
+  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;display:flex;flex-direction:column;}
+
+  .front{background:linear-gradient(160deg,var(--card),#182335);align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid var(--line);padding:16px;transition:border-color .2s,transform .15s;}
+  .front:active{transform:scale(.98);}
+  @media (hover:hover) and (pointer:fine){.front:hover{border-color:var(--mint);}}
+  .badge{width:48px;height:48px;border-radius:50%;background:rgba(167,232,197,.12);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:10px;}
+  .front .nm{font-weight:700;font-size:16px;}
+  .front .desc{color:var(--sub);font-size:11px;margin-top:3px;max-width:150px;}
+  .front .ct{color:var(--mint);font-size:11px;margin-top:8px;font-weight:600;}
+
+  .back{background:linear-gradient(160deg,var(--card),#182335);transform:rotateY(180deg);border:1px solid var(--mint);padding:12px;}
+  .back-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex:0 0 auto;}
+  .back-head b{font-size:13px;}
+  .closeb{background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;}
+  .closeb:focus-visible{outline:2px solid var(--mint);}
+
+  .plist{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0;}
+  .plist li{display:flex;align-items:center;gap:2px;padding:5px 2px;border-bottom:1px solid var(--line);}
+  .plist li.empty{border:none;color:var(--sub);font-size:11px;justify-content:center;padding:12px 0;}
+  .plist a{flex:1;min-width:0;color:var(--txt);text-decoration:none;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .plist a:active{color:var(--mint);}
+  .ib{flex:0 0 auto;width:22px;height:22px;border:none;background:none;color:var(--sub);font-size:12px;padding:0;cursor:pointer;}
+  .ib:focus-visible{outline:2px solid var(--mint);}
+  .ib.del{color:var(--coral);}
+  .ib.del.confirming{background:var(--coral);color:#2b0d05;border-radius:4px;}
+  .ib.clr{color:var(--mint);}
+
+  details.addbox{flex:0 0 auto;margin-top:6px;max-height:130px;overflow-y:auto;}
+  details.addbox summary{color:var(--mint);font-size:11px;cursor:pointer;list-style:none;}
+  details.addbox summary::-webkit-details-marker{display:none;}
+  .af-pick{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
+  .pick-note{color:var(--sub);font-size:10px;}
+  .pick-btn{border:1px solid var(--mint);background:transparent;color:var(--mint);border-radius:6px;padding:3px 6px;font-size:10px;cursor:pointer;}
+  .pick-btn:focus-visible{outline:2px solid var(--mint);}
+  .af-manual{color:var(--sub);font-size:10px;cursor:pointer;background:none;border:none;padding:4px 0;text-decoration:underline;}
+  .af-row{display:none;flex-direction:column;gap:4px;margin-top:6px;}
+  .af-row.show{display:flex;}
+  .af-row input{width:100%;padding:6px 7px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:12px;}
+  .af-row input:focus{outline:2px solid var(--mint);}
+  .af-err{color:var(--coral);font-size:10px;min-height:12px;margin-top:3px;}
+  .af-btns{display:flex;gap:6px;}
+  .af-save,.af-cancel{flex:1;padding:6px;border-radius:7px;font-size:11px;cursor:pointer;}
+  .af-save{border:none;background:var(--mint);color:#052e16;font-weight:700;}
+  .af-cancel{border:1px solid var(--line);background:transparent;color:var(--txt);}
+
+  .tools{display:flex;gap:8px;margin-top:26px;}
+  button.ghost{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--txt);font-size:12px;cursor:pointer;}
+  button.ghost:focus-visible{outline:2px solid var(--mint);}
+  button.ghost.confirming{border-color:var(--coral);color:var(--coral);}
+  .foot{text-align:center;color:var(--sub);font-size:11px;margin-top:10px;}
+
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 16px;border-radius:16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none;z-index:50;max-width:90vw;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🧪</div>
+    <h1>My Lab</h1>
+    <p class="tag">Personal tools, organised by category. Tap a card to open it.</p>
+    <span class="stat-line" id="statLine">0 tools across 4 categories</span>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="tools">
+    <button class="ghost" id="syncBtn" type="button" title="New pages sync automatically. Use this only to also remove pages that were deleted from pages.json.">↻ Full resync</button>
+    <button class="ghost" id="exportBtn" type="button">⬇ Export pages.json</button>
+  </div>
+  <div class="foot" id="savedFoot"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// Edit these if the repo is ever renamed/forked/moved to a different default branch.
+const REPO_OWNER = 'naga-nukala';
+const REPO_NAME = 'mylab';
+const REPO_BRANCH = 'main';
+
+const KEY = 'mylab_index_v1';
+// Last-resort fallback only — used if GitHub can't be reached AND there's no
+// local state AND pages.json is unavailable (e.g. first-ever load, offline).
+const DEFAULT_CATS = ['money','health','career','passions'];
+// Populated at load time by discovering folders in the repo. New folders on
+// GitHub appear automatically next load (or via Full resync) — nothing here
+// needs editing when a category is added.
+let CATS = [];
+// Optional per-category styling. Any category without an entry here still
+// works — it just gets a generic folder icon/description.
+const CATEGORY_META = {
+  money:    { icon: '💰', desc: 'Budgets, calculators & planning' },
+  health:   { icon: '🩺', desc: 'Fitness & wellness tools' },
+  career:   { icon: '💼', desc: 'Growth & productivity' },
+  passions: { icon: '🎨', desc: 'Hobbies & side projects' },
+  DB:       { icon: '🗄️', desc: 'Database scripts & references' }
+};
+function metaFor(cat){
+  return CATEGORY_META[cat] || { icon: '📁', desc: 'Files in /' + cat };
+}
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const grid = document.getElementById('grid');
+
+function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function titleCase(file){
+  return file.replace(/\.html?$/i,'').replace(/[-_]+/g,' ').trim().replace(/\b\w/g, c => c.toUpperCase()) || file;
+}
+function fmtDate(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const n = d.getDate(), m = n % 100;
+  const suffix = (m >= 11 && m <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th');
+  return n + suffix + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+function seedDefault(){
+  const c = {}; CATS.forEach(k => c[k] = []);
+  return { updated: null, categories: c };
+}
+function loadLocal(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && s.categories) return s;
+  }catch(e){}
+  return null;
+}
+function normalizeManifest(raw){
+  const c = {}; CATS.forEach(k => c[k] = []);
+  if(raw){
+    CATS.forEach(k => {
+      const arr = raw[k];
+      if(Array.isArray(arr)){
+        c[k] = arr.map(p => {
+          if(typeof p === 'string') return { id: uid(), name: titleCase(p), file: p };
+          return { id: p.id || uid(), name: p.name || titleCase(p.file), file: p.file };
+        }).filter(p => p.file);
+      }
+    });
+  }
+  return c;
+}
+async function fetchManifest(){
+  try{
+    const res = await fetch('./pages.json', { cache: 'no-store' });
+    if(res.ok) return await res.json();
+  }catch(e){}
+  return null;
+}
+// Non-destructive: adds any pages present in pages.json but missing locally.
+// Never removes or overwrites local entries — that's what "Full resync" is for.
+// Accepts an already-fetched manifest to avoid a duplicate request during init.
+async function mergeFromManifest(raw){
+  if(raw === undefined) raw = await fetchManifest();
+  if(!raw) return false;
+  let added = false;
+  CATS.forEach(k => {
+    const arr = raw[k];
+    if(!Array.isArray(arr)) return;
+    if(!state.categories[k]) state.categories[k] = [];
+    const localArr = state.categories[k];
+    const have = new Set(localArr.map(p => p.file.toLowerCase()));
+    arr.forEach(p => {
+      const file = typeof p === 'string' ? p : p.file;
+      if(!file || have.has(file.toLowerCase())) return;
+      const name = typeof p === 'string' ? titleCase(p) : (p.name || titleCase(p.file));
+      localArr.push({ id: (p && p.id) || uid(), name, file });
+      have.add(file.toLowerCase());
+      added = true;
+    });
+  });
+  return added;
+}
+function normFile(p){ return (typeof p === 'string' ? p : (p && p.file) || '').toLowerCase(); }
+function findKeyCI(obj, key){
+  if(!obj) return undefined;
+  const k = Object.keys(obj).find(x => x.toLowerCase() === key.toLowerCase());
+  return k ? obj[k] : undefined;
+}
+// Merges a category's local pages against what pages.json said last time (prevArr)
+// and what it says now (nowArr):
+//  - local page still listed now, or never seen upstream at all (local-only add) -> kept
+//  - local page was in the PREVIOUS snapshot but missing from the CURRENT one -> it was
+//    deleted upstream, so it's dropped
+//  - page present now but not yet known locally -> added
+// This is what lets "Full resync" remove deleted pages without discarding pending local adds.
+function reconcilePages(localArr, prevArr, nowArr){
+  const prevSet = new Set((prevArr || []).map(normFile));
+  const nowSet = new Set((nowArr || []).map(normFile));
+  const result = []; const seen = new Set();
+  (localArr || []).forEach(p => {
+    const key = (p.file || '').toLowerCase();
+    if(nowSet.has(key) || !prevSet.has(key)){ result.push(p); seen.add(key); }
+  });
+  (nowArr || []).forEach(raw => {
+    const key = normFile(raw);
+    if(!key || seen.has(key)) return;
+    const file = typeof raw === 'string' ? raw : raw.file;
+    const name = typeof raw === 'string' ? titleCase(raw) : (raw.name || titleCase(raw.file));
+    result.push({ id: (raw && raw.id) || uid(), name, file });
+    seen.add(key);
+  });
+  return result;
+}
+// Live directory listing via GitHub's public contents API (read-only, no token needed for a public repo).
+// Unauthenticated requests are capped at 60/hour per IP — this only fires when an Add-page box opens.
+async function fetchFolderFiles(cat){
+  try{
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${cat}?ref=${REPO_BRANCH}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!Array.isArray(data)) return null;
+    return data.filter(f => f.type === 'file' && /\.html?$/i.test(f.name)).map(f => f.name);
+  }catch(e){ return null; }
+}
+// Lists top-level folders in the repo, so newly added folders show up as
+// categories automatically without any code change.
+async function discoverCategories(){
+  try{
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/?ref=${REPO_BRANCH}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!Array.isArray(data)) return null;
+    return data.filter(f => f.type === 'dir').map(f => f.name);
+  }catch(e){ return null; }
+}
+
+function cardTemplate(cat){
+  const meta = metaFor(cat);
+  const idSafe = cat.replace(/[^a-zA-Z0-9_-]/g, '-');
+  return `
+    <div class="flip" data-cat="${esc(cat)}" id="card-${esc(idSafe)}">
+      <div class="flip-inner">
+        <div class="face front" data-role="front">
+          <div class="badge">${meta.icon}</div><div class="nm">${esc(titleCase(cat))}</div>
+          <div class="desc">${esc(meta.desc)}</div>
+          <div class="ct" data-role="count">0 tools</div>
+        </div>
+        <div class="face back">
+          <div class="back-head"><b>${meta.icon} ${esc(titleCase(cat))}</b><button class="closeb" data-role="close" aria-label="Close">✕</button></div>
+          <ul class="plist" data-role="list"></ul>
+          <details class="addbox">
+            <summary>+ Add page</summary>
+            <div class="af-pick" data-role="pick"></div>
+            <button type="button" class="af-manual" data-role="manual-toggle">Type filename manually</button>
+            <div class="af-row" data-role="manual-row">
+              <input type="text" class="af-file" placeholder="filename.html" maxlength="60">
+              <input type="text" class="af-name" placeholder="Display name (optional)" maxlength="40">
+            </div>
+            <div class="af-err"></div>
+            <div class="af-btns"><button class="af-save" type="button">Save</button><button class="af-cancel" type="button">Cancel</button></div>
+          </details>
+        </div>
+      </div>
+    </div>`;
+}
+function idFor(cat){ return 'card-' + cat.replace(/[^a-zA-Z0-9_-]/g, '-'); }
+function buildGrid(){
+  grid.innerHTML = CATS.map(cardTemplate).join('');
+  // The 'toggle' event on <details> doesn't bubble, so each box needs its own listener.
+  grid.querySelectorAll('details.addbox').forEach(box => {
+    const cat = box.closest('.flip').dataset.cat;
+    box.addEventListener('toggle', () => { if(box.open) loadPicker(cat, box); });
+  });
+}
+// Confirms a linked page actually resolves on the live site (same-origin, so no CORS issue).
+// Catches typos and files added manually that don't exist / haven't deployed yet.
+async function checkFileExists(cat, file){
+  try{
+    const res = await fetch(`${cat}/${encodeURIComponent(file)}`, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  }catch(e){ return null; }
+}
+
+let state = loadLocal();
+
+function save(){
+  state.updated = new Date().toISOString();
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
+}
+
+function updateStatLine(){
+  const total = CATS.reduce((s, k) => s + state.categories[k].length, 0);
+  document.getElementById('statLine').textContent = total + (total === 1 ? ' tool across ' : ' tools across ') + CATS.length + ' categories';
+}
+
+function renderList(cat){
+  const arr = state.categories[cat];
+  const card = document.getElementById(idFor(cat));
+  card.querySelector('[data-role="count"]').textContent = arr.length + (arr.length === 1 ? ' tool' : ' tools');
+  const ul = card.querySelector('[data-role="list"]');
+  if(!arr.length){ ul.innerHTML = '<li class="empty">No pages yet</li>'; }
+  else{
+    ul.innerHTML = arr.map(p => `
+      <li data-id="${p.id}">
+        <a href="${cat}/${encodeURIComponent(p.file)}">${esc(p.name)}</a>
+        <button class="ib clr" type="button" data-act="clearcache" title="Clear cached copy" aria-label="Clear cached copy of ${esc(p.name)}">⟳</button>
+        <button class="ib edit" type="button" data-act="edit" title="Edit" aria-label="Edit ${esc(p.name)}">✎</button>
+        <button class="ib del" type="button" data-act="del" title="Delete" aria-label="Delete ${esc(p.name)}">✕</button>
+      </li>`).join('');
+  }
+  updateStatLine();
+}
+function renderAll(){ CATS.forEach(renderList); }
+
+// Populate the "+ Add page" picker with files that exist in the folder but aren't listed yet
+async function loadPicker(cat, box){
+  const pick = box.querySelector('[data-role="pick"]');
+  pick.innerHTML = '<div class="pick-note">Checking /' + cat + ' on GitHub…</div>';
+  const files = await fetchFolderFiles(cat);
+  if(files === null){
+    pick.innerHTML = '<div class="pick-note">Couldn\'t reach GitHub — use "Type filename manually" below.</div>';
+    return;
+  }
+  const have = new Set(state.categories[cat].map(p => p.file.toLowerCase()));
+  const avail = files.filter(f => !have.has(f.toLowerCase()));
+  if(!avail.length){
+    pick.innerHTML = '<div class="pick-note">Every .html file in /' + cat + ' is already listed.</div>';
+    return;
+  }
+  pick.innerHTML = avail.map(f => `<button type="button" class="pick-btn" data-file="${esc(f)}">${esc(titleCase(f))}</button>`).join('');
+}
+
+// Flip open/close, picker, and row actions (event delegation)
+const editing = {}; // cat -> id being edited, or null
+const pendingDel = {}; // "cat:id" -> timer
+
+grid.addEventListener('click', e => {
+  const front = e.target.closest('[data-role="front"]');
+  if(front){ front.closest('.flip').classList.add('open'); return; }
+
+  const close = e.target.closest('[data-role="close"]');
+  if(close){ close.closest('.flip').classList.remove('open'); return; }
+
+  const pickBtn = e.target.closest('.pick-btn');
+  if(pickBtn){
+    const box = pickBtn.closest('details.addbox');
+    const file = pickBtn.dataset.file;
+    box.querySelector('.af-file').value = file;
+    box.querySelector('.af-name').value = titleCase(file);
+    box.querySelector('.af-err').textContent = '';
+    box.querySelector('[data-role="manual-row"]').classList.add('show');
+    box.querySelector('.af-name').focus();
+    return;
+  }
+
+  const manualToggle = e.target.closest('[data-role="manual-toggle"]');
+  if(manualToggle){
+    manualToggle.closest('details.addbox').querySelector('[data-role="manual-row"]').classList.toggle('show');
+    return;
+  }
+
+  const btn = e.target.closest('[data-act]');
+  if(btn){
+    const flip = btn.closest('.flip'); const cat = flip.dataset.cat;
+    const li = btn.closest('li'); const id = li.dataset.id;
+    const arr = state.categories[cat];
+    const i = arr.findIndex(p => p.id === id); if(i < 0) return;
+    const key = cat + ':' + id;
+    if(btn.dataset.act === 'edit'){
+      const p = arr[i];
+      const box = flip.querySelector('details.addbox');
+      box.querySelector('.af-file').value = p.file;
+      box.querySelector('.af-name').value = p.name;
+      box.querySelector('.af-err').textContent = '';
+      box.querySelector('[data-role="manual-row"]').classList.add('show');
+      box.open = true;
+      editing[cat] = id;
+      box.querySelector('.af-file').focus();
+    } else if(btn.dataset.act === 'del'){
+      if(pendingDel[key]){
+        clearTimeout(pendingDel[key]); delete pendingDel[key];
+        arr.splice(i, 1); save(); renderList(cat); toast('Page removed');
+      } else {
+        btn.textContent = '✔'; btn.classList.add('confirming'); toast('Tap ✔ again to delete');
+        pendingDel[key] = setTimeout(() => { delete pendingDel[key]; btn.textContent = '✕'; btn.classList.remove('confirming'); }, 2500);
+      }
+    } else if(btn.dataset.act === 'clearcache'){
+      const p = arr[i];
+      const pageUrl = new URL(cat + '/' + p.file, location.href).href;
+      if(navigator.serviceWorker && navigator.serviceWorker.controller){
+        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ONE', url: pageUrl });
+      } else {
+        toast('Offline caching isn\'t active yet — reload this page once, then try again.');
+      }
+    }
+    return;
+  }
+
+  const cancel = e.target.closest('.af-cancel');
+  if(cancel){
+    const flip = cancel.closest('.flip'); const cat = flip.dataset.cat;
+    const box = cancel.closest('details.addbox');
+    box.querySelector('.af-file').value = ''; box.querySelector('.af-name').value = '';
+    box.querySelector('.af-err').textContent = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
+    box.open = false;
+    editing[cat] = null;
+    return;
+  }
+
+  const saveBtn = e.target.closest('.af-save');
+  if(saveBtn){
+    const flip = saveBtn.closest('.flip'); const cat = flip.dataset.cat;
+    const box = saveBtn.closest('details.addbox');
+    const fileIn = box.querySelector('.af-file'); const nameIn = box.querySelector('.af-name');
+    const errBox = box.querySelector('.af-err');
+    let file = fileIn.value.trim();
+    if(!file){ errBox.textContent = 'Pick a file above, or type one below.'; return; }
+    if(!/\.html?$/i.test(file)) file += '.html';
+    const name = nameIn.value.trim() || titleCase(file);
+    const arr = state.categories[cat];
+    const dupCheck = arr.find(p => p.file.toLowerCase() === file.toLowerCase() && p.id !== editing[cat]);
+    if(dupCheck){ errBox.textContent = 'That file is already listed.'; fileIn.focus(); return; }
+    errBox.textContent = '';
+    if(editing[cat]){
+      const p = arr.find(x => x.id === editing[cat]);
+      if(p){ p.file = file; p.name = name; }
+      toast('Page updated');
+    } else {
+      arr.push({ id: uid(), name, file });
+      toast('Page added');
+    }
+    editing[cat] = null;
+    fileIn.value = ''; nameIn.value = ''; box.querySelector('[data-role="manual-row"]').classList.remove('show');
+    box.open = false;
+    save(); renderList(cat); loadPicker(cat, box);
+    // Confirm the link actually resolves on the live site; warn (don't block) if not.
+    setTimeout(async () => {
+      const ok = await checkFileExists(cat, file);
+      if(ok === false) toast('Heads up: /' + cat + '/' + file + ' isn\'t live yet — check the name or wait for Pages to deploy.');
+    }, 2600);
+  }
+});
+
+// Combines every known source of category names: live GitHub folders,
+// pages.json keys, and whatever's already in local state. Union, not
+// intersection — nothing gets dropped just because one source is unreachable.
+async function resolveCategories(discovered, raw){
+  const pagesKeys = raw ? Object.keys(raw) : [];
+  const localKeys = state ? Object.keys(state.categories) : [];
+  const set = new Set([...(discovered || []), ...pagesKeys, ...localKeys]);
+  if(set.size === 0) DEFAULT_CATS.forEach(c => set.add(c));
+  return Array.from(set);
+}
+
+// Sync from pages.json + live GitHub folder list (tap-twice, destructive)
+let syncPending = null;
+document.getElementById('syncBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('syncBtn');
+  if(syncPending){
+    clearTimeout(syncPending); syncPending = null;
+    btn.textContent = '↻ Full resync'; btn.classList.remove('confirming');
+    const [discovered, raw] = await Promise.all([discoverCategories(), fetchManifest()]);
+    if(!discovered && !raw){ toast('Could not reach GitHub'); return; }
+    const prevManifest = (state.lastSynced && state.lastSynced.manifest) || {};
+    const prevFolders = (state.lastSynced && state.lastSynced.folders) || [];
+    const discoveredNow = discovered || prevFolders;
+    const rawNow = raw || prevManifest;
+
+    const allKeys = new Set([...discoveredNow, ...Object.keys(rawNow), ...Object.keys(state.categories)]);
+    const newCategories = {};
+    allKeys.forEach(cat => {
+      const existingKey = Object.keys(state.categories).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
+      const localArr = state.categories[existingKey] || [];
+      const prevArr = findKeyCI(prevManifest, cat) || [];
+      const nowArr = findKeyCI(rawNow, cat) || [];
+      const merged = reconcilePages(localArr, prevArr, nowArr);
+      const stillExists = discoveredNow.some(f => f.toLowerCase() === cat.toLowerCase()) || Object.keys(rawNow).some(k => k.toLowerCase() === cat.toLowerCase());
+      if(!stillExists && merged.length === 0) return; // genuinely gone upstream, nothing local to keep
+      newCategories[existingKey] = merged;
+    });
+    state.categories = newCategories;
+    CATS = Object.keys(newCategories);
+    state.lastSynced = { folders: discovered || prevFolders, manifest: raw || prevManifest };
+    save(); buildGrid(); renderAll();
+    toast('Resynced — kept pending local pages, removed ones deleted upstream');
+  } else {
+    btn.textContent = 'Tap again to overwrite local edits'; btn.classList.add('confirming');
+    syncPending = setTimeout(() => { syncPending = null; btn.textContent = '↻ Full resync'; btn.classList.remove('confirming'); }, 2500);
+  }
+});
+
+// Export current state as pages.json
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const out = {};
+  CATS.forEach(k => { out[k] = state.categories[k].map(p => ({ name: p.name, file: p.file })); });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'pages.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Downloaded — commit it to replace pages.json in the repo');
+});
+
+(async function init(){
+  const [discovered, raw] = await Promise.all([discoverCategories(), fetchManifest()]);
+  CATS = await resolveCategories(discovered, raw);
+
+  if(!state){
+    state = seedDefault();
+    if(raw) state.categories = normalizeManifest(raw);
+    state.lastSynced = { folders: discovered || [], manifest: raw || {} };
+    save();
+  } else {
+    CATS.forEach(c => { if(!state.categories[c]) state.categories[c] = []; });
+    const added = await mergeFromManifest(raw);
+    if(discovered) state.lastSynced = { ...(state.lastSynced || {}), folders: discovered };
+    if(raw) state.lastSynced = { ...(state.lastSynced || {}), manifest: raw };
+    save();
+    if(added) toast('Picked up new pages from pages.json');
+  }
+  buildGrid();
+  if(state.updated) document.getElementById('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
+  renderAll();
+})();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => {
+    const d = e.data || {};
+    if(d.type === 'CLEAR_ONE_RESULT') toast(d.ok ? 'Cleared the cached copy — next open fetches the latest version.' : 'That page had no cached copy yet.');
+    if(d.type === 'CLEAR_ALL_RESULT') toast(d.ok ? 'Offline cache cleared.' : 'Nothing to clear.');
+  });
+}
+</script>
+</body>
+</html>
