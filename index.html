@@ -315,11 +315,25 @@ async function fetchFolderFiles(cat){
   try{
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodeURIComponent(cat)}?ref=${REPO_BRANCH}`;
     const res = await fetch(url, { cache: 'no-store' });
-    if(!res.ok) return null;
-    const data = await res.json();
-    if(!Array.isArray(data)) return null;
-    return data.filter(f => f.type === 'file' && !isHiddenName(f.name) && /\.html?$/i.test(f.name)).map(f => f.name);
-  }catch(e){ return null; }
+    if(res.ok){
+      const data = await res.json();
+      if(Array.isArray(data)){
+        return {
+          files: data.filter(f => f.type === 'file' && !isHiddenName(f.name) && /\.html?$/i.test(f.name)).map(f => f.name),
+          source: 'github'
+        };
+      }
+    }
+  }catch(e){}
+
+  const raw = await fetchManifest();
+  const manifest = raw || (state.lastSynced && state.lastSynced.manifest);
+  const listed = findKeyCI(manifest, cat);
+  if(!Array.isArray(listed)) return null;
+  return {
+    files: listed.map(p => typeof p === 'string' ? p : p && p.file).filter(file => file && !isHiddenName(file) && /\.html?$/i.test(file)),
+    source: 'manifest'
+  };
 }
 // Lists top-level folders in the repo, so newly added folders show up as categories automatically.
 async function discoverCategories(){
@@ -461,12 +475,15 @@ async function loadPicker(folder){
     return;
   }
   const have = new Set(pages(folder).map(p => p.file.toLowerCase()));
-  const avail = files.filter(f => !have.has(f.toLowerCase()));
+  const avail = files.files.filter(f => !have.has(f.toLowerCase()));
+  const fallbackNote = files.source === 'manifest'
+    ? '<div class="pick-note">GitHub directory listing is unavailable; showing pages from pages.json. New files can be entered manually.</div>'
+    : '';
   if(!avail.length){
-    pick.innerHTML = '<div class="pick-note">Every .html file in /' + esc(folder) + ' is already listed.</div>';
+    pick.innerHTML = fallbackNote + '<div class="pick-note">Every .html file in /' + esc(folder) + ' is already listed.</div>';
     return;
   }
-  pick.innerHTML = avail.map(f => `<button type="button" class="pick-btn" data-act="pick" data-file="${esc(f)}">${esc(titleCase(f))}</button>`).join('');
+  pick.innerHTML = fallbackNote + avail.map(f => `<button type="button" class="pick-btn" data-act="pick" data-file="${esc(f)}">${esc(titleCase(f))}</button>`).join('');
 }
 
 /* ---------- choose pages sheet ---------- */
