@@ -106,7 +106,8 @@
   .feedback .fb-status{min-height:18px;margin:8px 0 0;}
   .fb-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   .fb-actions button{padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:12px;}
-  .fb-actions #feedbackCopy{border-color:var(--mint);color:var(--mint);}
+  .fb-actions{justify-content:space-between;}
+  .fb-actions #feedbackMail{border-color:var(--mint);color:var(--mint);}
   .fb-actions #feedbackClear{color:var(--coral);}
 
   @media (hover:hover) and (pointer:fine){
@@ -183,17 +184,15 @@
   </p>
   <section class="feedback" aria-labelledby="feedbackTitle">
     <h2 id="feedbackTitle">Reach out / share feedback</h2>
-    <p>Your draft is saved only in this browser on this device. It is not sent anywhere. Copy or share it when you’re ready, or clear it below.</p>
+    <p>Your draft is saved only in this browser on this device. It is not sent anywhere until you review and send it from your email app.</p>
     <label for="feedbackMessage">Message</label>
     <textarea id="feedbackMessage" maxlength="5000" placeholder="What would you like to share?" autocomplete="off"></textarea>
     <label for="feedbackEmail">Email (optional, if you’d like a reply)</label>
     <input id="feedbackEmail" type="text" maxlength="254" inputmode="email" autocomplete="email" placeholder="you@example.com">
     <p class="fb-status" id="feedbackStatus" role="status" aria-live="polite"></p>
     <div class="fb-actions">
-      <button id="feedbackCopy" type="button">Copy feedback</button>
-      <button id="feedbackMail" type="button">Open email draft</button>
-      <button id="feedbackShare" type="button" hidden>Share…</button>
-      <button id="feedbackClear" type="button">Clear saved draft</button>
+      <button id="feedbackClear" type="button">Clear</button>
+      <button id="feedbackMail" type="button">Send email</button>
     </div>
   </section>
   <div class="foot" id="savedFoot"></div>
@@ -707,33 +706,6 @@ document.addEventListener('change', e => {
 ['feedbackMessage', 'feedbackEmail'].forEach(id => {
   $(id).addEventListener('input', saveFeedbackDraft);
 });
-$('feedbackCopy').addEventListener('click', async () => {
-  const text = feedbackText();
-  if(!$('feedbackMessage').value.trim()){
-    updateFeedbackStatus('Write a message before copying.');
-    $('feedbackMessage').focus();
-    return;
-  }
-  try{
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(text);
-    } else {
-      const copyArea = document.createElement('textarea');
-      copyArea.value = text;
-      copyArea.style.position = 'fixed';
-      copyArea.style.opacity = '0';
-      document.body.appendChild(copyArea);
-      copyArea.select();
-      const copied = document.execCommand('copy');
-      copyArea.remove();
-      if(!copied) throw new Error('Clipboard access is unavailable.');
-    }
-    updateFeedbackStatus('Copied. Your feedback has not been sent.');
-  }catch(error){
-    console.error('Could not copy feedback.', error);
-    updateFeedbackStatus('Could not copy automatically. Select and copy your message manually.');
-  }
-});
 $('feedbackMail').addEventListener('click', () => {
   if(!$('feedbackMessage').value.trim()){
     updateFeedbackStatus('Write a message before opening an email draft.');
@@ -744,23 +716,6 @@ $('feedbackMail').addEventListener('click', () => {
   const body = encodeURIComponent(feedbackText());
   window.location.href = 'mailto:' + FEEDBACK_TO + '?subject=' + subject + '&body=' + body;
   updateFeedbackStatus('Email draft opened if a mail app is configured. Review it and send it from your mail app.');
-});
-$('feedbackShare').hidden = typeof navigator.share !== 'function';
-$('feedbackShare').addEventListener('click', async () => {
-  if(!$('feedbackMessage').value.trim()){
-    updateFeedbackStatus('Write a message before sharing.');
-    $('feedbackMessage').focus();
-    return;
-  }
-  try{
-    await navigator.share({ title: 'My Lab feedback', text: feedbackText() });
-    updateFeedbackStatus('Share sheet opened. Your feedback is not sent unless you choose an app and recipient.');
-  }catch(error){
-    if(error.name !== 'AbortError'){
-      console.error('Could not open the feedback share sheet.', error);
-      updateFeedbackStatus('Could not open sharing on this device. Try Copy feedback instead.');
-    }
-  }
 });
 $('feedbackClear').addEventListener('click', () => {
   $('feedbackMessage').value = '';
