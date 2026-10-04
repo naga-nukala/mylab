@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <title>My Lab</title>
 <style>
   :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--coral:#ff8c70;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
@@ -23,6 +27,7 @@
   h1{font-size:24px;margin:8px 0 4px;letter-spacing:.2px;}
   .tag{color:var(--sub);font-size:13px;margin:0 0 10px;}
   .stat-line{display:inline-block;font-size:11px;color:var(--mint);background:rgba(167,232,197,.1);border:1px solid rgba(167,232,197,.25);padding:4px 12px;border-radius:20px;}
+  .install-btn{display:block;margin:12px auto 0;padding:9px 14px;border:1px solid var(--mint);border-radius:10px;color:var(--mint);font-size:13px;font-weight:700;}
 
   .search{width:100%;padding:11px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);margin-bottom:14px;}
 
@@ -125,6 +130,7 @@
     <h1>My Lab</h1>
     <p class="tag">Personal tools, organised your way. Tap a tab, then a tool to open it.</p>
     <span class="stat-line" id="statLine">0 tools across 0 categories</span>
+    <button class="install-btn" id="installBtn" type="button" hidden>Install My Lab</button>
   </header>
 
   <input class="search" id="search" type="search" placeholder="Search all tools" aria-label="Search all tools" autocomplete="off">
@@ -844,8 +850,32 @@ $('resetBtn').addEventListener('click', () => {
   if(state.updated) $('savedFoot').textContent = 'Saved on ' + fmtDate(state.updated);
 })();
 
+let installPrompt = null;
+const installBtn = $('installBtn');
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  installPrompt = event;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener('click', async () => {
+  if(!installPrompt) return;
+  installPrompt.prompt();
+  const result = await installPrompt.userChoice;
+  if(result.outcome === 'accepted') toast('My Lab is being installed.');
+  installPrompt = null;
+  installBtn.hidden = true;
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  installBtn.hidden = true;
+  toast('My Lab was installed.');
+});
+
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js').catch(error => {
+    console.error('Service worker registration failed.', error);
+    toast('Offline support could not be enabled.');
+  });
   navigator.serviceWorker.addEventListener('message', e => {
     const d = e.data || {};
     if(d.type === 'CLEAR_ONE_RESULT') toast(d.ok ? 'Cleared the cached copy. Next open fetches the latest version.' : 'That page had no cached copy yet.');
