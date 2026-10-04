@@ -246,6 +246,7 @@ function titleCase(file){
   return file.replace(/\.html?$/i,'').replace(/[-_]+/g,' ').trim().replace(/\b\w/g, c => c.toUpperCase()) || file;
 }
 function isHiddenName(name){ return typeof name === 'string' && name.startsWith('.'); }
+function isExcludedCategory(name){ return isHiddenName(name) || name.toLowerCase() === 'icons'; }
 function fmtDate(iso){
   const d = new Date(iso); if(isNaN(d)) return '';
   const n = d.getDate(), m = n % 100;
@@ -415,7 +416,7 @@ async function discoverCategories(){
     if(!res.ok) return null;
     const data = await res.json();
     if(!Array.isArray(data)) return null;
-    return data.filter(f => f.type === 'dir' && !isHiddenName(f.name)).map(f => f.name);
+    return data.filter(f => f.type === 'dir' && !isExcludedCategory(f.name)).map(f => f.name);
   }catch(e){ return null; }
 }
 // Confirms a linked page actually resolves on the live site (same-origin, so no CORS issue).
@@ -763,7 +764,7 @@ document.addEventListener('keydown', e => {
 async function resolveCategories(discovered, raw){
   const pagesKeys = raw ? Object.keys(raw) : [];
   const localKeys = state ? Object.keys(state.categories) : [];
-  const set = new Set([...(discovered || []), ...pagesKeys, ...localKeys].filter(c => !isHiddenName(c)));
+  const set = new Set([...(discovered || []), ...pagesKeys, ...localKeys].filter(c => !isExcludedCategory(c)));
   if(set.size === 0) DEFAULT_CATS.forEach(c => set.add(c));
   return Array.from(set);
 }
@@ -781,7 +782,7 @@ $('syncBtn').addEventListener('click', async () => {
     const discoveredNow = discovered || prevFolders;
     const rawNow = raw || prevManifest;
 
-    const allKeys = new Set([...discoveredNow, ...Object.keys(rawNow), ...Object.keys(state.categories)].filter(cat => !isHiddenName(cat)));
+    const allKeys = new Set([...discoveredNow, ...Object.keys(rawNow), ...Object.keys(state.categories)].filter(cat => !isExcludedCategory(cat)));
     const newCategories = {};
     allKeys.forEach(cat => {
       const existingKey = Object.keys(state.categories).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
