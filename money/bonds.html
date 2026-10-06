@@ -20,7 +20,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%;min-width:0;color-scheme:dark}
 input:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
 input::placeholder{color:#55655d}
-label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint{font-size:12px;color:var(--mut);margin-top:3px;min-height:1em}
 
 .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
@@ -45,6 +45,10 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 @media(min-width:560px){.grid3{grid-template-columns:repeat(4,1fr)}}
+.det-head{display:flex;align-items:center;justify-content:space-between;padding:12px 0 4px;cursor:pointer;user-select:none;font-weight:600;font-size:14px}
+.det:not(.open) .grid2,.det:not(.open) .dethint{display:none}
+.det .grid2{margin-top:6px}
+.det.open .det-head .chev{transform:rotate(45deg)}
 .info{margin-top:10px;font-size:12.5px;color:var(--mut);background:var(--card2);border-radius:10px;padding:8px 10px}
 .sect{margin:16px 0 8px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:space-between}
 
@@ -117,6 +121,7 @@ function uid(){return Math.random().toString(36).slice(2,9);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function has(v){return v!==''&&v!=null&&isFinite(parseFloat(v));}
 function num(v){var n=parseFloat(v);return isFinite(n)?n:0;}
+function uni(a){var v=a.filter(has);return v.every(function(x){return num(x)===num(v[0]);});}
 function inr(n){return '₹'+(Math.round(n*100)/100).toLocaleString('en-IN',{maximumFractionDigits:2});}
 function pad(n){return (n<10?'0':'')+n;}
 function fmtDate(s){
@@ -140,7 +145,7 @@ function load(){
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function accById(id){return S.accs.filter(function(k){return k.id===id;})[0];}
 function yearById(k,id){return k.years.filter(function(y){return y.id===id;})[0];}
-function newAcc(){return {id:uid(),name:'',bank:'',open:'',maturity:'',coupon:'',opening:'',collapsed:false,years:[]};}
+function newAcc(){return {id:uid(),name:'',bank:'',open:'',maturity:'',coupon:'',opening:'',collapsed:false,detOpen:true,years:[]};}
 function sorted(k){
   return k.years.slice().sort(function(a,b){return (has(a.fy)?+a.fy:9999)-(has(b.fy)?+b.fy:9999);});
 }
@@ -191,7 +196,7 @@ function yearHTML(y){
       field('FY starting Apr of','fy',y.fy,'type="number" inputmode="numeric" step="1"')+
       field('Interest received (₹)','interest',y.interest,numAttr())+
       field('Coupon / rate (% p.a.)','rate',y.rate,numAttr())+
-      field('Invested value at end of Mar (₹)','balance',y.balance,numAttr(),'auto')+
+      field('Mar-end value (₹)','balance',y.balance,numAttr(),'auto')+
     '</div><div class="hint">Leave blank to auto-calculate (previous value + purchases). Interest is treated as paid out, not added. Type a value to override.</div>'+
     '<div class="sect" style="margin-top:14px">Monthly purchases</div>'+
     '<div class="seg"><button data-act="mode" data-mode="same" class="'+(y.mode==='each'?'':'on')+'">Same every month</button>'+
@@ -219,14 +224,14 @@ function accHTML(k){
     '<div class="sub" data-role="k-sub"></div></div>'+
     '<div class="bal"><div class="v" data-role="k-bal"></div><div class="k">value</div></div><span class="chev"></span></div>';
   if(!k.collapsed){
-    h+='<div class="acc-body"><div class="grid2">'+
+    h+='<div class="acc-body"><div class="det'+(k.detOpen?' open':'')+'"><div class="det-head" data-act="toggle-det"><span>Details</span><span class="chev"></span></div><div class="grid2">'+
       field('Bond name','name',k.name,'type="text" autocomplete="off"')+
       field('Issuer / type','bank',k.bank,'type="text" autocomplete="off"')+
       '<div><label>Purchase date</label><input data-f="open" type="date" value="'+esc(k.open)+'"><div class="hint" data-role="open-fmt"></div></div>'+
       '<div><label>Maturity date</label><input data-f="maturity" type="date" value="'+esc(k.maturity)+'"><div class="hint" data-role="mat-fmt"></div></div>'+
       field('Coupon rate (% p.a.)','coupon',k.coupon,numAttr())+
-      field('Invested before first FY (₹)','opening',k.opening,numAttr(),'0')+
-    '</div><div class="info" data-role="k-info"></div>'+
+      field('Carried in (₹)','opening',k.opening,numAttr(),'0')+
+    '</div><div class="hint dethint">Carried in: only needed if earlier years are not entered here. Leave blank if you add every FY from the start.</div></div><div class="info" data-role="k-info"></div>'+
     '<div class="sect"><span>Financial years</span><span class="hint" style="margin:0">tap a year to expand</span></div>';
     var ys=sorted(k);
     if(!ys.length)h+='<div class="empty">No years yet. Add the first FY.</div>';
@@ -315,12 +320,13 @@ document.addEventListener('click',function(e){
   if(act==='add-acc'){var na=newAcc();S.accs.push(na);save();render();
     var inp=$list.querySelector('[data-acc="'+na.id+'"] [data-f="name"]');if(inp)inp.focus();}
   else if(act==='toggle-acc'&&k){k.collapsed=!k.collapsed;save();render();}
+  else if(act==='toggle-det'&&k){var dd=t.closest('.det');dd.classList.toggle('open');k.detOpen=dd.classList.contains('open');save();}
   else if(act==='toggle-year'&&y){y.collapsed=!y.collapsed;save();render();}
   else if(act==='add-year'&&k){k.years.push(newYear(k));save();render();}
   else if(act==='mode'&&y){
     var m=t.dataset.mode;
     if(m!==y.mode){
-      if(m==='each'&&!y.months.some(has)&&has(y.same)){
+      if(m==='each'&&has(y.same)&&uni(y.months)){
         var n=has(y.n)?Math.max(0,Math.min(12,parseInt(y.n,10))):12;
         y.months=y.months.map(function(_,i){return i<n?y.same:'';});
       }

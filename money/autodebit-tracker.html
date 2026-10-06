@@ -44,6 +44,15 @@
   .overdue-b{background:rgba(239,68,68,.15);color:var(--bad);}
   .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
   .type-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.15);color:#60a5fa;font-weight:700;margin-left:6px;}
+  details.card{padding:0;overflow:hidden;}
+  details.card>summary{padding:16px;cursor:pointer;font-size:14px;font-weight:700;color:var(--txt);list-style:none;}
+  details.card>summary::-webkit-details-marker{display:none;}
+  details.card>summary::after{content:"+";float:right;color:var(--sub);}
+  details.card[open]>summary::after{content:"−";}
+  .details-content{padding:0 16px 16px;}
+  .summary-note{font-size:12px;color:var(--sub);margin:0 0 8px;}
+  .progress-track{height:8px;background:#0f172a;border-radius:8px;overflow:hidden;margin-top:12px;}
+  .progress-fill{height:100%;background:var(--acc);transition:width .2s;}
 </style>
 </head>
 <body>
@@ -59,10 +68,32 @@
     </div>
   </div>
 
-  <div class="card">
-    <label style="font-size:14px;color:var(--txt);font-weight:700;">Monthly Amount by Bank</label>
-    <div id="bankTotals"></div>
-  </div>
+  <details class="card">
+    <summary>Monthly by Bank</summary>
+    <div class="details-content">
+      <p class="summary-note">Keep these balances to avoid SI failure.</p>
+      <div id="bankTotals"></div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary>Monthly by Type</summary>
+    <div class="details-content" id="typeTotals"></div>
+  </details>
+
+  <details class="card">
+    <summary>Paid and pending this month</summary>
+    <div class="details-content">
+      <p class="summary-note">Paid is based on payments marked done, grouped by scheduled due month.</p>
+      <div class="summary">
+        <div class="box"><div class="n" id="paidThisMonth">₹0</div><div class="l">Paid</div></div>
+        <div class="box"><div class="n" id="pendingThisMonth">₹0</div><div class="l">Pending to pay</div></div>
+      </div>
+      <div class="progress-track" role="progressbar" aria-label="Monthly payment progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-fill" id="paymentProgress" style="width:0%"></div>
+      </div>
+    </div>
+  </details>
 
   <div class="card">
     <div class="row">
@@ -71,9 +102,11 @@
         <select id="payType">
           <option value="EMI">EMI/Loan</option>
           <option value="Insurance">Insurance Premium</option>
-          <option value="SIP">SIP/Investment</option>
+          <option value="Investment">Investment</option>
+          <option value="SIP">SIP</option>
           <option value="Subscription">Subscription</option>
           <option value="Utility">Utility Bill</option>
+          <option value="Credit Card Bill">Credit Card Bill Payment</option>
           <option value="Other">Other</option>
         </select>
       </div>
@@ -91,6 +124,12 @@
     </div>
     <div class="row">
       <div class="field"><label>Next Due Date</label><input type="date" id="payDueDate"></div>
+      <div class="field"><label>Payment Method</label>
+        <select id="payMethod">
+          <option value="Automated">Automated</option>
+          <option value="Manual">Manual</option>
+        </select>
+      </div>
     </div>
     <button class="add" id="addBtn" onclick="addPayment()">+ Add Auto-Debit</button>
   </div>
@@ -115,18 +154,19 @@ function addPayment(){
   const freq = parseFloat(document.getElementById('payFreq').value) || 1;
   const account = document.getElementById('payAccount').value.trim();
   const dueDate = document.getElementById('payDueDate').value;
+  const method = document.getElementById('payMethod').value;
 
   if(!name || amount<=0 || !dueDate) return;
 
   if(editingId !== null){
     const idx = payments.findIndex(p=>p.id===editingId);
     if(idx > -1){
-      payments[idx] = { ...payments[idx], name, type, amount, freq, account, dueDate };
+      payments[idx] = { ...payments[idx], name, type, amount, freq, account, dueDate, method };
     }
     editingId = null;
     document.getElementById('addBtn').textContent = '+ Add Auto-Debit';
   } else {
-    payments.push({ id: Date.now(), name, type, amount, freq, account, dueDate });
+    payments.push({ id: Date.now(), name, type, amount, freq, account, dueDate, method });
   }
   save();
 
@@ -134,6 +174,7 @@ function addPayment(){
   document.getElementById('payAmount').value='';
   document.getElementById('payAccount').value='';
   document.getElementById('payDueDate').value='';
+  document.getElementById('payMethod').value='Automated';
 
   render();
 }
@@ -147,6 +188,7 @@ function editPayment(id){
   document.getElementById('payFreq').value = p.freq;
   document.getElementById('payAccount').value = p.account;
   document.getElementById('payDueDate').value = p.dueDate;
+  document.getElementById('payMethod').value = p.method || 'Automated';
   editingId = id;
   document.getElementById('addBtn').textContent = '✓ Update Auto-Debit';
   window.scrollTo({top:0, behavior:'smooth'});
@@ -193,15 +235,35 @@ function daysUntil(dateStr){
 function render(){
   const container = document.getElementById('paymentsList');
   const bankTotals = {};
+  const typeTotals = {};
+  const today = new Date();
+  const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  let paidThisMonth = 0;
+  let pendingThisMonth = 0;
   payments.forEach(p=>{
     const bank = p.account || 'Bank not specified';
     bankTotals[bank] = (bankTotals[bank] || 0) + p.amount / p.freq;
+    typeTotals[p.type] = (typeTotals[p.type] || 0) + p.amount / p.freq;
+    paidThisMonth += (p.history || []).filter(date => date && date.slice(0, 7) === thisMonth).length * p.amount;
+    if(p.dueDate && p.dueDate.slice(0, 7) === thisMonth) pendingThisMonth += p.amount;
   });
   document.getElementById('bankTotals').innerHTML = Object.entries(bankTotals).length
     ? Object.entries(bankTotals).sort((a,b)=>a[0].localeCompare(b[0])).map(([bank, amount])=>
         `<div class="bank-total"><span class="bank-name">${bank}</span><span class="bank-amount">₹${amount.toFixed(0)}/mo</span></div>`
       ).join('')
     : '<div class="empty">Add auto-debits to see the amount to keep in each bank.</div>';
+  document.getElementById('typeTotals').innerHTML = Object.entries(typeTotals).length
+    ? Object.entries(typeTotals).sort((a,b)=>a[0].localeCompare(b[0])).map(([type, amount])=>
+        `<div class="bank-total"><span class="bank-name">${type}</span><span class="bank-amount">₹${amount.toFixed(0)}/mo</span></div>`
+      ).join('')
+    : '<div class="empty">Add auto-debits to see monthly amounts by type.</div>';
+  document.getElementById('paidThisMonth').textContent = '₹' + paidThisMonth.toFixed(0);
+  document.getElementById('pendingThisMonth').textContent = '₹' + pendingThisMonth.toFixed(0);
+  const monthTotal = paidThisMonth + pendingThisMonth;
+  const progress = monthTotal ? Math.round(paidThisMonth / monthTotal * 100) : 0;
+  const progressTrack = document.querySelector('.progress-track');
+  progressTrack.setAttribute('aria-valuenow', progress);
+  document.getElementById('paymentProgress').style.width = progress + '%';
 
   if(payments.length===0){
     container.innerHTML = '<div class="empty">No auto-debits added yet.</div>';
@@ -235,7 +297,7 @@ function render(){
             <button class="del" onclick="removePayment(${p.id})">✕</button>
           </span>
         </div>
-        <div class="pay-meta">₹${p.amount} every ${p.freq==1?'month':p.freq==3?'quarter':'year'}${p.account?` • from ${p.account}`:''} • ~₹${monthlyEquiv.toFixed(0)}/mo${p.lastPaid?` • last paid ${p.lastPaid}`:''}</div>
+        <div class="pay-meta">₹${p.amount} every ${p.freq==1?'month':p.freq==3?'quarter':'year'}${p.account?` • from ${p.account}`:''} • ${p.method || 'Automated'} • ~₹${monthlyEquiv.toFixed(0)}/mo${p.lastPaid?` • last paid ${p.lastPaid}`:''}</div>
         <span class="status-badge ${statusClass}">${statusLabel}</span>
       </div>
     `;

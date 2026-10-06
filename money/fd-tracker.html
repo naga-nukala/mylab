@@ -56,8 +56,21 @@
   .list-header h2{font-size:14px; margin:0; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
   .filter-select{width:auto; padding:6px 10px; font-size:12px;}
 
+  .group-panel{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:10px;}
+  .group-head{display:flex; justify-content:space-between; align-items:center; cursor:pointer;}
+  .group-head h3{margin:0; font-size:13px; color:var(--text);}
+  .group-head .chev{color:var(--muted); font-size:12px;}
+  .group-body{margin-top:10px; display:none;}
+  .group-body.open{display:block;}
+  .group-row{display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);}
+  .group-row:last-child{border-bottom:none;}
+  .group-row .gname{color:var(--text);}
+  .group-row .gval{color:var(--accent); font-weight:700;}
+  .group-row .gcount{color:var(--muted); font-size:11px; margin-left:4px; font-weight:400;}
+
   .fd-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px;}
-  .fd-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .fd-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px; cursor:pointer;}
+  .fd-chev{color:var(--muted); font-size:12px; margin-right:2px;}
   .fd-name{font-size:15px; font-weight:700;}
   .fd-owner{font-size:11px; color:var(--muted); margin-top:2px;}
   .fd-actions{display:flex; gap:6px; flex-shrink:0;}
@@ -100,6 +113,19 @@
 </div>
 <div class="od-banner" id="odBanner"></div>
 
+<div class="group-panel">
+  <div class="group-head" id="purposeHead" onclick="toggleGroup('purpose')">
+    <h3>📂 By Purpose</h3><span class="chev" id="purposeChev">▸</span>
+  </div>
+  <div class="group-body" id="purposeBody"></div>
+</div>
+<div class="group-panel">
+  <div class="group-head" id="ownerHead" onclick="toggleGroup('owner')">
+    <h3>👤 By Owner</h3><span class="chev" id="ownerChev">▸</span>
+  </div>
+  <div class="group-body" id="ownerBody"></div>
+</div>
+
 <div class="form-card">
   <div class="section-title">FD Details</div>
   <div class="row">
@@ -112,7 +138,11 @@
   </div>
   <div class="row">
     <div><label>Start Date</label><input type="date" id="startDate" oninput="updatePreview()"></div>
-    <div><label>Tenure (months)</label><input type="number" id="tenureMonths" placeholder="e.g. 24" oninput="updatePreview()"></div>
+  </div>
+  <div class="row">
+    <div><label>Tenure — Years</label><input type="number" id="tenureYears" min="0" placeholder="e.g. 2" oninput="updatePreview()"></div>
+    <div><label>Tenure — Months</label><input type="number" id="tenureMonthsPart" min="0" max="11" placeholder="e.g. 3" oninput="updatePreview()"></div>
+    <div><label>Tenure — Days</label><input type="number" id="tenureDays" min="0" max="30" placeholder="e.g. 10" oninput="updatePreview()"></div>
   </div>
   <div class="row">
     <div>
@@ -189,9 +219,23 @@
 
 <script>
 const KEY = 'fd_tracker_v1';
-let fds = JSON.parse(localStorage.getItem(KEY) || '[]');
+let fds = loadData();
 let editingId = null;
 let pendingDeletes = {};
+let expandedIds = new Set();
+let showPurpose = false, showOwner = false;
+
+function loadData(){
+  const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
+  // migrate FDs saved before tenure was split into years/months/days
+  return raw.map(f => {
+    if(f.tenureYears === undefined){
+      const months = f.tenureMonths || 0;
+      return { ...f, tenureYears: Math.floor(months/12), tenureMonthsPart: Math.round(months%12), tenureDays: 0 };
+    }
+    return f;
+  });
+}
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
@@ -216,6 +260,23 @@ function addMonths(dateStr, n){
   const d = new Date(dateStr);
   d.setMonth(d.getMonth() + n);
   return d;
+}
+function addYMD(dateStr, y, m, d){
+  const dt = new Date(dateStr);
+  dt.setFullYear(dt.getFullYear() + (y||0));
+  dt.setMonth(dt.getMonth() + (m||0));
+  dt.setDate(dt.getDate() + (d||0));
+  return dt;
+}
+function daysBetweenDates(a, b){
+  return Math.max(0, Math.round((new Date(b) - new Date(a)) / (1000*60*60*24)));
+}
+function tenureLabel(f){
+  const parts = [];
+  if(f.tenureYears) parts.push(f.tenureYears + 'y');
+  if(f.tenureMonthsPart) parts.push(f.tenureMonthsPart + 'm');
+  if(f.tenureDays) parts.push(f.tenureDays + 'd');
+  return parts.length ? parts.join(' ') : '0d';
 }
 
 let toastTimer;
@@ -242,9 +303,8 @@ function confirmDelete(key, btn, action){
   }, 2500);
 }
 
-function calcMaturity(investedAmount, rate, tenureMonths, compFreq){
-  if(!investedAmount || !rate || !tenureMonths) return { maturityAmount:0, interest:0 };
-  const years = tenureMonths / 12;
+function calcMaturity(investedAmount, rate, years, compFreq){
+  if(!investedAmount || !rate || !years) return { maturityAmount:0, interest:0 };
   const n = compFreq;
   const maturityAmount = investedAmount * Math.pow(1 + (rate/100)/n, n*years);
   return { maturityAmount, interest: maturityAmount - investedAmount };
@@ -257,7 +317,9 @@ function readForm(){
     investedAmount: parseFloat(document.getElementById('investedAmount').value),
     rate: parseFloat(document.getElementById('rate').value),
     startDate: document.getElementById('startDate').value,
-    tenureMonths: parseFloat(document.getElementById('tenureMonths').value),
+    tenureYears: parseInt(document.getElementById('tenureYears').value) || 0,
+    tenureMonthsPart: parseInt(document.getElementById('tenureMonthsPart').value) || 0,
+    tenureDays: parseInt(document.getElementById('tenureDays').value) || 0,
     compounding: parseInt(document.getElementById('compounding').value, 10),
     payoutMonths: parseInt(document.getElementById('payoutMonths').value, 10) || 0,
     useCustomMaturity: document.getElementById('useCustomMaturity').checked,
@@ -270,8 +332,9 @@ function readForm(){
 }
 
 function isValid(f){
+  const hasTenure = (f.tenureYears||0) + (f.tenureMonthsPart||0) + (f.tenureDays||0) > 0;
   return f.owner && f.bankAccount && Number.isFinite(f.investedAmount) && f.investedAmount > 0 &&
-    Number.isFinite(f.rate) && f.rate > 0 && f.startDate && Number.isFinite(f.tenureMonths) && f.tenureMonths > 0 &&
+    Number.isFinite(f.rate) && f.rate > 0 && f.startDate && hasTenure &&
     (!f.useCustomMaturity || f.customMaturity > 0);
 }
 
@@ -279,25 +342,30 @@ const PAYOUT_LABELS = {1:'Monthly', 3:'Quarterly', 6:'Half-yearly', 12:'Annual'}
 
 function computeFD(f){
   const pm = f.payoutMonths || 0;
-  const maturityDate = addMonths(f.startDate, f.tenureMonths);
+  const maturityDate = addYMD(f.startDate, f.tenureYears||0, f.tenureMonthsPart||0, f.tenureDays||0);
+  const maturityDateStr = maturityDate.toISOString().split('T')[0];
+  const tenureDaysTotal = daysBetweenDates(f.startDate, maturityDateStr);
+  const yearsDecimal = tenureDaysTotal / 365;
+  const totalMonthsApprox = (f.tenureYears||0)*12 + (f.tenureMonthsPart||0) + (f.tenureDays||0)/30;
   const odEligible = f.investedAmount > 30000;
   if(pm > 0){
     // Periodic payout: principal returned at maturity, interest paid out every pm months
     const auto = f.investedAmount * (f.rate/100) * (pm/12);
     const payoutAmount = f.useCustomMaturity && f.customMaturity > 0 ? f.customMaturity : auto;
-    const payoutCount = Math.floor(f.tenureMonths / pm);
-    return { maturityAmount: f.investedAmount, interest: payoutAmount * payoutCount, maturityDate, odEligible, isPayout:true, payoutAmount, payoutCount, pm };
+    const payoutCount = Math.max(0, Math.floor(totalMonthsApprox / pm));
+    return { maturityAmount: f.investedAmount, interest: payoutAmount * payoutCount, maturityDate, odEligible, isPayout:true, payoutAmount, payoutCount, pm, totalMonthsApprox };
   }
-  const auto = calcMaturity(f.investedAmount, f.rate, f.tenureMonths, f.compounding);
+  const auto = calcMaturity(f.investedAmount, f.rate, yearsDecimal, f.compounding);
   const maturityAmount = f.useCustomMaturity && f.customMaturity > 0 ? f.customMaturity : auto.maturityAmount;
-  return { maturityAmount, interest: maturityAmount - f.investedAmount, maturityDate, odEligible, isPayout:false };
+  return { maturityAmount, interest: maturityAmount - f.investedAmount, maturityDate, odEligible, isPayout:false, totalMonthsApprox };
 }
 
 function nextPayoutDate(f){
   const pm = f.payoutMonths || 0;
   if(!pm) return null;
   const today = todayStr();
-  const count = Math.floor(f.tenureMonths / pm);
+  const totalMonthsApprox = (f.tenureYears||0)*12 + (f.tenureMonthsPart||0) + (f.tenureDays||0)/30;
+  const count = Math.floor(totalMonthsApprox / pm);
   for(let i = 1; i <= count; i++){
     const d = addMonths(f.startDate, i*pm).toISOString().split('T')[0];
     if(d >= today) return d;
@@ -315,7 +383,8 @@ function updatePreview(){
     : 'Bank quoted a different maturity amount (override auto-calc)';
   document.getElementById('customAmtLbl').textContent = isPayout ? 'Payout Amount per Period (₹)' : 'Maturity Amount (₹)';
   const box = document.getElementById('previewBox');
-  if(!f.investedAmount || !f.rate || !f.startDate || !f.tenureMonths){ box.style.display = 'none'; return; }
+  const tenureTotal = (f.tenureYears||0) + (f.tenureMonthsPart||0) + (f.tenureDays||0);
+  if(!f.investedAmount || !f.rate || !f.startDate || tenureTotal <= 0){ box.style.display = 'none'; return; }
   box.style.display = 'block';
   const r = computeFD(f);
   document.getElementById('pvMaturityDate').textContent = fmtDate(r.maturityDate.toISOString().split('T')[0]);
@@ -341,7 +410,7 @@ function updatePreview(){
 }
 
 function clearForm(){
-  ['owner','bankAccount','investedAmount','rate','startDate','tenureMonths','customMaturity','purpose','comments'].forEach(id=>document.getElementById(id).value='');
+  ['owner','bankAccount','investedAmount','rate','startDate','tenureYears','tenureMonthsPart','tenureDays','customMaturity','purpose','comments'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('compounding').value = '4';
   document.getElementById('payoutMonths').value = '0';
   document.getElementById('status').value = 'Active';
@@ -377,7 +446,9 @@ function editFD(id){
   document.getElementById('investedAmount').value = f.investedAmount;
   document.getElementById('rate').value = f.rate;
   document.getElementById('startDate').value = f.startDate;
-  document.getElementById('tenureMonths').value = f.tenureMonths;
+  document.getElementById('tenureYears').value = f.tenureYears || 0;
+  document.getElementById('tenureMonthsPart').value = f.tenureMonthsPart || 0;
+  document.getElementById('tenureDays').value = f.tenureDays || 0;
   document.getElementById('compounding').value = f.compounding || 4;
   document.getElementById('payoutMonths').value = f.payoutMonths || 0;
   document.getElementById('useCustomMaturity').checked = !!f.useCustomMaturity;
@@ -401,6 +472,47 @@ function deleteFD(id, btn){
   });
 }
 
+function toggleCard(id){
+  if(expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+  renderList();
+}
+
+function toggleGroup(type){
+  if(type === 'purpose') showPurpose = !showPurpose; else showOwner = !showOwner;
+  document.getElementById('purposeBody').classList.toggle('open', showPurpose);
+  document.getElementById('purposeChev').textContent = showPurpose ? '▾' : '▸';
+  document.getElementById('ownerBody').classList.toggle('open', showOwner);
+  document.getElementById('ownerChev').textContent = showOwner ? '▾' : '▸';
+}
+
+function renderGroups(){
+  const byPurpose = {};
+  const byOwner = {};
+  fds.forEach(f => {
+    if(f.status === 'Matured') return;
+    const r = computeFD(f);
+    const p = f.purpose || 'Unspecified';
+    const o = f.owner || 'Unspecified';
+    byPurpose[p] = byPurpose[p] || { invested:0, count:0 };
+    byPurpose[p].invested += f.investedAmount;
+    byPurpose[p].count++;
+    byOwner[o] = byOwner[o] || { invested:0, maturity:0, count:0 };
+    byOwner[o].invested += f.investedAmount;
+    byOwner[o].maturity += r.maturityAmount;
+    byOwner[o].count++;
+  });
+
+  const purposeKeys = Object.keys(byPurpose).sort((a,b) => byPurpose[b].invested - byPurpose[a].invested);
+  document.getElementById('purposeBody').innerHTML = purposeKeys.length
+    ? purposeKeys.map(p => `<div class="group-row"><span class="gname">${escapeHtml(p)}<span class="gcount">(${byPurpose[p].count})</span></span><span class="gval">${fmt(byPurpose[p].invested)}</span></div>`).join('')
+    : '<div class="group-row"><span class="gname">No active FDs yet</span></div>';
+
+  const ownerKeys = Object.keys(byOwner).sort((a,b) => byOwner[b].invested - byOwner[a].invested);
+  document.getElementById('ownerBody').innerHTML = ownerKeys.length
+    ? ownerKeys.map(o => `<div class="group-row"><span class="gname">${escapeHtml(o)}<span class="gcount">(${byOwner[o].count})</span></span><span class="gval">${fmt(byOwner[o].invested)} <span style="color:var(--muted); font-weight:400;">→ ${fmt(byOwner[o].maturity)}</span></span></div>`).join('')
+    : '<div class="group-row"><span class="gname">No active FDs yet</span></div>';
+}
+
 function renderList(){
   const filter = document.getElementById('statusFilter').value;
   const list = document.getElementById('fdList');
@@ -414,6 +526,7 @@ function renderList(){
 
   list.innerHTML = filtered.map(f => {
     const r = computeFD(f);
+    const isOpen = expandedIds.has(f.id);
     const statusClass = 'status-' + f.status.toLowerCase();
     const payoutBadge = r.isPayout
       ? `<span class="badge payout">${PAYOUT_LABELS[r.pm].toUpperCase()} PAYOUT</span>`
@@ -424,14 +537,15 @@ function renderList(){
       : '';
     return `
       <div class="fd-card">
-        <div class="fd-top">
+        <div class="fd-top" onclick="toggleCard('${f.id}')">
           <div>
             <span class="fd-name">${escapeHtml(f.bankAccount)}</span>
-            <div class="fd-owner">${escapeHtml(f.owner)}${f.purpose ? ' · ' + escapeHtml(f.purpose) : ''}</div>
+            <div class="fd-owner">${escapeHtml(f.owner)}${f.purpose ? ' · ' + escapeHtml(f.purpose) : ''} · ${fmt(f.investedAmount)} → ${fmt(r.maturityAmount)}</div>
           </div>
           <div class="fd-actions">
-            <button class="icon-btn edit" onclick="editFD('${f.id}')">✎</button>
-            <button class="icon-btn del" onclick="deleteFD('${f.id}', this)">✕</button>
+            <span class="fd-chev">${isOpen ? '▾' : '▸'}</span>
+            <button class="icon-btn edit" onclick="event.stopPropagation(); editFD('${f.id}')">✎</button>
+            <button class="icon-btn del" onclick="event.stopPropagation(); deleteFD('${f.id}', this)">✕</button>
           </div>
         </div>
         <div class="badges">
@@ -439,6 +553,7 @@ function renderList(){
           ${payoutBadge}
           ${odBadge}
         </div>
+        ${isOpen ? `
         <div class="fd-stats">
           <div class="stat"><div class="slbl">Invested</div><div class="sval">${fmt(f.investedAmount)}</div></div>
           <div class="stat hilite"><div class="slbl">Maturity Value</div><div class="sval">${fmt(r.maturityAmount)}</div></div>
@@ -449,9 +564,9 @@ function renderList(){
           <div class="stat"><div class="slbl">Next Payout</div><div class="sval" style="font-size:12px;">${nextPayout ? fmtDate(nextPayout) : '-'}</div></div>` : ''}
         </div>
         <div class="fd-meta">
-          Started <b>${fmtDate(f.startDate)}</b> · Matures <b>${fmtDate(r.maturityDate.toISOString().split('T')[0])}</b> · ${f.tenureMonths} months
+          Started <b>${fmtDate(f.startDate)}</b> · Matures <b>${fmtDate(r.maturityDate.toISOString().split('T')[0])}</b> · Tenure <b>${tenureLabel(f)}</b>
           ${f.comments ? '<br>💬 ' + escapeHtml(f.comments) : ''}
-        </div>
+        </div>` : ''}
       </div>`;
   }).join('');
 }
@@ -490,6 +605,7 @@ function renderSummary(){
 
 function renderAll(){
   renderSummary();
+  renderGroups();
   renderList();
 }
 
