@@ -61,13 +61,21 @@
   .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
   .calendar-weekday,.calendar-day{min-width:0;padding:5px 3px;}
   .calendar-weekday{text-align:center;color:var(--sub);font-size:10px;}
-  .calendar-day{min-height:80px;background:#0f172a;border-radius:6px;font-size:11px;}
+  .calendar-day{min-height:64px;background:#0f172a;border-radius:6px;font-size:11px;}
   .calendar-day.empty-day{background:transparent;}
-  .calendar-date{font-weight:700;margin-bottom:4px;}
-  .calendar-event{overflow-wrap:anywhere;font-size:10px;margin:3px 0;padding:3px;border-radius:4px;}
-  .calendar-event.pending-event{background:rgba(245,158,11,.15);color:var(--warn);}
-  .calendar-event.paid-event{background:rgba(34,197,94,.15);color:var(--acc);}
-  .calendar-event.cycle-event{background:rgba(96,165,250,.15);color:#60a5fa;}
+  .calendar-date{font-weight:700;}
+  .calendar-dots{display:flex;justify-content:center;align-items:center;gap:4px;flex-wrap:wrap;margin-top:5px;}
+  .calendar-dot{width:12px;height:12px;border:0;border-radius:50%;padding:0;cursor:pointer;box-shadow:0 0 0 1px rgba(226,232,240,.2);}
+  .calendar-dot:focus-visible{outline:2px solid var(--txt);outline-offset:2px;}
+  .calendar-dot.pending-event{background:var(--warn);}
+  .calendar-dot.paid-event{background:var(--acc);}
+  .calendar-dot.cycle-event{background:#60a5fa;}
+  .calendar-details{min-height:40px;margin-top:12px;padding:10px;border-radius:8px;background:#0f172a;font-size:12px;}
+  .calendar-details:empty{display:none;}
+  .calendar-details h3{font-size:13px;margin:0 0 6px;}
+  .calendar-detail-item{padding:6px 0;border-bottom:1px solid #334155;}
+  .calendar-detail-item:last-child{border-bottom:0;}
+  .calendar-detail-status{font-weight:700;}
   .calendar-legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--sub);font-size:11px;margin-top:10px;}
   .calendar-legend span{display:flex;align-items:center;gap:5px;}
   .legend-dot{width:8px;height:8px;border-radius:50%;}
@@ -76,7 +84,8 @@
     .summary{gap:6px;}
     .summary .box{padding:10px 5px;}
     .summary .n{font-size:16px;}
-    .calendar-day{min-height:65px;padding:4px 2px;}
+    .calendar-day{min-height:48px;padding:4px 2px;}
+    .calendar-dot{width:10px;height:10px;}
   }
 </style>
 </head>
@@ -165,6 +174,7 @@
       <button class="calendar-nav" id="nextMonth" aria-label="Next month">›</button>
     </div>
     <div class="calendar-grid" id="paymentsCalendar"></div>
+    <div class="calendar-details" id="calendarDetails" aria-live="polite"></div>
     <div class="calendar-legend">
       <span><i class="legend-dot" style="background:var(--acc);"></i>Paid</span>
       <span><i class="legend-dot" style="background:var(--warn);"></i>Pending</span>
@@ -178,6 +188,8 @@ const STORAGE_KEY = 'autodebit_tracker_entries';
 let payments = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let editingId = null;
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let calendarEventsByDate = {};
+let selectedCalendarDate = null;
 
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(payments)); }
 
@@ -325,44 +337,66 @@ function daysUntil(dateStr){
   return Math.ceil((target - now) / (1000*60*60*24));
 }
 
+function showCalendarDetails(dateString){
+  selectedCalendarDate = dateString;
+  const details = document.getElementById('calendarDetails');
+  const date = new Date(`${dateString}T00:00:00`);
+  const dateLabel = date.toLocaleDateString(undefined, {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+  const events = calendarEventsByDate[dateString] || [];
+  details.innerHTML = `<h3>${escapeHTML(dateLabel)}</h3>${events.map(event=>
+    `<div class="calendar-detail-item"><span class="calendar-detail-status">${escapeHTML(event.status)}</span> — ${escapeHTML(event.name)}${event.amount === null ? '' : ` · ₹${event.amount.toFixed(0)}`}${event.description ? ` · ${escapeHTML(event.description)}` : ''}</div>`
+  ).join('')}`;
+}
+
 function renderCalendar(){
   const year = calendarMonth.getFullYear();
   const month = calendarMonth.getMonth();
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const events = {};
-  const addEvent = (day, label, className) => {
-    events[day] = events[day] || [];
-    events[day].push(`<div class="calendar-event ${className}">${label}</div>`);
+  calendarEventsByDate = {};
+  const addEvent = (day, event) => {
+    const dateString = `${monthKey}-${String(day).padStart(2, '0')}`;
+    calendarEventsByDate[dateString] = calendarEventsByDate[dateString] || [];
+    calendarEventsByDate[dateString].push(event);
   };
 
   payments.forEach(payment=>{
     historyRecords(payment).forEach(record=>{
       if(record.dueDate && record.dueDate.slice(0, 7) === monthKey){
         const day = Number(record.dueDate.slice(8, 10));
-        addEvent(day, `${escapeHTML(payment.name)} · ₹${Number(record.amount).toFixed(0)} · Paid`, 'paid-event');
+        addEvent(day, {name:payment.name, amount:Number(record.amount), status:'Paid', description:payment.type, className:'paid-event'});
       }
     });
     if(payment.dueDate && payment.dueDate.slice(0, 7) === monthKey){
       const day = Number(payment.dueDate.slice(8, 10));
-      addEvent(day, `${escapeHTML(payment.name)} · ₹${Number(payment.amount).toFixed(0)} · Pending`, 'pending-event');
+      addEvent(day, {name:payment.name, amount:Number(payment.amount), status:'Pending', description:payment.type, className:'pending-event'});
     }
     if(isCreditCardType(payment.type) && payment.cycleDay){
       const cycleDay = Math.min(Number(payment.cycleDay), daysInMonth);
-      addEvent(cycleDay, `${escapeHTML(payment.name)} · Statement closes`, 'cycle-event');
+      addEvent(cycleDay, {name:payment.name, amount:null, status:'Statement closes', description:payment.type, className:'cycle-event'});
     }
   });
 
-  const headings = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+  const headings = ['Su','Mo','Tu','We','Th','Fr','Sa']
     .map(day=>`<div class="calendar-weekday">${day}</div>`).join('');
   const blanks = Array.from({length:firstWeekday},()=>'<div class="calendar-day empty-day"></div>').join('');
   const days = Array.from({length:daysInMonth},(_,index)=>{
     const day = index + 1;
-    return `<div class="calendar-day"><div class="calendar-date">${day}</div>${(events[day] || []).join('')}</div>`;
+    const dateString = `${monthKey}-${String(day).padStart(2, '0')}`;
+    const dots = (calendarEventsByDate[dateString] || []).map(event=>
+      `<button type="button" class="calendar-dot ${event.className}" aria-label="${escapeHTML(`${event.status}: ${event.name}`)}" title="${escapeHTML(`${event.status}: ${event.name}`)}" onclick="showCalendarDetails('${dateString}')"></button>`
+    ).join('');
+    return `<div class="calendar-day"><div class="calendar-date">${day}</div><div class="calendar-dots">${dots}</div></div>`;
   }).join('');
   document.getElementById('calendarMonth').textContent = calendarMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
   document.getElementById('paymentsCalendar').innerHTML = headings + blanks + days;
+  if(selectedCalendarDate && selectedCalendarDate.slice(0, 7) === monthKey && calendarEventsByDate[selectedCalendarDate]){
+    showCalendarDetails(selectedCalendarDate);
+  } else {
+    selectedCalendarDate = null;
+    document.getElementById('calendarDetails').innerHTML = '';
+  }
 }
 
 function render(){
