@@ -4,7 +4,7 @@
 // zero edits to this file. CACHE_NAME is static; individual entries are
 // managed (and can be individually cleared) via the message API below.
 
-const CACHE_NAME = 'mylab-cache-v1';
+const CACHE_NAME = 'mylab-cache-v2';
 
 self.addEventListener('install', () => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
