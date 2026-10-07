@@ -81,6 +81,8 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-spac
 .btn{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px;font-size:13.5px}
 .btn.mint{border-color:var(--mint);color:var(--mint)}
 .btn.del{color:var(--coral);border-color:rgba(255,140,112,.35)}
+.btn.delyr{width:100%;color:#f5c26b;border-color:#f5c26b;background:rgba(245,194,107,.12);font-weight:650;padding:11px 12px}
+.btn.delyr.armed{background:#f5c26b;color:#1d1405;border-color:#f5c26b}
 .btn.del.armed{background:var(--coral);color:#1a0d09;border-color:var(--coral);font-weight:650}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .addkid{width:100%;padding:13px;border-radius:14px;border:1px dashed var(--mint);background:transparent;color:var(--mint);font-weight:600}
@@ -229,7 +231,7 @@ function yearHTML(y){
         field('Months contributed','n',y.n,'type="number" inputmode="numeric" min="0" max="12" step="1"','12')+'</div>';
     }
     h+='<div class="psum" data-role="yr-psum"></div>'+
-      '<div class="row"><button class="btn del" data-act="del-year" data-key="y'+y.id+'">Delete FY</button></div></div>';
+      '<div class="row"><button class="btn delyr" data-act="del-year" data-key="y'+y.id+'">Delete FY</button></div></div>';
   }
   return h+'</div>';
 }

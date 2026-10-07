@@ -11,7 +11,7 @@
   :root{
     --bg:#0f1115; --card:#171a21; --card2:#1e2229; --border:#2a2f3a;
     --text:#e8eaed; --muted:#9aa3af; --accent:#4ade80; --accent2:#22c55e;
-    --danger:#f87171; --edit:#60a5fa; --warn:#fbbf24;
+    --danger:#f87171; --edit:#60a5fa; --warn:#fbbf24; --purple:#c084fc;
   }
   *{box-sizing:border-box;}
   body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -22,16 +22,32 @@
     color:var(--text); padding:10px 18px; border-radius:20px; font-size:13px; border:1px solid var(--border);
     box-shadow:0 4px 12px rgba(0,0,0,.4); z-index:100; white-space:nowrap; display:none;}
 
-  .summary-row{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .summary-row{display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
   .sum-box{flex:1; min-width:130px; background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
     border-radius:12px; padding:12px; text-align:center;}
   .sum-box .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
   .sum-box .val{font-size:17px; font-weight:700; color:var(--accent); margin-top:4px;}
   .sum-box.drawn .val{color:var(--warn);}
 
+  .group-panel{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:16px;}
+  .group-head{display:flex; justify-content:space-between; align-items:center; cursor:pointer;}
+  .group-head h3{margin:0; font-size:13px; color:var(--text);}
+  .group-head .chev{color:var(--muted); font-size:12px;}
+  .group-body{margin-top:10px; display:none;}
+  .group-body.open{display:block;}
+  .group-row{display:flex; justify-content:space-between; align-items:flex-start; font-size:13px; padding:7px 0; border-bottom:1px solid var(--border);}
+  .group-row:last-child{border-bottom:none;}
+  .group-row .gname{color:var(--text);}
+  .group-row .gcount{color:var(--muted); font-size:11px; margin-left:4px; font-weight:400;}
+  .group-row .gvals{text-align:right;}
+  .group-row .gval{color:var(--accent); font-weight:700; display:block;}
+  .group-row .gsub{color:var(--muted); font-size:11px; display:block; margin-top:1px;}
+
   .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px;}
+  .form-head{display:flex; justify-content:space-between; align-items:center; cursor:pointer;}
+  .form-head h3{margin:0; font-size:14px;}
+  .form-head .chev{color:var(--muted); font-size:13px;}
   .section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:12px 0 8px;}
-  .section-title:first-child{margin-top:0;}
   .row{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
   .row > *{flex:1; min-width:110px;}
   label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
@@ -41,6 +57,9 @@
   textarea{resize:vertical; min-height:44px;}
   input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent);}
   .hint{font-size:11px; color:var(--muted); margin-top:-4px; margin-bottom:8px;}
+  .link-row{display:flex; gap:6px; align-items:flex-end;}
+  .link-row > div:first-child{flex:1;}
+  .refresh-btn{flex:0 0 auto; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--card2); color:var(--text); cursor:pointer; font-size:14px;}
   .btn{width:100%; padding:12px; border-radius:8px; border:none; font-size:14px; font-weight:600; cursor:pointer; margin-top:4px;}
   .btn-primary{background:var(--accent2); color:#08170e;}
   .preview-box{background:var(--card2); border:1px dashed var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px;}
@@ -52,10 +71,11 @@
   .filter-select{width:auto; padding:6px 10px; font-size:12px;}
 
   .od-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px;}
-  .od-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .od-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px; cursor:pointer;}
   .od-name{font-size:15px; font-weight:700;}
   .od-owner{font-size:11px; color:var(--muted); margin-top:2px;}
-  .od-actions{display:flex; gap:6px; flex-shrink:0;}
+  .od-actions{display:flex; align-items:center; gap:6px; flex-shrink:0;}
+  .od-chev{color:var(--muted); font-size:12px; margin-right:2px;}
   .icon-btn{background:var(--card2); border:1px solid var(--border); color:var(--text);
     border-radius:6px; padding:6px 9px; font-size:13px; cursor:pointer;}
   .icon-btn.del{color:var(--danger);}
@@ -81,22 +101,32 @@
   .od-btns button{flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--card2); color:var(--text); font-size:12px; cursor:pointer;}
   .od-btns button.primary{border-color:var(--accent); color:var(--accent);}
 
+  .compare-box{background:var(--card2); border:1px dashed var(--purple); border-radius:8px; padding:10px 12px; margin-top:10px;}
+  .compare-title{font-size:12px; font-weight:700; margin-bottom:6px; color:var(--purple);}
+  .compare-row{display:flex; justify-content:space-between; font-size:12px; padding:3px 0; color:var(--muted);}
+  .compare-row .cv{color:var(--text); font-weight:600;}
+  .compare-row.hilite .cv{font-size:13px; font-weight:700;}
+
   .txn-panel{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:10px;}
   .txn-title{font-size:12px; font-weight:700; margin-bottom:8px; color:var(--text);}
-  .txn-add-row{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .txn-add-row{display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
   .txn-add-row select, .txn-add-row input{flex:1; min-width:90px; padding:8px; font-size:13px;}
   .txn-add-row button{flex:0 0 auto; padding:8px 12px; border:none; border-radius:8px; background:var(--accent2); color:#08170e; font-weight:700; font-size:13px; cursor:pointer;}
-  .txn-mini-stats{display:flex; gap:6px; margin-bottom:10px;}
-  .txn-mini{flex:1; background:var(--card); border-radius:8px; padding:6px 8px; text-align:center;}
+  .txn-purpose-row{margin-bottom:10px;}
+  .txn-purpose-row input{padding:8px; font-size:13px;}
+  .txn-mini-stats{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .txn-mini{flex:1; min-width:80px; background:var(--card); border-radius:8px; padding:6px 8px; text-align:center;}
   .txn-mini .l{font-size:9px; color:var(--muted); text-transform:uppercase;}
   .txn-mini .v{font-size:13px; font-weight:700; margin-top:2px;}
-  .txn-row{display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:7px 0; border-top:1px solid var(--border);}
+  .txn-row{display:flex; justify-content:space-between; align-items:flex-start; font-size:12px; padding:7px 0; border-top:1px solid var(--border); gap:8px;}
   .txn-row:first-of-type{border-top:none;}
-  .txn-tag{font-size:10px; padding:2px 7px; border-radius:6px; font-weight:700; margin-right:6px;}
+  .txn-tag{font-size:10px; padding:2px 7px; border-radius:6px; font-weight:700; margin-right:6px; white-space:nowrap;}
   .txn-tag.draw{background:rgba(251,191,36,.15); color:var(--warn);}
   .txn-tag.repay{background:rgba(74,222,128,.15); color:var(--accent);}
+  .txn-tag.interest{background:rgba(192,132,252,.15); color:var(--purple);}
+  .txn-note{display:block; color:var(--muted); font-size:11px; margin-top:2px;}
   .txn-empty{color:var(--muted); font-size:12px; text-align:center; padding:8px 0;}
-  .txn-del{background:none; border:none; color:var(--danger); cursor:pointer; font-size:12px;}
+  .txn-del{background:none; border:none; color:var(--danger); cursor:pointer; font-size:12px; flex-shrink:0;}
 
   .empty{color:var(--muted); text-align:center; padding:30px 10px; font-size:13px;}
 </style>
@@ -106,7 +136,7 @@
 <div id="toast" class="toast"></div>
 
 <h1>🔓 OD Tracker</h1>
-<div class="sub">Overdraft-against-FD accounts — limit, utilization, and a full draw/repay ledger so principal paydowns are tracked.</div>
+<div class="sub">Overdraft-against-FD accounts — limit, utilization, a full ledger, and how much OD interest eats into your FD returns.</div>
 
 <div class="summary-row">
   <div class="sum-box"><div class="lbl">Total OD Limit</div><div class="val" id="sumLimit">₹0</div></div>
@@ -115,23 +145,50 @@
   <div class="sum-box drawn"><div class="lbl">Interest Accrued</div><div class="val" id="sumInterest">₹0</div></div>
 </div>
 
+<div class="group-panel">
+  <div class="group-head" id="ownerHead" onclick="toggleOwnerGroup()">
+    <h3>👤 Total Amount &amp; Interest Paid — By Owner</h3><span class="chev" id="ownerChev">▸</span>
+  </div>
+  <div class="group-body" id="ownerBody"></div>
+</div>
+
 <div class="form-card">
-  <div class="section-title">OD Account</div>
+  <div class="form-head" onclick="toggleAddForm()">
+    <h3 id="formTitle">➕ Add OD Account</h3><span class="chev" id="addFormChev">▾</span>
+  </div>
+  <div id="addFormBody">
+  <div class="section-title" style="margin-top:12px;">OD Account</div>
   <div class="row">
     <div><label>Owner</label><input type="text" id="owner" placeholder="e.g. Myself, Spouse"></div>
     <div><label>Bank / OD Account</label><input type="text" id="bankAccount" placeholder="e.g. SBI OD ••1234"></div>
   </div>
+
+  <div class="section-title">Linked FD</div>
+  <div class="row link-row">
+    <div>
+      <label>Pick from FD Tracker</label>
+      <select id="linkedFDSelect" onchange="onLinkedFDSelect()"></select>
+    </div>
+    <button type="button" class="refresh-btn" onclick="populateFDDropdown()" title="Refresh FD list">⟳</button>
+  </div>
+  <div class="hint" id="fdListHint" style="display:none;">No FDs found in the FD Tracker yet — add one there, or fill in the reference manually below.</div>
   <div class="row">
     <div><label>Linked FD Reference</label><input type="text" id="linkedFD" placeholder="e.g. SBI FD ••5678"></div>
     <div><label>Linked FD Amount (₹)</label><input type="number" id="linkedFDAmount" placeholder="e.g. 100000" oninput="updatePreview()"></div>
   </div>
+  <div class="row">
+    <div><label>FD Interest Rate (% p.a.)</label><input type="number" id="fdRate" step="0.01" placeholder="e.g. 7.1" oninput="updatePreview()"></div>
+  </div>
+  <div class="hint">Picking an FD auto-fills its amount and rate, and suggests the OD limit/rate below — OD rate is typically the FD rate plus ~2%.</div>
+
+  <div class="section-title">OD Limit &amp; Rate</div>
   <div class="row">
     <div><label>OD Limit % of FD</label><input type="number" id="limitPct" value="90" step="1" oninput="updatePreview()"></div>
     <div>
       <label>OD Limit (₹)</label>
       <input type="number" id="odLimit" placeholder="auto-calculated" oninput="onLimitOverride()">
     </div>
-    <div><label>Interest Rate (% p.a.)</label><input type="number" id="rate" step="0.01" placeholder="e.g. 8.5" oninput="updatePreview()"></div>
+    <div><label>OD Interest Rate (% p.a.)</label><input type="number" id="rate" step="0.01" placeholder="e.g. 9.1" oninput="updatePreview()"></div>
   </div>
   <div class="hint">OD Limit auto-fills at the % above once you enter the linked FD amount — edit it directly if your bank quoted a different figure.</div>
 
@@ -140,11 +197,12 @@
     <div><label>Already Drawn (₹)</label><input type="number" id="openingAmount" placeholder="0" oninput="updatePreview()"></div>
     <div><label>As Of Date</label><input type="date" id="openingDate"></div>
   </div>
-  <div class="hint">If this OD already has an outstanding balance, log it here as the first entry in its ledger — you can add draws and repayments afterward from the account card.</div>
+  <div class="hint">If this OD already has an outstanding balance, log it here as the first entry in its ledger — you can add draws, repayments, and interest debits afterward from the account card.</div>
 
   <div class="preview-box" id="previewBox" style="display:none;">
     <div class="preview-row"><span>Available Limit</span><span class="pv" id="pvAvailable">-</span></div>
     <div class="preview-row"><span>Utilization</span><span class="pv" id="pvUtil">-</span></div>
+    <div class="preview-row" id="pvSpreadRow" style="display:none;"><span>Rate Spread (OD − FD)</span><span class="pv" id="pvSpread">-</span></div>
   </div>
 
   <div class="section-title">Status &amp; Purpose</div>
@@ -163,6 +221,7 @@
   </div>
 
   <button class="btn btn-primary" id="saveBtn" onclick="saveOD()">+ Add OD Account</button>
+  </div>
 </div>
 
 <div class="list-header">
@@ -178,11 +237,15 @@
 <script>
 const KEY = 'od_tracker_v2';
 const OLD_KEY = 'od_tracker_v1';
+const FD_KEY = 'fd_tracker_v1';
 let ods = loadData();
 let editingId = null;
 let openTxnId = null;
 let pendingDeletes = {};
 let limitManuallyEdited = false;
+let expandedIds = new Set();
+let showAddForm = true;
+let showOwnerGroup = false;
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
@@ -203,7 +266,11 @@ function loadData(){
       return { ...rest, transactions };
     });
   }
-  return raw.map(f => ({ transactions: [], ...f }));
+  return raw.map(f => ({ transactions: [], linkedFDId:'', fdRate:0, ...f }));
+}
+
+function loadFDList(){
+  try { return JSON.parse(localStorage.getItem(FD_KEY) || '[]'); } catch(e){ return []; }
 }
 
 function ordinal(n){
@@ -252,12 +319,40 @@ function onLimitOverride(){
   updatePreview();
 }
 
+// ---------- Linked FD (cross-tool, same-origin localStorage) ----------
+function populateFDDropdown(){
+  const sel = document.getElementById('linkedFDSelect');
+  const current = sel.value;
+  const list = loadFDList();
+  const options = ['<option value="">— Manual / not linked —</option>']
+    .concat(list.map(fd => `<option value="${fd.id}">${escapeHtml(fd.owner)} · ${escapeHtml(fd.bankAccount)} · ${fmt(fd.investedAmount)} @ ${fd.rate}%</option>`));
+  sel.innerHTML = options.join('');
+  if(list.some(fd => fd.id === current)) sel.value = current;
+  document.getElementById('fdListHint').style.display = list.length ? 'none' : 'block';
+}
+
+function onLinkedFDSelect(){
+  const sel = document.getElementById('linkedFDSelect');
+  const fdId = sel.value;
+  if(!fdId){ updatePreview(); return; }
+  const fd = loadFDList().find(x => x.id === fdId);
+  if(!fd) return;
+  document.getElementById('linkedFD').value = `${fd.owner} · ${fd.bankAccount}`;
+  document.getElementById('linkedFDAmount').value = fd.investedAmount;
+  document.getElementById('fdRate').value = fd.rate;
+  document.getElementById('rate').value = Math.round((fd.rate + 2) * 100) / 100;
+  limitManuallyEdited = false;
+  updatePreview();
+}
+
 function readForm(){
   return {
     owner: document.getElementById('owner').value.trim(),
     bankAccount: document.getElementById('bankAccount').value.trim(),
+    linkedFDId: document.getElementById('linkedFDSelect').value,
     linkedFD: document.getElementById('linkedFD').value.trim(),
     linkedFDAmount: parseFloat(document.getElementById('linkedFDAmount').value) || 0,
+    fdRate: parseFloat(document.getElementById('fdRate').value) || 0,
     limitPct: parseFloat(document.getElementById('limitPct').value) || 90,
     odLimit: parseFloat(document.getElementById('odLimit').value) || 0,
     rate: parseFloat(document.getElementById('rate').value),
@@ -278,7 +373,7 @@ function computeOD(od){
   const rate = od.rate;
   const txns = [...(od.transactions||[])].sort((a,b) => a.date.localeCompare(b.date));
   let balance = 0, interestAccrued = 0, prevDate = null;
-  let lifetimeDrawn = 0, lifetimeRepaid = 0;
+  let lifetimeDrawn = 0, lifetimeRepaid = 0, lifetimeInterestCharged = 0;
 
   txns.forEach(t => {
     if(prevDate){
@@ -286,6 +381,7 @@ function computeOD(od){
       interestAccrued += balance * (rate/100/365) * days;
     }
     if(t.type === 'Draw'){ balance += t.amount; lifetimeDrawn += t.amount; }
+    else if(t.type === 'Interest'){ balance += t.amount; lifetimeInterestCharged += t.amount; }
     else { balance = Math.max(0, balance - t.amount); lifetimeRepaid += t.amount; }
     prevDate = t.date;
   });
@@ -301,7 +397,16 @@ function computeOD(od){
   const dailyCost = outstanding * (rate/100/365);
   const daysSinceLast = prevDate ? daysBetweenDates(prevDate, todayStr()) : 0;
 
-  return { outstanding, interestAccrued, available, utilPct, dailyCost, daysSinceLast, lastDate: prevDate, lifetimeDrawn, lifetimeRepaid };
+  const fdRate = od.fdRate || 0;
+  const hasComparison = fdRate > 0 && od.linkedFDAmount > 0;
+  const fdDailyEarning = hasComparison ? od.linkedFDAmount * (fdRate/100/365) : 0;
+  const netDragDaily = dailyCost - fdDailyEarning;
+
+  return {
+    outstanding, interestAccrued, available, utilPct, dailyCost, daysSinceLast, lastDate: prevDate,
+    lifetimeDrawn, lifetimeRepaid, lifetimeInterestCharged,
+    hasComparison, fdDailyEarning, netDragDaily
+  };
 }
 
 function updatePreview(){
@@ -320,16 +425,43 @@ function updatePreview(){
   const utilPct = f.odLimit > 0 ? Math.min(100, (f.openingAmount/f.odLimit)*100) : 0;
   document.getElementById('pvAvailable').textContent = fmt(available);
   document.getElementById('pvUtil').textContent = utilPct.toFixed(1) + '%';
+
+  const spreadRow = document.getElementById('pvSpreadRow');
+  if(f.fdRate > 0 && f.rate > 0){
+    spreadRow.style.display = 'flex';
+    document.getElementById('pvSpread').textContent = (f.rate - f.fdRate >= 0 ? '+' : '') + (f.rate - f.fdRate).toFixed(2) + '%';
+  } else {
+    spreadRow.style.display = 'none';
+  }
 }
 
 function clearForm(){
-  ['owner','bankAccount','linkedFD','linkedFDAmount','odLimit','rate','openingAmount','purpose','comments'].forEach(id=>document.getElementById(id).value='');
+  ['owner','bankAccount','linkedFD','linkedFDAmount','fdRate','odLimit','rate','openingAmount','purpose','comments'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('linkedFDSelect').value = '';
   document.getElementById('limitPct').value = '90';
   document.getElementById('openingDate').value = '';
   document.getElementById('status').value = 'Active';
   document.getElementById('previewBox').style.display = 'none';
+  document.getElementById('formTitle').textContent = '➕ Add OD Account';
   limitManuallyEdited = false;
   updatePreview();
+}
+
+function toggleAddForm(){
+  showAddForm = !showAddForm;
+  document.getElementById('addFormBody').style.display = showAddForm ? 'block' : 'none';
+  document.getElementById('addFormChev').textContent = showAddForm ? '▾' : '▸';
+}
+
+function toggleOwnerGroup(){
+  showOwnerGroup = !showOwnerGroup;
+  document.getElementById('ownerBody').classList.toggle('open', showOwnerGroup);
+  document.getElementById('ownerChev').textContent = showOwnerGroup ? '▾' : '▸';
+}
+
+function toggleCard(id){
+  if(expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+  renderList();
 }
 
 function saveOD(){
@@ -342,9 +474,8 @@ function saveOD(){
     const idx = ods.findIndex(x => x.id === editingId);
     ods[idx] = { ...ods[idx], ...core };
     editingId = null;
-    document.getElementById('saveBtn').textContent = '+ Add OD Account';
   } else {
-    const transactions = openingAmount > 0 ? [{ id: uid(), type:'Draw', amount:openingAmount, date:openingDate }] : [];
+    const transactions = openingAmount > 0 ? [{ id: uid(), type:'Draw', amount:openingAmount, date:openingDate, purpose:'' }] : [];
     ods.push({ id: uid(), ...core, transactions });
   }
   save();
@@ -355,10 +486,13 @@ function saveOD(){
 function editOD(id){
   const f = ods.find(x => x.id === id);
   if(!f) return;
+  populateFDDropdown();
   document.getElementById('owner').value = f.owner;
   document.getElementById('bankAccount').value = f.bankAccount;
+  document.getElementById('linkedFDSelect').value = f.linkedFDId || '';
   document.getElementById('linkedFD').value = f.linkedFD || '';
   document.getElementById('linkedFDAmount').value = f.linkedFDAmount || '';
+  document.getElementById('fdRate').value = f.fdRate || '';
   document.getElementById('limitPct').value = f.limitPct || 90;
   document.getElementById('odLimit').value = f.odLimit;
   document.getElementById('rate').value = f.rate;
@@ -369,7 +503,9 @@ function editOD(id){
   document.getElementById('comments').value = f.comments || '';
   editingId = id;
   limitManuallyEdited = true;
+  document.getElementById('formTitle').textContent = '✎ Edit OD Account';
   document.getElementById('saveBtn').textContent = '✓ Update OD Account';
+  if(!showAddForm) toggleAddForm();
   updatePreview();
   window.scrollTo({top:0, behavior:'smooth'});
   showToast('Editing account details — use the card below to log draws/repayments');
@@ -379,6 +515,7 @@ function deleteOD(id, btn){
   confirmDelete('od-'+id, btn, () => {
     ods = ods.filter(x => x.id !== id);
     if(openTxnId === id) openTxnId = null;
+    expandedIds.delete(id);
     save();
     renderAll();
     showToast('OD account deleted');
@@ -397,11 +534,12 @@ function addTransaction(odId){
   const type = document.getElementById(`txn-type-${odId}`).value;
   const amount = parseFloat(document.getElementById(`txn-amount-${odId}`).value) || 0;
   const date = document.getElementById(`txn-date-${odId}`).value || todayStr();
+  const purpose = document.getElementById(`txn-purpose-${odId}`).value.trim();
 
   if(amount <= 0){ showToast('Enter an amount greater than zero.'); return; }
 
   od.transactions = od.transactions || [];
-  od.transactions.push({ id: uid(), type, amount, date });
+  od.transactions.push({ id: uid(), type, amount, date, purpose });
   save();
   renderAll();
 }
@@ -417,33 +555,44 @@ function deleteTransaction(odId, txnId, btn){
   });
 }
 
+const TXN_LABELS = { Draw:'DRAW', Repay:'REPAY', Interest:'OD INTEREST' };
+const TXN_CLASS = { Draw:'draw', Repay:'repay', Interest:'interest' };
+
 function renderTxnPanel(od){
   const r = computeOD(od);
   const txns = [...(od.transactions||[])].sort((a,b) => b.date.localeCompare(a.date));
   const rows = txns.length
     ? txns.map(t => `
         <div class="txn-row">
-          <span><span class="txn-tag ${t.type==='Draw'?'draw':'repay'}">${t.type.toUpperCase()}</span>${fmtDate(t.date)}</span>
+          <span>
+            <span class="txn-tag ${TXN_CLASS[t.type]||'draw'}">${TXN_LABELS[t.type]||t.type.toUpperCase()}</span>${fmtDate(t.date)}
+            ${t.purpose ? `<span class="txn-note">${escapeHtml(t.purpose)}</span>` : ''}
+          </span>
           <span>${fmt(t.amount)} <button class="txn-del" onclick="deleteTransaction('${od.id}','${t.id}', this)">✕</button></span>
         </div>`).join('')
-    : '<div class="txn-empty">No entries yet — log a draw or repayment below.</div>';
+    : '<div class="txn-empty">No entries yet — log a draw, repayment, or interest debit below.</div>';
 
   return `
     <div class="txn-panel">
       <div class="txn-title">📒 Ledger — ${escapeHtml(od.bankAccount)}</div>
       <div class="txn-mini-stats">
-        <div class="txn-mini"><div class="l">Lifetime Drawn</div><div class="v">${fmt(r.lifetimeDrawn)}</div></div>
-        <div class="txn-mini"><div class="l">Lifetime Repaid</div><div class="v">${fmt(r.lifetimeRepaid)}</div></div>
-        <div class="txn-mini"><div class="l">Outstanding Now</div><div class="v">${fmt(r.outstanding)}</div></div>
+        <div class="txn-mini"><div class="l">Drawn</div><div class="v">${fmt(r.lifetimeDrawn)}</div></div>
+        <div class="txn-mini"><div class="l">Interest Charged</div><div class="v">${fmt(r.lifetimeInterestCharged)}</div></div>
+        <div class="txn-mini"><div class="l">Repaid</div><div class="v">${fmt(r.lifetimeRepaid)}</div></div>
+        <div class="txn-mini"><div class="l">Outstanding</div><div class="v">${fmt(r.outstanding)}</div></div>
       </div>
       <div class="txn-add-row">
         <select id="txn-type-${od.id}">
           <option value="Draw">Draw</option>
           <option value="Repay">Repay (backfill)</option>
+          <option value="Interest">OD Interest (bank-debited)</option>
         </select>
         <input type="number" id="txn-amount-${od.id}" placeholder="Amount ₹">
         <input type="date" id="txn-date-${od.id}" value="${todayStr()}">
         <button onclick="addTransaction('${od.id}')">+ Add</button>
+      </div>
+      <div class="txn-purpose-row">
+        <input type="text" id="txn-purpose-${od.id}" placeholder="Purpose / note (optional) — e.g. Medical emergency">
       </div>
       ${rows}
     </div>
@@ -463,6 +612,7 @@ function renderList(){
 
   list.innerHTML = filtered.map(f => {
     const r = computeOD(f);
+    const isOpen = expandedIds.has(f.id);
     const statusClass = 'status-' + f.status.toLowerCase();
     let utilBadge = '';
     if(r.outstanding <= 0) utilBadge = '<span class="badge util-unused">UNUSED</span>';
@@ -471,20 +621,22 @@ function renderList(){
 
     return `
       <div class="od-card">
-        <div class="od-top">
+        <div class="od-top" onclick="toggleCard('${f.id}')">
           <div>
             <span class="od-name">${escapeHtml(f.bankAccount)}</span>
-            <div class="od-owner">${escapeHtml(f.owner)}${f.linkedFD ? ' · against ' + escapeHtml(f.linkedFD) : ''}${f.purpose ? ' · ' + escapeHtml(f.purpose) : ''}</div>
+            <div class="od-owner">${escapeHtml(f.owner)}${f.linkedFD ? ' · against ' + escapeHtml(f.linkedFD) : ''}${f.purpose ? ' · ' + escapeHtml(f.purpose) : ''} · Outstanding ${fmt(r.outstanding)}</div>
           </div>
           <div class="od-actions">
-            <button class="icon-btn edit" onclick="editOD('${f.id}')">✎</button>
-            <button class="icon-btn del" onclick="deleteOD('${f.id}', this)">✕</button>
+            <span class="od-chev">${isOpen ? '▾' : '▸'}</span>
+            <button class="icon-btn edit" onclick="event.stopPropagation(); editOD('${f.id}')">✎</button>
+            <button class="icon-btn del" onclick="event.stopPropagation(); deleteOD('${f.id}', this)">✕</button>
           </div>
         </div>
         <div class="badges">
           <span class="badge ${statusClass}">${escapeHtml(f.status).toUpperCase()}</span>
           ${utilBadge}
         </div>
+        ${isOpen ? `
         <div class="util-bar"><div class="util-fill" style="width:${r.utilPct.toFixed(1)}%;background:${barColor};"></div></div>
         <div class="util-text"><span>${r.utilPct.toFixed(0)}% utilized</span><span>Available ${fmt(r.available)}</span></div>
         <div class="od-stats">
@@ -497,12 +649,45 @@ function renderList(){
           ${r.lastDate ? `Last ledger entry <b>${fmtDate(r.lastDate)}</b> (${r.daysSinceLast} days ago) · ~${fmt(r.dailyCost)}/day interest on current balance` : 'No ledger entries yet'}
           ${f.comments ? '<br>💬 ' + escapeHtml(f.comments) : ''}
         </div>
+        ${r.hasComparison ? `
+        <div class="compare-box">
+          <div class="compare-title">💡 FD vs OD Interest</div>
+          <div class="compare-row"><span>FD rate (${fmt(f.linkedFDAmount)} @ ${f.fdRate}%)</span><span class="cv">${fmt(r.fdDailyEarning*365)}/yr earned</span></div>
+          <div class="compare-row"><span>OD rate (${f.rate}% on current balance)</span><span class="cv">${fmt(r.dailyCost*365)}/yr cost</span></div>
+          <div class="compare-row hilite"><span>${r.netDragDaily > 0 ? 'Net drag — OD eating into FD returns' : 'Net gain vs FD'}</span><span class="cv" style="color:${r.netDragDaily>0?'var(--danger)':'var(--accent)'};">${fmt(Math.abs(r.netDragDaily*365))}/yr</span></div>
+        </div>` : ''}
         <div class="od-btns">
-          <button class="primary" onclick="toggleTxn('${f.id}')">${openTxnId===f.id ? 'Hide Ledger' : '📒 Draws / Repayments'}</button>
+          <button class="primary" onclick="toggleTxn('${f.id}')">${openTxnId===f.id ? 'Hide Ledger' : '📒 Draws / Repayments / Interest'}</button>
         </div>
-        ${openTxnId === f.id ? renderTxnPanel(f) : ''}
+        ${openTxnId === f.id ? renderTxnPanel(f) : ''}` : ''}
       </div>`;
   }).join('');
+}
+
+function renderOwnerGroup(){
+  const byOwner = {};
+  ods.forEach(f => {
+    if(f.status === 'Closed') return;
+    const r = computeOD(f);
+    const o = f.owner || 'Unspecified';
+    byOwner[o] = byOwner[o] || { outstanding:0, interestCharged:0, interestAccruing:0, count:0 };
+    byOwner[o].outstanding += r.outstanding;
+    byOwner[o].interestCharged += r.lifetimeInterestCharged;
+    byOwner[o].interestAccruing += r.interestAccrued;
+    byOwner[o].count++;
+  });
+
+  const keys = Object.keys(byOwner).sort((a,b) => byOwner[b].outstanding - byOwner[a].outstanding);
+  document.getElementById('ownerBody').innerHTML = keys.length
+    ? keys.map(o => `
+      <div class="group-row">
+        <span class="gname">${escapeHtml(o)}<span class="gcount">(${byOwner[o].count})</span></span>
+        <span class="gvals">
+          <span class="gval">${fmt(byOwner[o].outstanding)}</span>
+          <span class="gsub">Interest paid ${fmt(byOwner[o].interestCharged)}${byOwner[o].interestAccruing>0 ? ' + ' + fmt(byOwner[o].interestAccruing) + ' accruing' : ''}</span>
+        </span>
+      </div>`).join('')
+    : '<div class="group-row"><span class="gname">No active OD accounts yet</span></div>';
 }
 
 function renderSummary(){
@@ -522,9 +707,11 @@ function renderSummary(){
 
 function renderAll(){
   renderSummary();
+  renderOwnerGroup();
   renderList();
 }
 
+populateFDDropdown();
 renderAll();
 </script>
 </body>

@@ -23,10 +23,12 @@
   .field{flex:1;min-width:100px;}
   button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
 
-  .summary{display:flex;gap:10px;}
-  .summary .box{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:14px;}
+  .summary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;}
+  .summary .box{grid-column:span 2;text-align:center;background:#0f172a;border-radius:10px;padding:14px;min-width:0;}
+  .summary .box:nth-child(4),.summary .box:nth-child(5){grid-column:span 3;}
   .summary .n{font-size:20px;font-weight:800;}
   .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
+  .summary-progress{grid-column:1/-1;}
 
   .bank-total{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #334155;font-size:13px;}
   .bank-total:last-child{border-bottom:none;}
@@ -53,6 +55,29 @@
   .summary-note{font-size:12px;color:var(--sub);margin:0 0 8px;}
   .progress-track{height:8px;background:#0f172a;border-radius:8px;overflow:hidden;margin-top:12px;}
   .progress-fill{height:100%;background:var(--acc);transition:width .2s;}
+  .calendar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;}
+  .calendar-head h2{font-size:16px;margin:0;}
+  .calendar-nav{border:1px solid #334155;border-radius:8px;background:#0f172a;color:var(--txt);padding:7px 10px;cursor:pointer;}
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
+  .calendar-weekday,.calendar-day{min-width:0;padding:5px 3px;}
+  .calendar-weekday{text-align:center;color:var(--sub);font-size:10px;}
+  .calendar-day{min-height:80px;background:#0f172a;border-radius:6px;font-size:11px;}
+  .calendar-day.empty-day{background:transparent;}
+  .calendar-date{font-weight:700;margin-bottom:4px;}
+  .calendar-event{overflow-wrap:anywhere;font-size:10px;margin:3px 0;padding:3px;border-radius:4px;}
+  .calendar-event.pending-event{background:rgba(245,158,11,.15);color:var(--warn);}
+  .calendar-event.paid-event{background:rgba(34,197,94,.15);color:var(--acc);}
+  .calendar-event.cycle-event{background:rgba(96,165,250,.15);color:#60a5fa;}
+  .calendar-legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--sub);font-size:11px;margin-top:10px;}
+  .calendar-legend span{display:flex;align-items:center;gap:5px;}
+  .legend-dot{width:8px;height:8px;border-radius:50%;}
+  @media(max-width:480px){
+    body{padding:12px;}
+    .summary{gap:6px;}
+    .summary .box{padding:10px 5px;}
+    .summary .n{font-size:16px;}
+    .calendar-day{min-height:65px;padding:4px 2px;}
+  }
 </style>
 </head>
 <body>
@@ -65,6 +90,13 @@
       <div class="box"><div class="n" id="totalCount">0</div><div class="l">Active Debits</div></div>
       <div class="box"><div class="n" id="totalMonthly">₹0</div><div class="l">Monthly Outflow</div></div>
       <div class="box"><div class="n" id="dueSoon" style="color:var(--warn);">0</div><div class="l">Due in 7 Days</div></div>
+      <div class="box"><div class="n" id="paidThisMonth">₹0</div><div class="l">Paid this month</div></div>
+      <div class="box"><div class="n" id="pendingThisMonth">₹0</div><div class="l">Pending this month</div></div>
+      <div class="summary-progress">
+        <div class="progress-track" role="progressbar" aria-label="Monthly payment progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="progress-fill" id="paymentProgress" style="width:0%"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -79,20 +111,6 @@
   <details class="card">
     <summary>Monthly by Type</summary>
     <div class="details-content" id="typeTotals"></div>
-  </details>
-
-  <details class="card">
-    <summary>Paid and pending this month</summary>
-    <div class="details-content">
-      <p class="summary-note">Paid is based on payments marked done, grouped by scheduled due month.</p>
-      <div class="summary">
-        <div class="box"><div class="n" id="paidThisMonth">₹0</div><div class="l">Paid</div></div>
-        <div class="box"><div class="n" id="pendingThisMonth">₹0</div><div class="l">Pending to pay</div></div>
-      </div>
-      <div class="progress-track" role="progressbar" aria-label="Monthly payment progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <div class="progress-fill" id="paymentProgress" style="width:0%"></div>
-      </div>
-    </div>
   </details>
 
   <div class="card">
@@ -112,8 +130,8 @@
       </div>
     </div>
     <div class="row">
-      <div class="field"><label>Amount (₹)</label><input type="number" id="payAmount" placeholder="e.g. 15000"></div>
-      <div class="field"><label>Frequency</label>
+      <div class="field"><label id="amountLabel">Amount (₹)</label><input type="number" id="payAmount" placeholder="e.g. 15000"></div>
+      <div class="field" id="frequencyField"><label>Frequency</label>
         <select id="payFreq">
           <option value="1">Monthly</option>
           <option value="3">Quarterly</option>
@@ -123,6 +141,7 @@
       <div class="field"><label>Debited From</label><input type="text" id="payAccount" placeholder="e.g. HDFC a/c"></div>
     </div>
     <div class="row">
+      <div class="field" id="cycleDayField" hidden><label>Statement cycle closing day</label><input type="number" id="cycleDay" min="1" max="31" placeholder="e.g. 15"></div>
       <div class="field"><label>Next Due Date</label><input type="date" id="payDueDate"></div>
       <div class="field"><label>Payment Method</label>
         <select id="payMethod">
@@ -138,35 +157,89 @@
     <label style="font-size:14px;color:var(--txt);font-weight:700;">Your Auto-Debits</label>
     <div id="paymentsList"></div>
   </div>
+
+  <div class="card">
+    <div class="calendar-head">
+      <button class="calendar-nav" id="previousMonth" aria-label="Previous month">‹</button>
+      <h2 id="calendarMonth"></h2>
+      <button class="calendar-nav" id="nextMonth" aria-label="Next month">›</button>
+    </div>
+    <div class="calendar-grid" id="paymentsCalendar"></div>
+    <div class="calendar-legend">
+      <span><i class="legend-dot" style="background:var(--acc);"></i>Paid</span>
+      <span><i class="legend-dot" style="background:var(--warn);"></i>Pending</span>
+      <span><i class="legend-dot" style="background:#60a5fa;"></i>Statement closes</span>
+    </div>
+  </div>
 </div>
 
 <script>
 const STORAGE_KEY = 'autodebit_tracker_entries';
 let payments = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 let editingId = null;
+let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(payments)); }
+
+function isCreditCardType(type){
+  return type === 'Credit Card Bill';
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g, character => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[character]);
+}
+
+function syncTypeFields(){
+  const isCard = isCreditCardType(document.getElementById('payType').value);
+  document.getElementById('cycleDayField').hidden = !isCard;
+  document.getElementById('frequencyField').hidden = isCard;
+  document.getElementById('amountLabel').textContent = isCard ? 'Current bill amount (₹)' : 'Amount (₹)';
+  if(isCard) document.getElementById('payFreq').value = '1';
+}
+
+function addMonths(dateString, months){
+  const [year, month, day] = dateString.split('-').map(Number);
+  const targetMonth = month - 1 + months;
+  const targetYear = year + Math.floor(targetMonth / 12);
+  const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+  const targetDay = Math.min(day, new Date(targetYear, normalizedMonth + 1, 0).getDate());
+  return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+}
+
+function historyRecords(payment){
+  return (payment.history || []).map(record => typeof record === 'string'
+    ? { dueDate: record, amount: payment.amount }
+    : record);
+}
 
 function addPayment(){
   const name = document.getElementById('payName').value.trim();
   const type = document.getElementById('payType').value;
   const amount = parseFloat(document.getElementById('payAmount').value) || 0;
-  const freq = parseFloat(document.getElementById('payFreq').value) || 1;
+  const freq = isCreditCardType(type) ? 1 : parseFloat(document.getElementById('payFreq').value) || 1;
   const account = document.getElementById('payAccount').value.trim();
   const dueDate = document.getElementById('payDueDate').value;
   const method = document.getElementById('payMethod').value;
+  const cycleDay = isCreditCardType(type) ? parseInt(document.getElementById('cycleDay').value, 10) : null;
 
-  if(!name || amount<=0 || !dueDate) return;
+  if(!name || amount<=0 || !dueDate || (isCreditCardType(type) && (!cycleDay || cycleDay < 1 || cycleDay > 31))){
+    alert(isCreditCardType(type)
+      ? 'Enter a payment name, bill amount, statement cycle closing day (1-31), and next due date.'
+      : 'Enter a payment name, amount, and next due date.');
+    return;
+  }
 
   if(editingId !== null){
     const idx = payments.findIndex(p=>p.id===editingId);
     if(idx > -1){
-      payments[idx] = { ...payments[idx], name, type, amount, freq, account, dueDate, method };
+      payments[idx] = { ...payments[idx], name, type, amount, freq, account, dueDate, method, cycleDay };
     }
     editingId = null;
     document.getElementById('addBtn').textContent = '+ Add Auto-Debit';
   } else {
-    payments.push({ id: Date.now(), name, type, amount, freq, account, dueDate, method });
+    payments.push({ id: Date.now(), name, type, amount, freq, account, dueDate, method, cycleDay });
   }
   save();
 
@@ -175,6 +248,8 @@ function addPayment(){
   document.getElementById('payAccount').value='';
   document.getElementById('payDueDate').value='';
   document.getElementById('payMethod').value='Automated';
+  document.getElementById('cycleDay').value='';
+  syncTypeFields();
 
   render();
 }
@@ -189,6 +264,8 @@ function editPayment(id){
   document.getElementById('payAccount').value = p.account;
   document.getElementById('payDueDate').value = p.dueDate;
   document.getElementById('payMethod').value = p.method || 'Automated';
+  document.getElementById('cycleDay').value = p.cycleDay || '';
+  syncTypeFields();
   editingId = id;
   document.getElementById('addBtn').textContent = '✓ Update Auto-Debit';
   window.scrollTo({top:0, behavior:'smooth'});
@@ -198,11 +275,20 @@ function markDone(id){
   const idx = payments.findIndex(p=>p.id===id);
   if(idx===-1) return;
   const p = payments[idx];
-  const current = new Date(p.dueDate);
-  current.setMonth(current.getMonth() + parseInt(p.freq));
-  const nextDue = current.toISOString().split('T')[0];
-  const history = p.history ? [...p.history, p.dueDate] : [p.dueDate];
-  payments[idx] = { ...p, lastPaid: p.dueDate, dueDate: nextDue, history };
+  let nextAmount = p.amount;
+  if(isCreditCardType(p.type)){
+    const nextBillInput = document.getElementById(`nextBillAmount-${id}`);
+    nextAmount = parseFloat(nextBillInput.value);
+    if(!Number.isFinite(nextAmount) || nextAmount <= 0){
+      nextBillInput.setCustomValidity('Enter the next cycle bill amount before marking this bill done.');
+      nextBillInput.reportValidity();
+      nextBillInput.addEventListener('input', ()=>nextBillInput.setCustomValidity(''), {once:true});
+      return;
+    }
+  }
+  const nextDue = addMonths(p.dueDate, parseInt(p.freq, 10) || 1);
+  const history = [...historyRecords(p), { dueDate: p.dueDate, amount: p.amount, nextAmount }];
+  payments[idx] = { ...p, amount: nextAmount, lastPaid: p.dueDate, dueDate: nextDue, history };
   save();
   render();
 }
@@ -212,9 +298,15 @@ function undoDone(id){
   if(idx===-1) return;
   const p = payments[idx];
   if(!p.history || p.history.length===0) return;
-  const history = [...p.history];
-  const prevDue = history.pop();
-  payments[idx] = { ...p, dueDate: prevDue, lastPaid: history.length ? history[history.length-1] : undefined, history };
+  const history = [...historyRecords(p)];
+  const previous = history.pop();
+  payments[idx] = {
+    ...p,
+    amount: previous.nextAmount === undefined ? p.amount : previous.amount,
+    dueDate: previous.dueDate,
+    lastPaid: history.length ? history[history.length-1].dueDate : undefined,
+    history
+  };
   save();
   render();
 }
@@ -226,10 +318,51 @@ function removePayment(id){
 }
 
 function daysUntil(dateStr){
-  const target = new Date(dateStr);
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const target = new Date(year, month - 1, day);
   const now = new Date();
   now.setHours(0,0,0,0);
   return Math.ceil((target - now) / (1000*60*60*24));
+}
+
+function renderCalendar(){
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const events = {};
+  const addEvent = (day, label, className) => {
+    events[day] = events[day] || [];
+    events[day].push(`<div class="calendar-event ${className}">${label}</div>`);
+  };
+
+  payments.forEach(payment=>{
+    historyRecords(payment).forEach(record=>{
+      if(record.dueDate && record.dueDate.slice(0, 7) === monthKey){
+        const day = Number(record.dueDate.slice(8, 10));
+        addEvent(day, `${escapeHTML(payment.name)} · ₹${Number(record.amount).toFixed(0)} · Paid`, 'paid-event');
+      }
+    });
+    if(payment.dueDate && payment.dueDate.slice(0, 7) === monthKey){
+      const day = Number(payment.dueDate.slice(8, 10));
+      addEvent(day, `${escapeHTML(payment.name)} · ₹${Number(payment.amount).toFixed(0)} · Pending`, 'pending-event');
+    }
+    if(isCreditCardType(payment.type) && payment.cycleDay){
+      const cycleDay = Math.min(Number(payment.cycleDay), daysInMonth);
+      addEvent(cycleDay, `${escapeHTML(payment.name)} · Statement closes`, 'cycle-event');
+    }
+  });
+
+  const headings = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    .map(day=>`<div class="calendar-weekday">${day}</div>`).join('');
+  const blanks = Array.from({length:firstWeekday},()=>'<div class="calendar-day empty-day"></div>').join('');
+  const days = Array.from({length:daysInMonth},(_,index)=>{
+    const day = index + 1;
+    return `<div class="calendar-day"><div class="calendar-date">${day}</div>${(events[day] || []).join('')}</div>`;
+  }).join('');
+  document.getElementById('calendarMonth').textContent = calendarMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
+  document.getElementById('paymentsCalendar').innerHTML = headings + blanks + days;
 }
 
 function render(){
@@ -244,7 +377,8 @@ function render(){
     const bank = p.account || 'Bank not specified';
     bankTotals[bank] = (bankTotals[bank] || 0) + p.amount / p.freq;
     typeTotals[p.type] = (typeTotals[p.type] || 0) + p.amount / p.freq;
-    paidThisMonth += (p.history || []).filter(date => date && date.slice(0, 7) === thisMonth).length * p.amount;
+    paidThisMonth += historyRecords(p).filter(record => record.dueDate && record.dueDate.slice(0, 7) === thisMonth)
+      .reduce((sum, record) => sum + Number(record.amount || 0), 0);
     if(p.dueDate && p.dueDate.slice(0, 7) === thisMonth) pendingThisMonth += p.amount;
   });
   document.getElementById('bankTotals').innerHTML = Object.entries(bankTotals).length
@@ -264,6 +398,7 @@ function render(){
   const progressTrack = document.querySelector('.progress-track');
   progressTrack.setAttribute('aria-valuenow', progress);
   document.getElementById('paymentProgress').style.width = progress + '%';
+  renderCalendar();
 
   if(payments.length===0){
     container.innerHTML = '<div class="empty">No auto-debits added yet.</div>';
@@ -289,7 +424,7 @@ function render(){
     return `
       <div class="pay-item">
         <div class="pay-head">
-          <span class="pay-name">${p.name}<span class="type-badge">${p.type}</span></span>
+          <span class="pay-name">${escapeHTML(p.name)}<span class="type-badge">${escapeHTML(p.type)}</span></span>
           <span>
             <button class="del" style="color:var(--acc);" onclick="markDone(${p.id})">Mark Done</button>
             ${p.history && p.history.length>0 ? `<button class="del" style="color:var(--warn);" onclick="undoDone(${p.id})">Undo</button>` : ''}
@@ -297,7 +432,8 @@ function render(){
             <button class="del" onclick="removePayment(${p.id})">✕</button>
           </span>
         </div>
-        <div class="pay-meta">₹${p.amount} every ${p.freq==1?'month':p.freq==3?'quarter':'year'}${p.account?` • from ${p.account}`:''} • ${p.method || 'Automated'} • ~₹${monthlyEquiv.toFixed(0)}/mo${p.lastPaid?` • last paid ${p.lastPaid}`:''}</div>
+        <div class="pay-meta">₹${p.amount}${isCreditCardType(p.type) ? ' current bill' : ` every ${p.freq==1?'month':p.freq==3?'quarter':'year'}`}${p.account?` • from ${escapeHTML(p.account)}`:''} • ${escapeHTML(p.method || 'Automated')}${p.lastPaid?` • last paid ${escapeHTML(p.lastPaid)}`:''}</div>
+        ${isCreditCardType(p.type) ? `<div class="row"><div class="field"><label for="nextBillAmount-${p.id}">Next cycle bill amount (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" placeholder="Enter after statement closes" required></div></div>` : ''}
         <span class="status-badge ${statusClass}">${statusLabel}</span>
       </div>
     `;
@@ -308,6 +444,17 @@ function render(){
   document.getElementById('dueSoon').textContent = dueSoonCount;
 }
 
+document.getElementById('payType').addEventListener('change', syncTypeFields);
+document.getElementById('previousMonth').addEventListener('click', ()=>{
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+  renderCalendar();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+  renderCalendar();
+});
+
+syncTypeFields();
 render();
 </script>
 </body>
