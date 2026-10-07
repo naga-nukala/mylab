@@ -38,7 +38,9 @@
   .pay-item:last-child{border-bottom:none;}
   .pay-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
   .pay-name{font-weight:700;font-size:14px;}
+  .pay-type{margin:0 0 5px;font-size:11px;color:var(--sub);}
   .del{background:none;border:none;color:var(--bad);cursor:pointer;font-size:13px;}
+  .edit-button{background:none;border:none;color:var(--acc);cursor:pointer;font-size:17px;line-height:1;padding:3px 6px;}
   .pay-meta{font-size:12px;color:var(--sub);margin-bottom:4px;}
   .status-badge{font-size:10px;padding:2px 10px;border-radius:10px;font-weight:700;}
   .active-b{background:rgba(34,197,94,.15);color:var(--acc);}
@@ -120,6 +122,11 @@
   <details class="card">
     <summary>Monthly by Type</summary>
     <div class="details-content" id="typeTotals"></div>
+  </details>
+
+  <details class="card">
+    <summary>Monthly by Payment Method</summary>
+    <div class="details-content" id="methodTotals"></div>
   </details>
 
   <div class="card">
@@ -226,6 +233,18 @@ function historyRecords(payment){
     : record);
 }
 
+function initialPaymentAmount(payment){
+  if(Number.isFinite(Number(payment.initialAmount)) && Number(payment.initialAmount) > 0){
+    return Number(payment.initialAmount);
+  }
+  const oldestPaidAmount = historyRecords(payment).find(record=>Number(record.amount) > 0)?.amount;
+  return Number(oldestPaidAmount || payment.amount);
+}
+
+function hasVariableAmount(type){
+  return isCreditCardType(type) || type === 'Other';
+}
+
 function addPayment(){
   const name = document.getElementById('payName').value.trim();
   const type = document.getElementById('payType').value;
@@ -246,12 +265,12 @@ function addPayment(){
   if(editingId !== null){
     const idx = payments.findIndex(p=>p.id===editingId);
     if(idx > -1){
-      payments[idx] = { ...payments[idx], name, type, amount, freq, account, dueDate, method, cycleDay };
+      payments[idx] = { ...payments[idx], name, type, amount, initialAmount:amount, freq, account, dueDate, method, cycleDay };
     }
     editingId = null;
     document.getElementById('addBtn').textContent = '+ Add Auto-Debit';
   } else {
-    payments.push({ id: Date.now(), name, type, amount, freq, account, dueDate, method, cycleDay });
+    payments.push({ id: Date.now(), name, type, amount, initialAmount:amount, freq, account, dueDate, method, cycleDay });
   }
   save();
 
@@ -288,14 +307,21 @@ function markDone(id){
   if(idx===-1) return;
   const p = payments[idx];
   let nextAmount = p.amount;
-  if(isCreditCardType(p.type)){
+  if(hasVariableAmount(p.type)){
     const nextBillInput = document.getElementById(`nextBillAmount-${id}`);
-    nextAmount = parseFloat(nextBillInput.value);
-    if(!Number.isFinite(nextAmount) || nextAmount <= 0){
-      nextBillInput.setCustomValidity('Enter the next cycle bill amount before marking this bill done.');
-      nextBillInput.reportValidity();
-      nextBillInput.addEventListener('input', ()=>nextBillInput.setCustomValidity(''), {once:true});
-      return;
+    const enteredAmount = nextBillInput.value.trim();
+    if(isCreditCardType(p.type) || enteredAmount){
+      nextAmount = enteredAmount ? parseFloat(enteredAmount) : NaN;
+      if(!Number.isFinite(nextAmount) || nextAmount <= 0){
+        nextBillInput.setCustomValidity(isCreditCardType(p.type)
+          ? 'Enter the next cycle bill amount before marking this bill done.'
+          : 'Enter a valid bill amount or leave it blank to reuse the initial amount.');
+        nextBillInput.reportValidity();
+        nextBillInput.addEventListener('input', ()=>nextBillInput.setCustomValidity(''), {once:true});
+        return;
+      }
+    } else {
+      nextAmount = initialPaymentAmount(p);
     }
   }
   const nextDue = addMonths(p.dueDate, parseInt(p.freq, 10) || 1);
@@ -403,6 +429,7 @@ function render(){
   const container = document.getElementById('paymentsList');
   const bankTotals = {};
   const typeTotals = {};
+  const methodTotals = { Automated:0, Manual:0 };
   const today = new Date();
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   let paidThisMonth = 0;
@@ -411,6 +438,8 @@ function render(){
     const bank = p.account || 'Bank not specified';
     bankTotals[bank] = (bankTotals[bank] || 0) + p.amount / p.freq;
     typeTotals[p.type] = (typeTotals[p.type] || 0) + p.amount / p.freq;
+    const method = p.method === 'Manual' ? 'Manual' : 'Automated';
+    methodTotals[method] += p.amount / p.freq;
     paidThisMonth += historyRecords(p).filter(record => record.dueDate && record.dueDate.slice(0, 7) === thisMonth)
       .reduce((sum, record) => sum + Number(record.amount || 0), 0);
     if(p.dueDate && p.dueDate.slice(0, 7) === thisMonth) pendingThisMonth += p.amount;
@@ -425,6 +454,9 @@ function render(){
         `<div class="bank-total"><span class="bank-name">${type}</span><span class="bank-amount">₹${amount.toFixed(0)}/mo</span></div>`
       ).join('')
     : '<div class="empty">Add auto-debits to see monthly amounts by type.</div>';
+  document.getElementById('methodTotals').innerHTML = Object.entries(methodTotals).map(([method, amount])=>
+    `<div class="bank-total"><span class="bank-name">${method}</span><span class="bank-amount">₹${amount.toFixed(0)}/mo</span></div>`
+  ).join('');
   document.getElementById('paidThisMonth').textContent = '₹' + paidThisMonth.toFixed(0);
   document.getElementById('pendingThisMonth').textContent = '₹' + pendingThisMonth.toFixed(0);
   const monthTotal = paidThisMonth + pendingThisMonth;
@@ -458,16 +490,17 @@ function render(){
     return `
       <div class="pay-item">
         <div class="pay-head">
-          <span class="pay-name">${escapeHTML(p.name)}<span class="type-badge">${escapeHTML(p.type)}</span></span>
+          <span class="pay-name">${escapeHTML(p.name)}</span>
           <span>
             <button class="del" style="color:var(--acc);" onclick="markDone(${p.id})">Mark Done</button>
             ${p.history && p.history.length>0 ? `<button class="del" style="color:var(--warn);" onclick="undoDone(${p.id})">Undo</button>` : ''}
-            <button class="del" style="color:var(--acc);" onclick="editPayment(${p.id})">Edit</button>
+            <button class="edit-button" aria-label="Edit ${escapeHTML(p.name)}" title="Edit" onclick="editPayment(${p.id})">✎</button>
             <button class="del" onclick="removePayment(${p.id})">✕</button>
           </span>
         </div>
+        <div class="pay-type">${escapeHTML(p.type)}</div>
         <div class="pay-meta">₹${p.amount}${isCreditCardType(p.type) ? ' current bill' : ` every ${p.freq==1?'month':p.freq==3?'quarter':'year'}`}${p.account?` • from ${escapeHTML(p.account)}`:''} • ${escapeHTML(p.method || 'Automated')}${p.lastPaid?` • last paid ${escapeHTML(p.lastPaid)}`:''}</div>
-        ${isCreditCardType(p.type) ? `<div class="row"><div class="field"><label for="nextBillAmount-${p.id}">Next cycle bill amount (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" placeholder="Enter after statement closes" required></div></div>` : ''}
+        ${hasVariableAmount(p.type) ? `<div class="row"><div class="field"><label for="nextBillAmount-${p.id}">${isCreditCardType(p.type) ? 'Next cycle bill amount' : 'Next bill amount'} (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" placeholder="${isCreditCardType(p.type) ? 'Enter after statement closes' : `Optional; blank reuses initial ₹${initialPaymentAmount(p).toFixed(0)}`}" ${isCreditCardType(p.type) ? 'required' : ''}></div></div>` : ''}
         <span class="status-badge ${statusClass}">${statusLabel}</span>
       </div>
     `;
