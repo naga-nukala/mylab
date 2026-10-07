@@ -20,7 +20,7 @@
   input,select,textarea{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--txt);font:inherit;font-size:14px;}
   input[type=date]{color-scheme:dark;}
   textarea{resize:vertical;min-height:54px;}
-  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);}
+  input:focus,select:focus,textarea:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);}
   .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .field{flex:1;min-width:130px;}
   button{font:inherit;cursor:pointer;}
@@ -33,26 +33,37 @@
   .summary .n.coral{color:var(--coral);}
   .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
 
+  details.card summary{cursor:pointer;font-size:14px;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none;}
+  details.card summary::-webkit-details-marker{display:none;}
+  details.card summary::after{content:'▾';color:var(--sub);transition:transform .2s;}
+  details.card[open] summary::after{transform:rotate(180deg);}
+  details.card summary .count{margin-left:auto;font-size:11px;font-weight:600;color:var(--sub);}
+  details.card[open] > summary{margin-bottom:12px;}
+
   .metric{margin-bottom:10px;}
   .metric:last-child{margin-bottom:0;}
   .metric-head{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:4px;}
   .metric-head b{font-weight:700;}
-  .metric-head span{color:var(--sub);font-size:12px;}
+  .metric-head span{color:var(--sub);font-size:12px;text-align:right;}
   .bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;}
   .bar-fill{height:100%;background:var(--mint);}
   .bar-fill.alt{background:var(--coral);}
   .empty{text-align:center;color:var(--sub);font-size:13px;padding:16px;}
+  .list-title{font-size:12px;font-weight:700;margin:12px 0 6px;}
+  .list-title:first-child{margin-top:0;}
+  .hint{font-size:11px;color:var(--sub);margin-top:4px;}
 
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;border-radius:20px;background:#0f172a;border:1px solid var(--line);font-size:12px;}
+  .chip.fixed{padding-right:10px;}
   .chip button{border:none;background:none;color:var(--sub);font-size:13px;padding:0 4px;line-height:1;}
   .chip button.confirming{color:#fff;background:var(--bad);border-radius:10px;}
   .add-inline{display:flex;gap:6px;}
   .add-inline button{padding:0 14px;border:1px solid var(--acc);border-radius:8px;background:transparent;color:var(--acc);font-weight:700;}
-  .list-title{font-size:12px;font-weight:700;margin:12px 0 6px;}
-  .list-title:first-of-type{margin-top:0;}
-  details.card summary{cursor:pointer;font-size:14px;font-weight:700;}
-  details.card[open] summary{margin-bottom:12px;}
+
+  .total-line{display:flex;justify-content:space-between;align-items:center;background:#0f172a;border-radius:10px;padding:10px 12px;margin:4px 0 10px;font-size:13px;}
+  .total-line b{font-size:17px;color:var(--mint);}
+  .total-line b.rw{color:var(--coral);}
 
   .entry{border-bottom:1px solid var(--line);padding:12px 0;}
   .entry:last-child{border-bottom:none;}
@@ -69,16 +80,28 @@
   .entry-actions button.del{color:var(--bad);}
   .entry-actions button.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
   .notes{font-size:12px;color:var(--txt);margin-top:4px;}
+
+  .insight{font-size:13px;line-height:1.55;padding:8px 0;border-bottom:1px solid var(--line);}
+  .insight:last-child{border-bottom:none;}
+  .insight ol{margin:4px 0 0;padding-left:20px;color:var(--sub);font-size:12px;}
+  .insight ol b{color:var(--txt);}
+  .bd-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .bd-row:last-child{border-bottom:none;}
+  .bd-row.total{font-weight:800;color:var(--mint);}
+  .bd-row .neg{color:var(--acc);}
   .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid var(--line);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;white-space:nowrap;display:none;}
-  .hint{font-size:11px;color:var(--sub);margin-top:4px;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🛍️ Online Shopping Tracker</h1>
-  <p class="sub">Log every online purchase, see what you spend each year and on each type, and check later if it was worth it.</p>
+  <p class="sub">Log every online purchase, see where the money goes, and check later if it was worth it.</p>
 
   <div class="card">
+    <div class="row" style="align-items:flex-end;margin-bottom:12px;">
+      <div class="field" style="max-width:170px;"><label for="viewYear">Viewing year</label><select id="viewYear"></select></div>
+      <div class="hint" style="flex:1;min-width:150px;margin:0 0 8px;">Applies to the summary, metrics, observations, lists and purchases below.</div>
+    </div>
     <div class="summary">
       <div class="box"><div class="n" id="sumTotal">₹0</div><div class="l" id="sumTotalLabel">Price spent</div></div>
       <div class="box"><div class="n coral" id="sumRewards">0 pts</div><div class="l" id="sumRewardsLabel">Rewards used</div></div>
@@ -89,63 +112,30 @@
     </div>
   </div>
 
-  <div class="card">
-    <h2>Year-wise spend</h2>
-    <div id="yearMetrics"></div>
-  </div>
-
-  <div class="card">
-    <div class="row" style="align-items:flex-end;margin-bottom:10px;">
-      <h2 style="margin:0;flex:1;">Type-wise spend</h2>
-      <div class="field" style="max-width:150px;min-width:110px;">
-        <label for="viewYear">Year</label>
-        <select id="viewYear"></select>
-      </div>
-    </div>
-    <div id="typeMetrics"></div>
-  </div>
-
-  <details class="card" id="manageCard">
-    <summary>Manage lists (Type, Shopped From, Bought By, Payment Method, Paid With)</summary>
-    <div class="list-title">Type</div>
-    <div class="chips" id="chips-types"></div>
-    <div class="add-inline"><input type="text" id="new-types" placeholder="e.g. Electronics, Medical, Kids" maxlength="40"><button type="button" data-action="addOption" data-list="types" aria-label="Add type">+</button></div>
-
-    <div class="list-title">Shopped From</div>
-    <div class="chips" id="chips-stores"></div>
-    <div class="add-inline"><input type="text" id="new-stores" placeholder="e.g. Rewards, Amazon, Flipkart" maxlength="40"><button type="button" data-action="addOption" data-list="stores" aria-label="Add store">+</button></div>
-
-    <div class="list-title">Bought By</div>
-    <div class="chips" id="chips-buyers"></div>
-    <div class="add-inline"><input type="text" id="new-buyers" placeholder="Add a name" maxlength="40"><button type="button" data-action="addOption" data-list="buyers" aria-label="Add buyer">+</button></div>
-    <div class="list-title">Payment Method</div>
-    <div class="chips" id="chips-methods"></div>
-    <div class="add-inline"><input type="text" id="new-methods" placeholder="e.g. HDFC Credit Card, UPI" maxlength="40"><button type="button" data-action="addOption" data-list="methods" aria-label="Add payment method">+</button></div>
-
-    <div class="list-title">Paid With</div>
-    <div class="chips" id="chips-paidwith"></div>
-    <div class="add-inline"><input type="text" id="new-paidwith" placeholder="e.g. Money, Reward points, Gift card" maxlength="40"><button type="button" data-action="addOption" data-list="paidwith" aria-label="Add paid with option">+</button></div>
-    <div class="hint">Removing an option here does not change purchases already saved with it.</div>
-  </details>
-
-  <div class="card">
-    <h2 id="formTitle">Add purchase</h2>
+  <details class="card" data-key="add" open>
+    <summary><span id="formTitle">Add purchase</span></summary>
     <div class="row">
       <div class="field" style="flex-basis:100%;"><label for="fItem">Item</label><input type="text" id="fItem" placeholder="e.g. Baby stroller" maxlength="80"></div>
     </div>
     <div class="row">
       <div class="field"><label for="fDate">Date</label><input type="date" id="fDate"></div>
-      <div class="field"><label for="fMode">Amount type</label>
-        <select id="fMode"><option value="price">Price (money)</option><option value="rewards">Rewards (points)</option></select>
-      </div>
-      <div class="field"><label for="fPrice" id="fPriceLabel">Price (₹)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 1499"></div>
+      <div class="field"><label for="fPaidWith">Paid with</label><select id="fPaidWith"></select></div>
+      <div class="field"><label for="fPrice" id="lPrice">Price (₹)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 1499"></div>
     </div>
+    <div class="row">
+      <div class="field"><label for="fShip" id="lShip">Shipping (₹)</label><input type="number" id="fShip" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
+      <div class="field"><label for="fFee" id="lFee">Marketplace fee (₹)</label><input type="number" id="fFee" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fPromo" id="lPromo">Promotion applied (₹, reduces total)</label><input type="number" id="fPromo" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
+      <div class="field"><label for="fExch" id="lExch">Exchange value (₹, reduces total)</label><input type="number" id="fExch" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
+    </div>
+    <div class="total-line"><span>Total = Price + Shipping + Fee − Promotion − Exchange</span><b id="totalPreview">₹0</b></div>
     <div class="row">
       <div class="field"><label for="fMethod">Payment method</label><select id="fMethod"></select></div>
-      <div class="field"><label for="fPaidWith">Paid with</label><select id="fPaidWith"></select></div>
+      <div class="field"><label for="fType">Type</label><select id="fType"></select></div>
     </div>
     <div class="row">
-      <div class="field"><label for="fType">Type</label><select id="fType"></select></div>
       <div class="field"><label for="fStore">Shopped from</label><select id="fStore"></select></div>
       <div class="field"><label for="fBuyer">Bought by</label><select id="fBuyer"></select></div>
     </div>
@@ -164,19 +154,81 @@
     <div id="formMsg" class="hint" style="color:var(--warn);"></div>
     <button class="primary" id="saveBtn" type="button" data-action="save">+ Add Purchase</button>
     <button class="ghost" id="cancelBtn" type="button" data-action="cancelEdit" style="display:none;width:100%;margin-top:8px;">Cancel edit</button>
-  </div>
+  </details>
 
-  <div class="card">
+  <details class="card" data-key="insights">
+    <summary><span>💡 Observations</span></summary>
+    <div id="insights"></div>
+  </details>
+
+  <details class="card" data-key="notuseful">
+    <summary><span>👎 Not useful items</span><span class="count" id="notUsefulCount"></span></summary>
+    <div id="notUsefulList"></div>
+  </details>
+
+  <details class="card" data-key="year">
+    <summary><span>Year-wise spend</span></summary>
+    <div class="hint" style="margin:-6px 0 8px;">Always shows all years.</div>
+    <div id="yearMetrics"></div>
+  </details>
+
+  <details class="card" data-key="type">
+    <summary><span>Type-wise spend</span></summary>
+    <div id="typeMetrics"></div>
+  </details>
+
+  <details class="card" data-key="method">
+    <summary><span>By payment method</span></summary>
+    <div id="methodMetrics"></div>
+  </details>
+
+  <details class="card" data-key="paidwith">
+    <summary><span>By paid with</span></summary>
+    <div id="paidMetrics"></div>
+  </details>
+
+  <details class="card" data-key="store">
+    <summary><span>By shopped from</span></summary>
+    <div id="storeMetrics"></div>
+  </details>
+
+  <details class="card" data-key="breakdown">
+    <summary><span>Total price breakdown</span></summary>
+    <div id="breakdownMetrics"></div>
+  </details>
+
+  <details class="card" data-key="purchases" open>
+    <summary><span>Purchases</span><span class="count" id="purchaseCount"></span></summary>
     <div class="row" style="align-items:flex-end;margin-bottom:6px;">
-      <h2 style="margin:0;flex:1;">Purchases</h2>
-      <div class="field" style="max-width:150px;min-width:110px;">
-        <label for="filterType">Type</label>
-        <select id="filterType"></select>
-      </div>
+      <div class="field" style="max-width:170px;"><label for="filterType">Filter by type</label><select id="filterType"></select></div>
     </div>
-    <div class="hint" style="margin:0 0 8px;">Shows the year selected under Type-wise spend.</div>
     <div id="entryList"></div>
-  </div>
+  </details>
+
+  <details class="card" data-key="manage">
+    <summary><span>Manage lists</span></summary>
+    <div class="list-title">Type</div>
+    <div class="chips" id="chips-types"></div>
+    <div class="add-inline"><input type="text" id="new-types" placeholder="e.g. Electronics, Medical, Kids" maxlength="40"><button type="button" data-action="addOption" data-list="types" aria-label="Add type">+</button></div>
+
+    <div class="list-title">Shopped From</div>
+    <div class="chips" id="chips-stores"></div>
+    <div class="add-inline"><input type="text" id="new-stores" placeholder="e.g. Rewards, Amazon, Flipkart" maxlength="40"><button type="button" data-action="addOption" data-list="stores" aria-label="Add store">+</button></div>
+
+    <div class="list-title">Bought By</div>
+    <div class="chips" id="chips-buyers"></div>
+    <div class="add-inline"><input type="text" id="new-buyers" placeholder="Add a name" maxlength="40"><button type="button" data-action="addOption" data-list="buyers" aria-label="Add buyer">+</button></div>
+
+    <div class="list-title">Payment Method</div>
+    <div class="chips" id="chips-methods"></div>
+    <div class="add-inline"><input type="text" id="new-methods" placeholder="e.g. HDFC Credit Card, UPI" maxlength="40"><button type="button" data-action="addOption" data-list="methods" aria-label="Add payment method">+</button></div>
+
+    <div class="list-title">Paid With</div>
+    <div class="chips" id="chips-paidwith"></div>
+    <div class="add-inline"><input type="text" id="new-paidwith" placeholder="e.g. Money, Gift card" maxlength="40"><button type="button" data-action="addOption" data-list="paidwith" aria-label="Add paid with option">+</button></div>
+    <div class="hint">Any Paid With option containing the word "reward" (like Reward points) is counted in points as Rewards. Everything else is counted in ₹.</div>
+    <div class="hint">Removing an option here does not change purchases already saved with it.</div>
+  </details>
 </div>
 <div id="toast" class="toast" role="status"></div>
 
@@ -184,6 +236,7 @@
 const ENTRIES_KEY = 'shopping_tracker_v1';
 const LISTS_KEY = 'shopping_tracker_lists_v1';
 const DRAFT_KEY = 'shopping_tracker_draft_v1';
+const UI_KEY = 'shopping_tracker_ui_v1';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DEFAULT_LISTS = {
   types: ['Electronics','Medical','Kids','Clothing','Home','Grocery','Other'],
@@ -192,28 +245,24 @@ const DEFAULT_LISTS = {
   methods: ['UPI','Credit Card','Debit Card','Net Banking','Cash on Delivery','Wallet'],
   paidwith: ['Money','Reward points','Gift card','Cashback balance']
 };
-const FORM_IDS = ['fItem','fDate','fMode','fPrice','fType','fStore','fBuyer','fMethod','fPaidWith','fUseful','fWear','fCue','fNotes'];
+const FIXED_PAID = ['Reward points'];
+const FORM_IDS = ['fItem','fDate','fPaidWith','fPrice','fShip','fFee','fPromo','fExch','fMethod','fType','fStore','fBuyer','fUseful','fWear','fCue','fNotes'];
+const LIST_KEYS = ['types','stores','buyers','methods','paidwith'];
 
 function read(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return v === null ? fallback : v; }catch(e){ return fallback; } }
 function write(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
 
 let entries = read(ENTRIES_KEY, []);
 let lists = Object.assign({}, DEFAULT_LISTS, read(LISTS_KEY, {}));
+FIXED_PAID.forEach(m => { if(!lists.paidwith.includes(m)) lists.paidwith.push(m); });
 let editingId = null;
 let pending = {};
 let toastTimer;
-
 const $ = id => document.getElementById(id);
 
 /* ---------- shared formatting conventions ---------- */
-function fmtPts(n){ return Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2}) + ' pts'; }
-function modeOf(e){ return e.mode === 'rewards' ? 'rewards' : 'price'; }
-function fmtAmt(e){ return modeOf(e) === 'rewards' ? fmtPts(e.price) : fmtINR(e.price); }
-function updateAmountLabel(){
-  const r = $('fMode').value === 'rewards';
-  $('fPriceLabel').textContent = r ? 'Rewards (points)' : 'Price (₹)';
-}
 function fmtINR(n){ return '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+function fmtPts(n){ return Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2}) + ' pts'; }
 function ordinal(d){
   if(d % 100 >= 11 && d % 100 <= 13) return d + 'th';
   return d + (['th','st','nd','rd'][d % 10] || 'th');
@@ -224,17 +273,15 @@ function fmtDate(iso){
   if(p.length !== 3 || p.some(isNaN)) return '';
   return ordinal(p[2]) + ' ' + MONTHS[p[1] - 1] + ' ' + p[0];
 }
+function fmtMonth(ym){ const p = ym.split('-').map(Number); return MONTHS[p[1] - 1] + ' ' + p[0]; }
 function esc(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function todayISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function yearOf(e){ return (e.date || '').slice(0,4) || 'No date'; }
-
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, 2200);
 }
-
-/* tap-twice confirmation (no native dialogs) */
 function confirmTap(key, btn, idleText, action){
   if(pending[key]){ clearTimeout(pending[key]); delete pending[key]; action(); return; }
   btn.textContent = 'Tap again'; btn.classList.add('confirming');
@@ -245,7 +292,19 @@ function confirmTap(key, btn, idleText, action){
   }, 2500);
 }
 
-/* ---------- lists (Type / Shopped From / Bought By) ---------- */
+/* ---------- entry maths ---------- */
+function n0(v){ const x = parseFloat(v); return isNaN(x) ? 0 : x; }
+function isRw(e){ return e.mode === 'rewards' || /reward/i.test(e.paidWith || ''); }
+function totalOf(e){ return Math.max(0, n0(e.price) + n0(e.shipping) + n0(e.fee) - n0(e.promo) - n0(e.exchange)); }
+function fmtFor(e, v){ return isRw(e) ? fmtPts(v) : fmtINR(v); }
+function sumOf(list){ return list.reduce((s,e) => s + totalOf(e), 0); }
+function daysLasted(e){
+  if(!e.wear || !e.date) return null;
+  return Math.round((new Date(e.wear + 'T00:00:00') - new Date(e.date + 'T00:00:00')) / 86400000);
+}
+function plural(n, w){ return n.toLocaleString('en-IN') + ' ' + w + (n === 1 ? '' : 's'); }
+
+/* ---------- lists ---------- */
 function fillSelect(id, items, blankLabel, current){
   const sel = $(id);
   const keep = current !== undefined ? current : sel.value;
@@ -255,17 +314,17 @@ function fillSelect(id, items, blankLabel, current){
   sel.value = keep || '';
 }
 function renderLists(){
-  ['types','stores','buyers','methods','paidwith'].forEach(k => {
-    const c = $('chips-' + k);
-    c.innerHTML = lists[k].length
-      ? lists[k].map((v, i) => '<span class="chip">' + esc(v) + '<button type="button" data-action="removeOption" data-list="' + k + '" data-index="' + i + '" aria-label="Remove ' + esc(v) + '">✕</button></span>').join('')
+  LIST_KEYS.forEach(k => {
+    $('chips-' + k).innerHTML = lists[k].length
+      ? lists[k].map((v, i) => '<span class="chip' + ((k === 'paidwith' && FIXED_PAID.includes(v)) ? ' fixed' : '') + '">' + esc(v) + ((k === 'paidwith' && FIXED_PAID.includes(v)) ? '' : '<button type="button" data-action="removeOption" data-list="' + k + '" data-index="' + i + '" aria-label="Remove ' + esc(v) + '">✕</button>') + '</span>').join('')
       : '<span class="hint">Nothing added yet.</span>';
   });
   fillSelect('fType', lists.types, 'Select type');
   fillSelect('fStore', lists.stores, 'Select store');
   fillSelect('fBuyer', lists.buyers, lists.buyers.length ? 'Select name' : 'Add names in Manage lists');
   fillSelect('fMethod', lists.methods, 'Select method');
-  fillSelect('fPaidWith', lists.paidwith, 'Select');
+  fillSelect('fPaidWith', lists.paidwith, 'Select (Money if blank)');
+  updateLabels();
 }
 function addOption(k){
   const input = $('new-' + k);
@@ -273,19 +332,29 @@ function addOption(k){
   if(!v) return;
   if(lists[k].some(x => x.toLowerCase() === v.toLowerCase())){ toast('Already in the list'); return; }
   lists[k].push(v); write(LISTS_KEY, lists); input.value = '';
-  renderLists(); renderFilters(); toast('Added ' + v);
+  renderLists(); renderAll(); toast('Added ' + v);
 }
 function removeOption(k, i, btn){
+  if(k === 'paidwith' && FIXED_PAID.includes(lists[k][i])) return;
   confirmTap('opt-' + k + '-' + i, btn, '✕', () => {
     lists[k].splice(i, 1); write(LISTS_KEY, lists);
-    renderLists(); renderFilters(); toast('Removed');
+    renderLists(); renderAll(); toast('Removed');
   });
 }
 
 /* ---------- form ---------- */
-function readForm(){
-  const o = {}; FORM_IDS.forEach(id => { o[id] = $(id).value; }); return o;
+function updateLabels(){
+  const rw = /reward/i.test($('fPaidWith').value);
+  const u = rw ? 'pts' : '₹';
+  $('lPrice').textContent = rw ? 'Rewards (points)' : 'Price (₹)';
+  $('lShip').textContent = 'Shipping (' + u + ')';
+  $('lFee').textContent = 'Marketplace fee (' + u + ')';
+  $('lPromo').textContent = 'Promotion applied (' + u + ', reduces total)';
+  $('lExch').textContent = 'Exchange value (' + u + ', reduces total)';
+  const t = Math.max(0, n0($('fPrice').value) + n0($('fShip').value) + n0($('fFee').value) - n0($('fPromo').value) - n0($('fExch').value));
+  const b = $('totalPreview'); b.textContent = rw ? fmtPts(t) : fmtINR(t); b.classList.toggle('rw', rw);
 }
+function readForm(){ const o = {}; FORM_IDS.forEach(id => { o[id] = $(id).value; }); return o; }
 function saveDraft(){ if(editingId === null) write(DRAFT_KEY, readForm()); }
 function loadDraft(){
   const d = read(DRAFT_KEY, null);
@@ -295,14 +364,13 @@ function loadDraft(){
     if(el.tagName === 'SELECT' && d[id] && ![...el.options].some(o => o.value === d[id])) return;
     el.value = d[id];
   }});
-  if(!$('fMode').value) $('fMode').value = 'price';
-  updateAmountLabel();
+  updateLabels();
 }
 function clearForm(){
   FORM_IDS.forEach(id => { $(id).value = ''; });
-  $('fMode').value = 'price'; updateAmountLabel();
   $('fDate').value = todayISO();
   $('formMsg').textContent = '';
+  updateLabels();
   try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
 }
 function resetEditUI(){
@@ -314,12 +382,16 @@ function resetEditUI(){
 function saveEntry(){
   const f = readForm();
   const price = parseFloat(f.fPrice);
+  const extras = [f.fShip, f.fFee, f.fPromo, f.fExch].map(v => v === '' ? 0 : parseFloat(v));
   if(!f.fDate || !f.fItem.trim() || isNaN(price) || price < 0){
     $('formMsg').textContent = 'Enter an item name, a date, and a price or rewards amount of 0 or more.'; return;
   }
+  if(extras.some(v => isNaN(v) || v < 0)){ $('formMsg').textContent = 'Shipping, fee, promotion and exchange must be 0 or more.'; return; }
   if(f.fWear && f.fWear < f.fDate){ $('formMsg').textContent = 'Broken / lasted till date cannot be before the purchase date.'; return; }
   $('formMsg').textContent = '';
-  const rec = { date:f.fDate, item:f.fItem.trim(), type:f.fType, mode:f.fMode === 'rewards' ? 'rewards' : 'price', price, store:f.fStore, buyer:f.fBuyer, method:f.fMethod, paidWith:f.fPaidWith, useful:f.fUseful, wear:f.fWear, cue:f.fCue.trim(), notes:f.fNotes.trim() };
+  const rec = { date:f.fDate, item:f.fItem.trim(), type:f.fType, price, shipping:extras[0], fee:extras[1], promo:extras[2], exchange:extras[3],
+    store:f.fStore, buyer:f.fBuyer, method:f.fMethod, paidWith:f.fPaidWith, mode:undefined,
+    useful:f.fUseful, wear:f.fWear, cue:f.fCue.trim(), notes:f.fNotes.trim() };
   if(editingId !== null){
     const i = entries.findIndex(e => e.id === editingId);
     if(i > -1) entries[i] = Object.assign({}, entries[i], rec);
@@ -334,19 +406,22 @@ function saveEntry(){
 }
 function editEntry(id){
   const e = entries.find(x => x.id === id); if(!e) return;
-  fillSelect('fType', lists.types, 'Select type', e.type);
-  fillSelect('fStore', lists.stores, 'Select store', e.store);
-  fillSelect('fBuyer', lists.buyers, lists.buyers.length ? 'Select name' : 'Add names in Manage lists', e.buyer);
+  fillSelect('fType', lists.types, 'Select type', e.type || '');
+  fillSelect('fStore', lists.stores, 'Select store', e.store || '');
+  fillSelect('fBuyer', lists.buyers, lists.buyers.length ? 'Select name' : 'Add names in Manage lists', e.buyer || '');
   fillSelect('fMethod', lists.methods, 'Select method', e.method || '');
-  fillSelect('fPaidWith', lists.paidwith, 'Select', e.paidWith || '');
-  $('fDate').value = e.date; $('fMode').value = modeOf(e); updateAmountLabel(); $('fPrice').value = e.price; $('fItem').value = e.item;
+  fillSelect('fPaidWith', lists.paidwith, 'Select (Money if blank)', e.paidWith || (e.mode === 'rewards' ? 'Reward points' : ''));
+  $('fItem').value = e.item; $('fDate').value = e.date; $('fPrice').value = e.price;
+  $('fShip').value = e.shipping || ''; $('fFee').value = e.fee || ''; $('fPromo').value = e.promo || ''; $('fExch').value = e.exchange || '';
   $('fUseful').value = e.useful || ''; $('fWear').value = e.wear || '';
   $('fCue').value = e.cue || ''; $('fNotes').value = e.notes || '';
+  updateLabels();
   editingId = id;
   $('saveBtn').textContent = '✓ Update Purchase';
   $('formTitle').textContent = 'Edit purchase';
   $('cancelBtn').style.display = 'block';
-  window.scrollTo({top: $('formTitle').getBoundingClientRect().top + window.scrollY - 20, behavior:'smooth'});
+  const box = document.querySelector('details[data-key="add"]'); box.open = true;
+  window.scrollTo({top: box.getBoundingClientRect().top + window.scrollY - 20, behavior:'smooth'});
 }
 function cancelEdit(){ resetEditUI(); clearForm(); renderLists(); }
 function deleteEntry(id, btn){
@@ -359,34 +434,32 @@ function deleteEntry(id, btn){
 }
 
 /* ---------- metrics ---------- */
-function bars(map, total, alt, unit){
+function group(list, keyFn){
+  const m = {};
+  list.forEach(e => { const k = keyFn(e); (m[k] = m[k] || {sum:0, n:0}); m[k].sum += totalOf(e); m[k].n++; });
+  return m;
+}
+function bars(map, total, alt, rw){
   const rows = Object.keys(map).sort((a,b) => map[b].sum - map[a].sum);
   if(!rows.length) return '<div class="hint" style="margin:0 0 6px;">None.</div>';
   const max = Math.max(...rows.map(k => map[k].sum), 1);
-  const f = unit === 'rewards' ? fmtPts : fmtINR;
+  const f = rw ? fmtPts : fmtINR;
   return rows.map(k => {
     const pct = total > 0 ? (map[k].sum / total) * 100 : 0;
-    return '<div class="metric"><div class="metric-head"><b>' + esc(k) + '</b><span>' + f(map[k].sum) + ' · ' + pct.toFixed(0) + '% · ' + map[k].n + ' item' + (map[k].n === 1 ? '' : 's') + '</span></div><div class="bar"><div class="bar-fill' + (alt ? ' alt' : '') + '" style="width:' + (map[k].sum / max * 100) + '%"></div></div></div>';
+    return '<div class="metric"><div class="metric-head"><b>' + esc(k) + '</b><span>' + f(map[k].sum) + ' · ' + pct.toFixed(0) + '% · ' + plural(map[k].n, 'item') + '</span></div><div class="bar"><div class="bar-fill' + (alt ? ' alt' : '') + '" style="width:' + (map[k].sum / max * 100) + '%"></div></div></div>';
   }).join('');
 }
-function group(list, keyFn){
-  const m = {};
-  list.forEach(e => { const k = keyFn(e); (m[k] = m[k] || {sum:0, n:0}); m[k].sum += e.price; m[k].n++; });
-  return m;
-}
-function split(list){ return { price: list.filter(e => modeOf(e) === 'price'), rewards: list.filter(e => modeOf(e) === 'rewards') }; }
-function sumOf(list){ return list.reduce((s,e) => s + e.price, 0); }
 function twoBlocks(list, keyFn){
-  if(!list.length) return '<div class="empty">No purchases yet.</div>';
-  const sp = split(list);
-  return '<div class="list-title">Price (₹)</div>' + bars(group(sp.price, keyFn), sumOf(sp.price), false, 'price') +
-         '<div class="list-title">Rewards (points)</div>' + bars(group(sp.rewards, keyFn), sumOf(sp.rewards), true, 'rewards');
+  if(!list.length) return '<div class="empty">No purchases in this view.</div>';
+  const money = list.filter(e => !isRw(e)), rw = list.filter(isRw);
+  return '<div class="list-title">Price (₹)</div>' + bars(group(money, keyFn), sumOf(money), false, false) +
+         '<div class="list-title">Rewards (points)</div>' + bars(group(rw, keyFn), sumOf(rw), true, true);
 }
 function years(){ return [...new Set(entries.map(yearOf))].sort().reverse(); }
 function renderFilters(){
-  const yearSel = $('viewYear'), cur = yearSel.value || 'all';
-  yearSel.innerHTML = '<option value="all">All years</option>' + years().map(y => '<option value="' + y + '">' + y + '</option>').join('');
-  yearSel.value = [...yearSel.options].some(o => o.value === cur) ? cur : 'all';
+  const ys = $('viewYear'), cur = ys.value || 'all';
+  ys.innerHTML = '<option value="all">All years</option>' + years().map(y => '<option value="' + y + '">' + y + '</option>').join('');
+  ys.value = [...ys.options].some(o => o.value === cur) ? cur : 'all';
   const ft = $('filterType'), ct = ft.value;
   const used = [...new Set([...lists.types, ...entries.map(e => e.type).filter(Boolean)])];
   ft.innerHTML = '<option value="">All types</option><option value="__none">No type</option>' + used.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
@@ -397,17 +470,121 @@ function scoped(){
   return y === 'all' ? entries : entries.filter(e => yearOf(e) === y);
 }
 function renderMetrics(){
-  $('yearMetrics').innerHTML = twoBlocks(entries, yearOf);
-  const list = scoped();
-  const sp = split(list);
-  $('typeMetrics').innerHTML = twoBlocks(list, e => e.type || 'No type');
-  const y = $('viewYear').value;
-  $('sumTotal').textContent = fmtINR(sumOf(sp.price));
+  const list = scoped(), y = $('viewYear').value;
+  const money = list.filter(e => !isRw(e)), rw = list.filter(isRw);
+  $('sumTotal').textContent = fmtINR(sumOf(money));
   $('sumTotalLabel').textContent = y === 'all' ? 'Price spent' : 'Price spent in ' + y;
-  $('sumRewards').textContent = fmtPts(sumOf(sp.rewards));
+  $('sumRewards').textContent = fmtPts(sumOf(rw));
   $('sumRewardsLabel').textContent = y === 'all' ? 'Rewards used' : 'Rewards used in ' + y;
   $('sumCount').textContent = list.length.toLocaleString('en-IN');
-  $('sumWasted').textContent = fmtINR(sumOf(sp.price.filter(e => e.useful === 'not')));
+  $('sumWasted').textContent = fmtINR(sumOf(money.filter(e => e.useful === 'not')));
+
+  $('yearMetrics').innerHTML = twoBlocks(entries, yearOf);
+  $('typeMetrics').innerHTML = twoBlocks(list, e => e.type || 'No type');
+  $('methodMetrics').innerHTML = twoBlocks(list, e => e.method || 'Not set');
+  $('paidMetrics').innerHTML = twoBlocks(list, e => e.paidWith || (isRw(e) ? 'Reward points' : 'Not set'));
+  $('storeMetrics').innerHTML = twoBlocks(list, e => e.store || 'Not set');
+
+  const gross = money.reduce((s,e) => s + n0(e.price), 0);
+  const ship = money.reduce((s,e) => s + n0(e.shipping), 0);
+  const fee = money.reduce((s,e) => s + n0(e.fee), 0);
+  const promo = money.reduce((s,e) => s + n0(e.promo), 0);
+  const exch = money.reduce((s,e) => s + n0(e.exchange), 0);
+  $('breakdownMetrics').innerHTML = money.length
+    ? '<div class="bd-row"><span>Item price</span><span>' + fmtINR(gross) + '</span></div>' +
+      '<div class="bd-row"><span>+ Shipping</span><span>' + fmtINR(ship) + '</span></div>' +
+      '<div class="bd-row"><span>+ Marketplace fee</span><span>' + fmtINR(fee) + '</span></div>' +
+      '<div class="bd-row"><span>− Promotion applied</span><span class="neg">' + fmtINR(promo) + '</span></div>' +
+      '<div class="bd-row"><span>− Exchange value</span><span class="neg">' + fmtINR(exch) + '</span></div>' +
+      '<div class="bd-row total"><span>Total price paid</span><span>' + fmtINR(sumOf(money)) + '</span></div>' +
+      '<div class="hint">Price purchases only. Rewards purchases are counted in points and left out here.</div>'
+    : '<div class="empty">No price purchases in this view.</div>';
+}
+
+/* ---------- observations ---------- */
+function topOf(list, keyFn){
+  const m = group(list, keyFn);
+  const k = Object.keys(m).sort((a,b) => m[b].sum - m[a].sum)[0];
+  return k ? { name:k, sum:m[k].sum, n:m[k].n } : null;
+}
+function topThree(list, useful){
+  return list.filter(e => e.useful === useful).sort((a,b) => totalOf(b) - totalOf(a)).slice(0, 3);
+}
+function itemLines(arr){
+  return '<ol>' + arr.map(e => '<li><b>' + esc(e.item) + '</b> — ' + fmtINR(totalOf(e)) + (e.type ? ' · ' + esc(e.type) : '') + (daysLasted(e) !== null ? ' · lasted ' + plural(daysLasted(e), 'day') : '') + '</li>').join('') + '</ol>';
+}
+function renderInsights(){
+  const list = scoped();
+  const box = $('insights');
+  if(!list.length){ box.innerHTML = '<div class="empty">Add a few purchases to see observations.</div>'; return; }
+  const money = list.filter(e => !isRw(e)), rw = list.filter(isRw);
+  const total = sumOf(money);
+  const out = [];
+  const pct = v => total > 0 ? (v / total * 100).toFixed(0) + '%' : '0%';
+  const lead = (label, t) => out.push(label + ' <b>' + esc(t.name) + '</b> — ' + fmtINR(t.sum) + ' (' + pct(t.sum) + ' of price spend, ' + plural(t.n, 'item') + ')');
+
+  if(money.length){
+    const t = topOf(money, e => e.type || 'No type'); if(t) lead('You spend most on', t);
+    const s = topOf(money.filter(e => e.store), e => e.store); if(s) lead('Top shopping source:', s);
+    const m = topOf(money.filter(e => e.method), e => e.method); if(m) lead('Most used payment method:', m);
+    const b = topOf(money.filter(e => e.buyer), e => e.buyer); if(b) lead('Who buys most:', b);
+    const mo = topOf(money.filter(e => e.date), e => e.date.slice(0,7));
+    if(mo) out.push('Your priciest month: <b>' + fmtMonth(mo.name) + '</b> — ' + fmtINR(mo.sum) + ' across ' + plural(mo.n, 'item'));
+  }
+  const tu = topThree(money, 'useful');
+  if(tu.length) out.push((tu.length === 1 ? 'Top useful purchase' : 'Top ' + tu.length + ' useful purchases') + ' (by amount)' + itemLines(tu));
+  const tn = topThree(money, 'not');
+  if(tn.length) out.push((tn.length === 1 ? 'Top not-useful purchase' : 'Top ' + tn.length + ' not-useful purchases') + ' (by amount)' + itemLines(tn));
+  const wasted = sumOf(money.filter(e => e.useful === 'not'));
+  if(wasted > 0) out.push('<b>' + pct(wasted) + '</b> of your price spend (' + fmtINR(wasted) + ') went on items you marked not useful.');
+
+  const lasted = list.map(e => ({ e, d: daysLasted(e) })).filter(x => x.d !== null);
+  if(lasted.length){
+    const avg = Math.round(lasted.reduce((s,x) => s + x.d, 0) / lasted.length);
+    const longest = lasted.reduce((a,b) => b.d > a.d ? b : a), shortest = lasted.reduce((a,b) => b.d < a.d ? b : a);
+    out.push('Items lasted <b>' + plural(avg, 'day') + '</b> on average (' + plural(lasted.length, 'item') + ' with a date). Longest: <b>' + esc(longest.e.item) + '</b> (' + plural(longest.d, 'day') + ')' + (lasted.length > 1 ? '. Shortest: <b>' + esc(shortest.e.item) + '</b> (' + plural(shortest.d, 'day') + ')' : '') + '.');
+  }
+  const saved = money.reduce((s,e) => s + n0(e.promo) + n0(e.exchange), 0);
+  const extra = money.reduce((s,e) => s + n0(e.shipping) + n0(e.fee), 0);
+  if(saved > 0 || extra > 0) out.push('Promotions and exchanges saved you <b>' + fmtINR(saved) + '</b>; shipping and marketplace fees added <b>' + fmtINR(extra) + '</b>.');
+
+  const cues = {};
+  list.forEach(e => { const c = (e.cue || '').trim().toLowerCase(); if(c) cues[c] = (cues[c] || { n:0, label:e.cue.trim() }), cues[c].n++; });
+  const topCue = Object.keys(cues).sort((a,b) => cues[b].n - cues[a].n)[0];
+  if(topCue && cues[topCue].n >= 2) out.push('Most common cue: <b>' + esc(cues[topCue].label) + '</b> (' + plural(cues[topCue].n, 'purchase') + ').');
+  if(rw.length) out.push('Rewards used: <b>' + fmtPts(sumOf(rw)) + '</b> across ' + plural(rw.length, 'purchase') + '.');
+  const unrated = list.filter(e => !e.useful).length;
+  if(unrated) out.push(plural(unrated, 'purchase') + ' not rated yet. Mark them useful or not useful for sharper observations.');
+  box.innerHTML = out.map(h => '<div class="insight">' + h + '</div>').join('');
+}
+
+/* ---------- lists of purchases ---------- */
+function entryHTML(e, withDelete){
+  const d = daysLasted(e);
+  const gap = d !== null ? ' (' + plural(d, 'day') + ' from purchase)' : '';
+  const usefulTag = e.useful === 'useful' ? '<span class="tag good">Useful</span>' : e.useful === 'not' ? '<span class="tag bad">Not useful</span>' : '';
+  const parts = [];
+  if(n0(e.price) || n0(e.shipping) || n0(e.fee) || n0(e.promo) || n0(e.exchange)){
+    if(n0(e.shipping) || n0(e.fee) || n0(e.promo) || n0(e.exchange)){
+      parts.push('Price ' + fmtFor(e, n0(e.price)));
+      if(n0(e.shipping)) parts.push('+ Shipping ' + fmtFor(e, e.shipping));
+      if(n0(e.fee)) parts.push('+ Fee ' + fmtFor(e, e.fee));
+      if(n0(e.promo)) parts.push('− Promo ' + fmtFor(e, e.promo));
+      if(n0(e.exchange)) parts.push('− Exchange ' + fmtFor(e, e.exchange));
+    }
+  }
+  const pay = [e.method ? 'Paid via ' + esc(e.method) : '', e.paidWith ? 'with ' + esc(e.paidWith) : ''].filter(Boolean).join(' ');
+  return '<div class="entry"><div class="entry-head"><div><div class="entry-name">' + esc(e.item) + '</div>' +
+    '<div class="entry-meta">' + (e.type ? '<span class="tag">' + esc(e.type) + '</span>' : '') + usefulTag + fmtDate(e.date) +
+    (parts.length ? '<br>' + parts.join(' ') : '') +
+    '<br>' + [e.store ? 'From ' + esc(e.store) : '', e.buyer ? 'Bought by ' + esc(e.buyer) : ''].filter(Boolean).join(' · ') +
+    (pay ? '<br>' + pay : '') +
+    (e.wear ? '<br>Broken / lasted till: ' + fmtDate(e.wear) + gap : '') +
+    (e.cue ? '<br>Cue: ' + esc(e.cue) : '') + '</div></div>' +
+    '<div class="entry-price' + (isRw(e) ? ' rw' : '') + '">' + fmtFor(e, totalOf(e)) + '</div></div>' +
+    (e.notes ? '<div class="notes">' + esc(e.notes) + '</div>' : '') +
+    '<div class="entry-actions"><button type="button" data-action="edit" data-id="' + e.id + '">Edit</button>' +
+    (withDelete ? '<button type="button" class="del" data-action="delete" data-id="' + e.id + '">Delete</button>' : '') + '</div></div>';
 }
 function renderEntries(){
   const ft = $('filterType').value;
@@ -415,28 +592,18 @@ function renderEntries(){
   if(ft === '__none') list = list.filter(e => !e.type);
   else if(ft) list = list.filter(e => e.type === ft);
   list = [...list].sort((a,b) => (b.date || '').localeCompare(a.date || ''));
-  const box = $('entryList');
-  if(!list.length){ box.innerHTML = '<div class="empty">' + (entries.length ? 'No purchases match this view.' : 'No purchases yet. Add your first one above.') + '</div>'; return; }
-  box.innerHTML = list.map(e => {
-    let gap = '';
-    if(e.wear && e.date){
-      const days = Math.round((new Date(e.wear + 'T00:00:00') - new Date(e.date + 'T00:00:00')) / 86400000);
-      gap = ' (' + days.toLocaleString('en-IN') + ' day' + (days === 1 ? '' : 's') + ' from purchase)';
-    }
-    const usefulTag = e.useful === 'useful' ? '<span class="tag good">Useful</span>' : e.useful === 'not' ? '<span class="tag bad">Not useful</span>' : '';
-    return '<div class="entry">' +
-      '<div class="entry-head"><div><div class="entry-name">' + esc(e.item) + '</div>' +
-      '<div class="entry-meta">' + (e.type ? '<span class="tag">' + esc(e.type) + '</span>' : '') + usefulTag + fmtDate(e.date) +
-      '<br>' + [e.store ? 'From ' + esc(e.store) : '', e.buyer ? 'Bought by ' + esc(e.buyer) : ''].filter(Boolean).join(' · ') +
-      ([e.method ? 'Paid via ' + esc(e.method) : '', e.paidWith ? 'with ' + esc(e.paidWith) : ''].filter(Boolean).length ? '<br>' + [e.method ? 'Paid via ' + esc(e.method) : '', e.paidWith ? 'with ' + esc(e.paidWith) : ''].filter(Boolean).join(' ') : '') +
-      (e.wear ? '<br>Broken / lasted till: ' + fmtDate(e.wear) + gap : '') +
-      (e.cue ? '<br>Cue: ' + esc(e.cue) : '') + '</div></div>' +
-      '<div class="entry-price' + (modeOf(e) === 'rewards' ? ' rw' : '') + '">' + fmtAmt(e) + '</div></div>' +
-      (e.notes ? '<div class="notes">' + esc(e.notes) + '</div>' : '') +
-      '<div class="entry-actions"><button type="button" data-action="edit" data-id="' + e.id + '">Edit</button><button type="button" class="del" data-action="delete" data-id="' + e.id + '">Delete</button></div></div>';
-  }).join('');
+  $('purchaseCount').textContent = list.length ? plural(list.length, 'item') : '';
+  $('entryList').innerHTML = list.length ? list.map(e => entryHTML(e, true)).join('')
+    : '<div class="empty">' + (entries.length ? 'No purchases match this view.' : 'No purchases yet. Add your first one above.') + '</div>';
 }
-function renderAll(){ renderFilters(); renderMetrics(); renderEntries(); }
+function renderNotUseful(){
+  const list = scoped().filter(e => e.useful === 'not').sort((a,b) => totalOf(b) - totalOf(a));
+  const money = list.filter(e => !isRw(e));
+  $('notUsefulCount').textContent = list.length ? plural(list.length, 'item') + ' · ' + fmtINR(sumOf(money)) : '';
+  $('notUsefulList').innerHTML = list.length ? list.map(e => entryHTML(e, false)).join('')
+    : '<div class="empty">Nothing marked not useful in this view.</div>';
+}
+function renderAll(){ renderFilters(); renderMetrics(); renderInsights(); renderNotUseful(); renderEntries(); }
 
 /* ---------- events (delegation) ---------- */
 document.addEventListener('click', ev => {
@@ -449,11 +616,17 @@ document.addEventListener('click', ev => {
   else if(a === 'addOption') addOption(b.dataset.list);
   else if(a === 'removeOption') removeOption(b.dataset.list, Number(b.dataset.index), b);
 });
-['types','stores','buyers','methods','paidwith'].forEach(k => $('new-' + k).addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); addOption(k); } }));
-FORM_IDS.forEach(id => { $(id).addEventListener('input', saveDraft); $(id).addEventListener('change', saveDraft); });
-$('fMode').addEventListener('change', updateAmountLabel);
-$('viewYear').addEventListener('change', () => { renderMetrics(); renderEntries(); });
+LIST_KEYS.forEach(k => $('new-' + k).addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); addOption(k); } }));
+FORM_IDS.forEach(id => { $(id).addEventListener('input', () => { saveDraft(); updateLabels(); }); $(id).addEventListener('change', () => { saveDraft(); updateLabels(); }); });
+$('viewYear').addEventListener('change', () => { renderMetrics(); renderInsights(); renderNotUseful(); renderEntries(); });
 $('filterType').addEventListener('change', renderEntries);
+
+/* remember which sections are open */
+const ui = read(UI_KEY, {});
+document.querySelectorAll('details[data-key]').forEach(d => {
+  if(ui[d.dataset.key] !== undefined) d.open = ui[d.dataset.key];
+  d.addEventListener('toggle', () => { ui[d.dataset.key] = d.open; write(UI_KEY, ui); });
+});
 
 /* ---------- init ---------- */
 renderLists();
