@@ -40,8 +40,9 @@ button.del.armed{background:var(--coral);color:#0f1413;border-color:var(--coral)
   <div class="full"><label>Goal / name</label><input id="name" placeholder="e.g. Bike, Europe trip"></div>
   <div><label>Monthly installment (₹)</label><input id="amt" type="number" inputmode="numeric" min="0"></div>
   <div><label>Interest rate (% p.a.)</label><input id="rate" type="number" inputmode="decimal" step="0.01" min="0"></div>
-  <div><label>Tenure (months)</label><input id="ten" type="number" inputmode="numeric" min="1"></div>
-  <div><label>Start date</label><input id="start" type="date"></div>
+  <div class="full"><label>Tenure</label><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+   <input id="ty" type="number" inputmode="numeric" min="0" placeholder="Years"><input id="tm" type="number" inputmode="numeric" min="0" placeholder="Months"><input id="td" type="number" inputmode="numeric" min="0" placeholder="Days"></div></div>
+  <div class="full"><label>Start date</label><input id="start" type="date"></div>
   <div class="full"><label>Installments already paid</label><input id="paid" type="number" inputmode="numeric" min="0" value="0"></div>
  </div>
  <div class="prev" id="prev">Enter amount, rate and tenure to see maturity.</div>
@@ -62,20 +63,25 @@ const inr=n=>Math.round(n).toLocaleString('en-IN');
 const fmtD=d=>`${d.getDate()}th ${MON[d.getMonth()]} ${d.getFullYear()}`;
 const addM=(iso,m)=>{const [y,mo,d]=iso.split('-').map(Number);const dt=new Date(y,mo-1+m,d);if(dt.getDate()!==d)dt.setDate(0);return dt};
 // installments deposited at start of each month, interest compounded quarterly
-const maturity=(P,r,n)=>{let s=0;for(let k=1;k<=n;k++)s+=P*Math.pow(1+r/400,4*(n-k+1)/12);return s};
+// extra days: balance keeps compounding for D/365 years after the last installment month
+const maturity=(P,r,n,D=0)=>{let s=0;for(let k=1;k<=n;k++)s+=P*Math.pow(1+r/400,4*(n-k+1)/12);return s*Math.pow(1+r/400,4*D/365)};
+const tenOf=()=>{const y=Math.floor(+$('ty').value)||0,m=Math.floor(+$('tm').value)||0;return y*12+m};
+const dOf=()=>Math.floor(+$('td').value)||0;
+const addMD=(iso,m,d)=>{const t=addM(iso,m);t.setDate(t.getDate()+d);return t};
+const tenTxt=x=>{const y=Math.floor(x.ten/12),m=x.ten%12,d=x.td||0;return [y&&y+' yr',m&&m+' mo',d&&d+' d'].filter(Boolean).join(' ')};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1800)}
 
 function preview(){
- const P=+$('amt').value,r=+$('rate').value,n=+$('ten').value;
- if(P>0&&n>0&&r>=0){const m=maturity(P,r,n),dep=P*n;
+ const P=+$('amt').value,r=+$('rate').value,n=tenOf(),D=dOf();
+ if(P>0&&n>0&&r>=0){const m=maturity(P,r,n,D),dep=P*n;
   $('prev').innerHTML=`Deposit <b>₹${inr(dep)}</b> → Maturity <b>₹${inr(m)}</b> (interest ₹${inr(m-dep)})`}
  else $('prev').textContent='Enter amount, rate and tenure to see maturity.';
 }
-['amt','rate','ten'].forEach(i=>$(i).addEventListener('input',preview));
+['amt','rate','ty','tm','td'].forEach(i=>$(i).addEventListener('input',preview));
 
 function summary(){
  let mo=0,dep=0,mat=0,act=0;
- items.forEach(x=>{const m=maturity(x.amt,x.rate,x.ten);mat+=m;dep+=x.amt*x.paid;if(x.paid<x.ten){mo+=x.amt;act++}});
+ items.forEach(x=>{const m=maturity(x.amt,x.rate,x.ten,x.td||0);mat+=m;dep+=x.amt*x.paid;if(x.paid<x.ten){mo+=x.amt;act++}});
  $('sum').innerHTML=`<div><span>Monthly outflow</span><b>₹${inr(mo)}</b></div>
  <div><span>Active RDs</span><b>${act}/${items.length}</b></div>
  <div><span>Deposited so far</span><b>₹${inr(dep)}</b></div>
@@ -86,26 +92,26 @@ function render(){
  if(!items.length){$('list').innerHTML='<div class="card empty">No RDs yet. Add your first above.</div>';return}
  const today=new Date();today.setHours(0,0,0,0);
  $('list').innerHTML=items.map(x=>{
-  const m=maturity(x.amt,x.rate,x.ten),pct=Math.min(100,x.paid/x.ten*100),fin=x.paid>=x.ten;
+  const m=maturity(x.amt,x.rate,x.ten,x.td||0),pct=Math.min(100,x.paid/x.ten*100),fin=x.paid>=x.ten;
   const nd=fin?null:addM(x.start,x.paid),od=nd&&nd<today;
   const days=nd?Math.round((nd-today)/864e5):0;
   const st=fin?'<span class="done">Completed ✓</span>':od?`<span class="od">Overdue by ${-days} day${days==-1?'':'s'}</span>`:`Next in ${days} day${days==1?'':'s'}`;
   return `<div class="card item" data-id="${x.id}">
    <h3>${esc(x.name)||'Untitled RD'}</h3>
-   <div class="meta">₹${inr(x.amt)}/month · ${x.rate}% · ${x.ten} months</div>
+   <div class="meta">₹${inr(x.amt)}/month · ${x.rate}% · ${tenTxt(x)}</div>
    <div class="bar"><i style="width:${pct}%"></i></div>
    <div class="meta">${x.paid}/${x.ten} paid · ${st}</div>
-   <div class="kv"><div><span>Next due</span><br>${nd?fmtD(nd):'—'}</div><div><span>Matures on</span><br>${fmtD(addM(x.start,x.ten))}</div>
+   <div class="kv"><div><span>Next due</span><br>${nd?fmtD(nd):'—'}</div><div><span>Matures on</span><br>${fmtD(addMD(x.start,x.ten,x.td||0))}</div>
    <div><span>Deposited</span><br>₹${inr(x.amt*x.paid)}</div><div><span>Maturity value</span><br>₹${inr(m)}</div></div>
    <div class="row"><button class="pri" data-act="pay" ${fin?'disabled':''}>Mark paid</button><button data-act="undo" ${x.paid?'':'disabled'}>Undo</button><button data-act="edit">Edit</button><button class="del" data-act="del">Delete</button></div>
   </div>`}).join('');
 }
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function resetForm(){editId=null;['name','amt','rate','ten'].forEach(i=>$(i).value='');$('paid').value=0;$('start').value=new Date().toISOString().slice(0,10);$('save').textContent='Add RD';$('cancel').hidden=true;preview()}
+function resetForm(){editId=null;['name','amt','rate','ty','tm','td'].forEach(i=>$(i).value='');$('paid').value=0;$('start').value=new Date().toISOString().slice(0,10);$('save').textContent='Add RD';$('cancel').hidden=true;preview()}
 $('save').addEventListener('click',()=>{
- const x={id:editId||Date.now().toString(36),name:$('name').value.trim(),amt:+$('amt').value,rate:+$('rate').value,ten:Math.floor(+$('ten').value),start:$('start').value,paid:Math.floor(+$('paid').value)||0};
- if(!(x.amt>0)||!(x.ten>0)||!(x.rate>=0)||$('rate').value===''||!x.start){toast('Fill amount, rate, tenure, date');return}
+ const x={id:editId||Date.now().toString(36),name:$('name').value.trim(),amt:+$('amt').value,rate:+$('rate').value,ten:tenOf(),td:dOf(),start:$('start').value,paid:Math.floor(+$('paid').value)||0};
+ if(!(x.amt>0)||!(x.ten>0)||!(x.rate>=0)||$('rate').value===''||!x.start){toast('Fill amount, rate, tenure (1+ month), date');return}
  x.paid=Math.min(Math.max(x.paid,0),x.ten);
  if(editId){items=items.map(i=>i.id===editId?x:i);toast('RD updated')}else{items.push(x);toast('RD added')}
  persist();resetForm();render();
@@ -116,7 +122,7 @@ $('list').addEventListener('click',e=>{
  const id=b.closest('.item').dataset.id,x=items.find(i=>i.id===id),a=b.dataset.act;
  if(a==='pay'&&x.paid<x.ten){x.paid++;persist();render();toast(`Installment ${x.paid} marked paid`)}
  else if(a==='undo'&&x.paid>0){x.paid--;persist();render();toast('Undone')}
- else if(a==='edit'){editId=id;$('name').value=x.name;$('amt').value=x.amt;$('rate').value=x.rate;$('ten').value=x.ten;$('start').value=x.start;$('paid').value=x.paid;$('save').textContent='Save changes';$('cancel').hidden=false;preview();scrollTo({top:0,behavior:'smooth'})}
+ else if(a==='edit'){editId=id;$('name').value=x.name;$('amt').value=x.amt;$('rate').value=x.rate;$('ty').value=Math.floor(x.ten/12)||'';$('tm').value=x.ten%12||'';$('td').value=x.td||'';$('start').value=x.start;$('paid').value=x.paid;$('save').textContent='Save changes';$('cancel').hidden=false;preview();scrollTo({top:0,behavior:'smooth'})}
  else if(a==='del'){
   if(armed===id){items=items.filter(i=>i.id!==id);armed=null;persist();render();toast('Deleted')}
   else{armed=id;b.classList.add('armed');b.textContent='Tap again';clearTimeout(armT);armT=setTimeout(()=>{armed=null;b.classList.remove('armed');b.textContent='Delete'},2500)}
