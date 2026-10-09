@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Loan Payoff Tracker</title>
+<style>
+  :root{
+    --bg:#0f0f14;
+    --card:#181820;
+    --border:#2a2a35;
+    --text:#e8e8ec;
+    --muted:#8a8a96;
+    --accent:#6c5ce7;
+    --green:#2ecc71;
+    --red:#ff5c5c;
+    --blue:#4da6ff;
+    --amber:#f0a500;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:20px;
+  }
+  .wrap{max-width:720px;margin:0 auto;}
+  h1{font-size:22px;margin-bottom:4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+  .explain{
+    background:#141225;
+    border:1px solid var(--accent);
+    border-radius:10px;
+    padding:12px 14px;
+    font-size:13px;
+    color:#c9c3f5;
+    margin-bottom:16px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  h2{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 12px;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
+  input, select{
+    width:100%;
+    background:#0f0f14;
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px;
+    border-radius:8px;
+    font-size:15px;
+  }
+  input:focus, select:focus{outline:none;border-color:var(--accent);}
+  .row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:140px;}
+  .edit-btn{
+    background:none;border:1px solid var(--border);color:var(--muted);
+    padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+  }
+  .edit-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  .progress-track{
+    background:#0f0f14;
+    border:1px solid var(--border);
+    border-radius:20px;
+    height:22px;
+    overflow:hidden;
+    margin:10px 0 6px;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg,var(--accent),var(--green));
+    border-radius:20px;
+    transition:width .3s;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    padding-right:8px;
+    font-size:11px;
+    font-weight:700;
+    color:#0f0f14;
+  }
+  .progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px;}
+  .stat{
+    background:#0f0f14;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px;
+    text-align:center;
+  }
+  .stat .label{font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+  .stat .value{font-size:18px;font-weight:700;}
+  .stat .value.green{color:var(--green);}
+  .stat .value.blue{color:var(--blue);}
+  .stat .value.amber{color:var(--amber);}
+
+  .note-box{
+    background:#141225;
+    border:1px solid var(--accent);
+    border-radius:8px;
+    padding:12px;
+    font-size:13px;
+    margin-top:12px;
+    color:#c9c3f5;
+  }
+
+  .whatif-result{
+    background:#0f0f14;
+    border:1px solid var(--green);
+    border-radius:8px;
+    padding:12px;
+    margin-top:10px;
+    font-size:13px;
+    display:none;
+  }
+  .whatif-result.show{display:block;}
+  .whatif-result .big{font-size:20px;font-weight:700;color:var(--green);margin-bottom:4px;}
+  .log-btn{
+    background:var(--accent);
+    border:none;
+    color:#fff;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:12px;
+    margin-top:8px;
+  }
+
+  .entry-form{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    background:#0f0f14;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px;
+    margin-bottom:14px;
+  }
+  .entry-form > div{flex:1;min-width:120px;}
+  .entry-form select{margin-bottom:0;}
+  .entry-add-btn{
+    background:var(--accent);
+    border:none;
+    color:#fff;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+    align-self:flex-end;
+  }
+
+  .timeline-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#0f0f14;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+    margin-bottom:8px;
+    font-size:13px;
+  }
+  .badge{
+    font-size:10px;
+    text-transform:uppercase;
+    padding:3px 8px;
+    border-radius:10px;
+    font-weight:700;
+    margin-right:8px;
+  }
+  .badge.prepay{background:rgba(46,204,113,.15);color:var(--green);}
+  .badge.rate{background:rgba(240,165,0,.15);color:var(--amber);}
+  .timeline-left{display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+  .timeline-date{color:var(--muted);min-width:90px;}
+  .del-entry{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px;}
+
+  .reset-btn{
+    width:100%;
+    background:transparent;
+    border:1px solid var(--red);
+    color:var(--red);
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Home Loan Payoff Tracker</h1>
+  <div class="sub">Log pre-payments as you make them. Log rate changes when your bank revises them. Everything else recalculates on its own.</div>
+
+  <div class="explain">
+    <strong>How it works:</strong> Set up your loan once below. Then just add entries as they happen — a pre-payment you made, or a rate change your bank applied. The tracker replays your whole loan history month by month and shows how much faster you're clearing it, and how much interest you're saving.
+  </div>
+
+  <div class="card" id="setupCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;">Loan Setup</h2>
+      <button class="edit-btn" onclick="toggleSetup()" id="setupToggle">Edit</button>
+    </div>
+    <div id="setupFields">
+      <div class="row">
+        <div>
+          <label>Loan Amount (₹)</label>
+          <input type="number" id="principal" value="2200000" min="0">
+        </div>
+        <div>
+          <label>Starting Interest Rate (% p.a.)</label>
+          <input type="number" id="rate" value="8.5" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Original Tenure (months)</label>
+          <input type="number" id="tenureMonths" value="168" min="1">
+        </div>
+        <div>
+          <label>Loan Start Date</label>
+          <input type="date" id="startDate">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Progress</h2>
+    <div class="progress-label">
+      <span id="progressPct">0% paid off</span>
+      <span id="progressBalance">₹0 remaining</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Original Payoff</div>
+        <div class="value" id="origPayoff">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Your Projected Payoff</div>
+        <div class="value blue" id="newPayoff">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Interest Saved</div>
+        <div class="value green" id="interestSaved">₹0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Time Saved</div>
+        <div class="value green" id="timeSaved">0m</div>
+      </div>
+    </div>
+    <div class="note-box" id="insightNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>What If I Pre-pay Now?</h2>
+    <div class="row">
+      <div>
+        <label>Extra Amount (₹)</label>
+        <input type="number" id="whatifAmount" placeholder="e.g. 100000">
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="log-btn" style="width:100%;" onclick="runWhatIf()">Check Impact</button>
+      </div>
+    </div>
+    <div class="whatif-result" id="whatifResult">
+      <div class="big" id="whatifSavings"></div>
+      <div id="whatifDetail"></div>
+      <button class="log-btn" onclick="logWhatIf()">Log This Pre-payment</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Add an Entry</h2>
+    <div class="entry-form">
+      <div>
+        <label>Type</label>
+        <select id="entryType" onchange="renderEntryForm()">
+          <option value="prepay">Pre-payment</option>
+          <option value="rate">Rate Change</option>
+        </select>
+      </div>
+      <div>
+        <label>Date</label>
+        <input type="date" id="entryDate">
+      </div>
+      <div id="entryDynamicFields"></div>
+      <button class="entry-add-btn" onclick="submitEntry()">+ Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Timeline</h2>
+    <div id="timelineList"></div>
+    <div class="empty" id="timelineEmpty" style="display:none;">No entries yet. Log your first pre-payment or rate change above.</div>
+  </div>
+
+  <button class="reset-btn" onclick="resetAll()">Reset All Data</button>
+</div>
+
+<script>
+let events = [];
+let eventId = 0;
+
+function newEvent(data){
+  eventId++;
+  return Object.assign({id: eventId}, data);
+}
+
+function renderEntryForm(){
+  const type = document.getElementById('entryType').value;
+  const container = document.getElementById('entryDynamicFields');
+  if(type === 'prepay'){
+    container.innerHTML = `
+      <label>Amount (₹)</label>
+      <input type="number" id="entryAmount" placeholder="e.g. 50000">
+    `;
+  } else {
+    container.innerHTML = `
+      <label>New Rate (%)</label>
+      <input type="number" id="entryRate" step="0.01" placeholder="e.g. 8.75">
+      <label style="margin-top:8px;">EMI</label>
+      <select id="entryEmiMode">
+        <option value="same">Keep EMI same (tenure adjusts)</option>
+        <option value="new">Bank set a new EMI</option>
+      </select>
+      <div id="entryNewEmiWrap" style="display:none;margin-top:8px;">
+        <label>New EMI (₹)</label>
+        <input type="number" id="entryNewEmi" placeholder="e.g. 21500">
+      </div>
+    `;
+    document.getElementById('entryEmiMode').addEventListener('change', function(){
+      document.getElementById('entryNewEmiWrap').style.display = this.value==='new' ? 'block' : 'none';
+    });
+  }
+}
+
+function submitEntry(){
+  const type = document.getElementById('entryType').value;
+  const date = document.getElementById('entryDate').value;
+  if(!date){ alert('Pick a date'); return; }
+
+  if(type === 'prepay'){
+    const amount = parseFloat(document.getElementById('entryAmount').value)||0;
+    if(amount<=0){ alert('Enter a pre-payment amount'); return; }
+    events.push(newEvent({type:'prepay', date, amount}));
+  } else {
+    const newRate = parseFloat(document.getElementById('entryRate').value);
+    if(isNaN(newRate)||newRate<=0){ alert('Enter a valid new rate'); return; }
+    const emiMode = document.getElementById('entryEmiMode').value;
+    const newEmi = emiMode==='new' ? parseFloat(document.getElementById('entryNewEmi').value)||0 : null;
+    events.push(newEvent({type:'rate', date, newRate, emiMode, newEmi}));
+  }
+
+  document.getElementById('entryDate').value = '';
+  if(type==='prepay'){ document.getElementById('entryAmount').value=''; }
+  else { document.getElementById('entryRate').value=''; }
+
+  renderTimeline();
+  calculate();
+}
+
+function removeEvent(id){
+  events = events.filter(e=>e.id!==id);
+  renderTimeline();
+  calculate();
+}
+
+function fmtCurrency(n){
+  if(n===null||n===undefined||isNaN(n)) return '₹0';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+
+function fmtDateDisplay(iso){
+  if(!iso) return '';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return '';
+  const day = d.getDate();
+  const suffix = (day%10===1&&day!==11)?'st':(day%10===2&&day!==12)?'nd':(day%10===3&&day!==13)?'rd':'th';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${day}${suffix} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function monthsToYearsMonths(m){
+  if(!isFinite(m)) return '—';
+  m = Math.round(m);
+  const y = Math.floor(m/12);
+  const rem = m%12;
+  if(y===0) return `${rem}m`;
+  if(rem===0) return `${y}y`;
+  return `${y}y ${rem}m`;
+}
+
+function calcEMI(principal, annualRate, months){
+  const r = annualRate/12/100;
+  if(r===0) return principal/months;
+  return principal * r * Math.pow(1+r, months) / (Math.pow(1+r, months)-1);
+}
+
+function addMonthsToDate(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setMonth(d.getMonth()+n);
+  return d;
+}
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtMonthYear(d){
+  return MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// Core simulation engine: replays the loan month by month applying whichever events are passed in.
+function simulate(principal, initialRate, initialTenureMonths, startDate, eventList){
+  const sorted = [...eventList].sort((a,b)=>a.date.localeCompare(b.date));
+  let currentRate = initialRate;
+  let currentEMI = calcEMI(principal, initialRate, initialTenureMonths);
+  let balance = principal;
+  let month = 0;
+  let totalInterest = 0;
+  let ptr = 0;
+  const capMonths = initialTenureMonths * 4 + 60;
+
+  while(balance > 1 && month < capMonths){
+    month++;
+    const currentDate = addMonthsToDate(startDate, month);
+
+    // apply any events dated on/before this month's checkpoint
+    while(ptr < sorted.length){
+      const ev = new Date(sorted[ptr].date+'T00:00:00');
+      if(ev <= currentDate){
+        if(sorted[ptr].type === 'rate'){
+          currentRate = sorted[ptr].newRate;
+          if(sorted[ptr].emiMode === 'new' && sorted[ptr].newEmi){
+            currentEMI = sorted[ptr].newEmi;
+          } else {
+            // keep EMI same -> recompute EMI based on new rate over remaining ORIGINAL schedule?
+            // Standard bank behavior: EMI stays exactly the same number, tenure just adjusts naturally.
+            // So we do nothing to currentEMI here.
+          }
+        } else if(sorted[ptr].type === 'prepay'){
+          balance = Math.max(balance - sorted[ptr].amount, 0);
+        }
+        ptr++;
+      } else {
+        break;
+      }
+    }
+
+    if(balance <= 1) break;
+
+    const monthlyRate = currentRate/12/100;
+    const interestPortion = balance*monthlyRate;
+    let principalPortion = currentEMI - interestPortion;
+    if(principalPortion < 0) principalPortion = 0; // EMI doesn't even cover interest - balance grows, handled by cap
+    if(principalPortion > balance) principalPortion = balance;
+    balance -= principalPortion;
+    totalInterest += interestPortion;
+  }
+
+  return {totalInterest, monthsTaken: month, finalBalance: Math.max(balance,0), finalEMI: currentEMI, finalRate: currentRate};
+}
+
+function calculate(){
+  const principal = parseFloat(document.getElementById('principal').value)||0;
+  const rate = parseFloat(document.getElementById('rate').value)||0;
+  const tenureMonths = parseInt(document.getElementById('tenureMonths').value)||0;
+  const startDate = document.getElementById('startDate').value;
+
+  if(principal<=0 || rate<=0 || tenureMonths<=0 || !startDate){
+    document.getElementById('insightNote').textContent = 'Fill in your loan setup above to start tracking.';
+    autoSaveState();
+    return;
+  }
+
+  const origEMI = calcEMI(principal, rate, tenureMonths);
+  const origTotalInterest = origEMI*tenureMonths - principal;
+  const origPayoffDate = addMonthsToDate(startDate, tenureMonths);
+
+  document.getElementById('origPayoff').textContent = fmtMonthYear(origPayoffDate);
+
+  // Baseline: rate changes only, no prepayments (isolates the effect of YOUR prepayments)
+  const rateOnlyEvents = events.filter(e=>e.type==='rate');
+  const baseline = simulate(principal, rate, tenureMonths, startDate, rateOnlyEvents);
+
+  // Actual: everything logged
+  const actual = simulate(principal, rate, tenureMonths, startDate, events);
+
+  const interestSaved = Math.max(baseline.totalInterest - actual.totalInterest, 0);
+  const timeSavedMonths = Math.max(baseline.monthsTaken - actual.monthsTaken, 0);
+
+  // Progress: how much of ORIGINAL principal has been paid off as of today
+  const today = new Date();
+  const elapsedFromStart = Math.floor((today - new Date(startDate+'T00:00:00')) / (1000*60*60*24*30.44));
+  const todaySim = simulate(principal, rate, tenureMonths, startDate, events);
+  // Determine balance today: run simulate but stop at elapsed months
+  let balanceToday = principal;
+  {
+    const sorted = [...events].sort((a,b)=>a.date.localeCompare(b.date));
+    let currentRate = rate, currentEMI = origEMI, ptr=0;
+    let bal = principal;
+    for(let m=1; m<=elapsedFromStart && bal>1; m++){
+      const currentDate = addMonthsToDate(startDate, m);
+      while(ptr<sorted.length){
+        const ev = new Date(sorted[ptr].date+'T00:00:00');
+        if(ev<=currentDate){
+          if(sorted[ptr].type==='rate'){
+            currentRate = sorted[ptr].newRate;
+            if(sorted[ptr].emiMode==='new' && sorted[ptr].newEmi) currentEMI = sorted[ptr].newEmi;
+          } else if(sorted[ptr].type==='prepay'){
+            bal = Math.max(bal - sorted[ptr].amount, 0);
+          }
+          ptr++;
+        } else break;
+      }
+      if(bal<=1) break;
+      const mr = currentRate/12/100;
+      const ip = bal*mr;
+      let pp = currentEMI - ip;
+      if(pp<0) pp=0;
+      if(pp>bal) pp=bal;
+      bal -= pp;
+    }
+    balanceToday = Math.max(bal,0);
+  }
+
+  const pctPaid = Math.min(Math.max(((principal-balanceToday)/principal)*100,0),100);
+  document.getElementById('progressPct').textContent = pctPaid.toFixed(1) + '% paid off';
+  document.getElementById('progressBalance').textContent = fmtCurrency(balanceToday) + ' remaining';
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pctPaid + '%';
+  fill.textContent = pctPaid > 8 ? pctPaid.toFixed(0)+'%' : '';
+
+  const newPayoffDate = addMonthsToDate(startDate, actual.monthsTaken);
+  document.getElementById('newPayoff').textContent = actual.monthsTaken < tenureMonths*3 ? fmtMonthYear(newPayoffDate) : '—';
+  document.getElementById('interestSaved').textContent = fmtCurrency(interestSaved);
+  document.getElementById('timeSaved').textContent = monthsToYearsMonths(timeSavedMonths);
+
+  const noteEl = document.getElementById('insightNote');
+  const prepayEvents = events.filter(e=>e.type==='prepay');
+  const rateEvents = events.filter(e=>e.type==='rate');
+  if(prepayEvents.length===0){
+    noteEl.textContent = rateEvents.length>0
+      ? 'Rate changes are factored in. Log a pre-payment to start seeing real savings.'
+      : 'Log your first pre-payment below to see how much time and interest you save.';
+  } else {
+    const totalPrepaid = prepayEvents.reduce((s,e)=>s+e.amount,0);
+    const ratio = totalPrepaid>0 ? interestSaved/totalPrepaid : 0;
+    noteEl.textContent = `You've pre-paid ${fmtCurrency(totalPrepaid)} across ${prepayEvents.length} payment${prepayEvents.length>1?'s':''}. That's saved you ${fmtCurrency(interestSaved)} in interest and ${monthsToYearsMonths(timeSavedMonths)} off your loan — roughly ₹${ratio.toFixed(2)} saved per ₹1 pre-paid.`;
+  }
+
+  autoSaveState();
+}
+
+let lastWhatIf = null;
+function runWhatIf(){
+  const amount = parseFloat(document.getElementById('whatifAmount').value)||0;
+  if(amount<=0){ alert('Enter an amount to test'); return; }
+
+  const principal = parseFloat(document.getElementById('principal').value)||0;
+  const rate = parseFloat(document.getElementById('rate').value)||0;
+  const tenureMonths = parseInt(document.getElementById('tenureMonths').value)||0;
+  const startDate = document.getElementById('startDate').value;
+  if(principal<=0||rate<=0||tenureMonths<=0||!startDate){ alert('Complete loan setup first'); return; }
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const withoutThis = simulate(principal, rate, tenureMonths, startDate, events);
+  const withThis = simulate(principal, rate, tenureMonths, startDate, [...events, {type:'prepay', date: todayStr, amount}]);
+
+  const extraInterestSaved = Math.max(withoutThis.totalInterest - withThis.totalInterest, 0);
+  const extraTimeSaved = Math.max(withoutThis.monthsTaken - withThis.monthsTaken, 0);
+
+  document.getElementById('whatifSavings').textContent = `Saves ${fmtCurrency(extraInterestSaved)} in interest`;
+  document.getElementById('whatifDetail').textContent = `Shortens your loan by ${monthsToYearsMonths(extraTimeSaved)} if paid today.`;
+  document.getElementById('whatifResult').classList.add('show');
+
+  lastWhatIf = {amount, date: todayStr};
+}
+
+function logWhatIf(){
+  if(!lastWhatIf) return;
+  events.push(newEvent({type:'prepay', date: lastWhatIf.date, amount: lastWhatIf.amount}));
+  document.getElementById('whatifResult').classList.remove('show');
+  document.getElementById('whatifAmount').value = '';
+  renderTimeline();
+  calculate();
+}
+
+function renderTimeline(){
+  const container = document.getElementById('timelineList');
+  const emptyEl = document.getElementById('timelineEmpty');
+  const sorted = [...events].sort((a,b)=>a.date.localeCompare(b.date));
+  if(sorted.length===0){
+    container.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  container.innerHTML = sorted.map(e=>{
+    if(e.type==='prepay'){
+      return `<div class="timeline-item">
+        <div class="timeline-left">
+          <span class="badge prepay">Pre-payment</span>
+          <span class="timeline-date">${fmtDateDisplay(e.date)}</span>
+          <span>${fmtCurrency(e.amount)}</span>
+        </div>
+        <button class="del-entry" onclick="removeEvent(${e.id})">×</button>
+      </div>`;
+    } else {
+      const emiNote = e.emiMode==='new' ? `, new EMI ${fmtCurrency(e.newEmi)}` : ', EMI unchanged';
+      return `<div class="timeline-item">
+        <div class="timeline-left">
+          <span class="badge rate">Rate Change</span>
+          <span class="timeline-date">${fmtDateDisplay(e.date)}</span>
+          <span>${e.newRate}%${emiNote}</span>
+        </div>
+        <button class="del-entry" onclick="removeEvent(${e.id})">×</button>
+      </div>`;
+    }
+  }).join('');
+}
+
+function toggleSetup(){
+  const fields = document.getElementById('setupFields');
+  const btn = document.getElementById('setupToggle');
+  const isHidden = fields.style.display === 'none';
+  fields.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? 'Done' : 'Edit';
+}
+
+function autoSaveState(){
+  const state = {
+    principal: document.getElementById('principal').value,
+    rate: document.getElementById('rate').value,
+    tenureMonths: document.getElementById('tenureMonths').value,
+    startDate: document.getElementById('startDate').value,
+    events: events
+  };
+  localStorage.setItem('home_loan_tracker_state', JSON.stringify(state));
+}
+
+function restoreState(){
+  const raw = localStorage.getItem('home_loan_tracker_state');
+  if(!raw) return false;
+  try{
+    const s = JSON.parse(raw);
+    document.getElementById('principal').value = s.principal;
+    document.getElementById('rate').value = s.rate;
+    document.getElementById('tenureMonths').value = s.tenureMonths;
+    document.getElementById('startDate').value = s.startDate||'';
+    events = (s.events||[]).map(e=>newEvent(e));
+    return true;
+  }catch(e){ return false; }
+}
+
+function resetAll(){
+  if(!confirm('Clear all loan data and timeline entries? This cannot be undone.')) return;
+  localStorage.removeItem('home_loan_tracker_state');
+  location.reload();
+}
+
+['principal','rate','tenureMonths','startDate'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calculate);
+});
+
+// init
+renderEntryForm();
+if(!restoreState()){
+  // fresh start
+} else {
+  document.getElementById('setupFields').style.display = events.length>0 ? 'none' : 'block';
+  document.getElementById('setupToggle').textContent = events.length>0 ? 'Edit' : 'Done';
+}
+renderTimeline();
+calculate();
+</script>
+</body>
+</html>

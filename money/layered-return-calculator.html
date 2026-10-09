@@ -6,191 +6,111 @@
 <title>Layered Return Calculator</title>
 <style>
   :root{
-    --bg:#0f0f14;
-    --card:#181820;
-    --border:#2a2a35;
-    --text:#e8e8ec;
-    --muted:#8a8a96;
-    --accent:#6c5ce7;
-    --green:#2ecc71;
-    --red:#ff5c5c;
-    --blue:#4da6ff;
+    --bg:#0f0f14; --card:#181820; --border:#2a2a35; --text:#e8e8ec; --muted:#8a8a96;
+    --accent:#6c5ce7; --green:#2ecc71; --red:#ff5c5c; --blue:#4da6ff;
   }
   *{box-sizing:border-box;}
-  body{
-    margin:0;
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    padding:20px;
-  }
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);padding:20px;}
   .wrap{max-width:640px;margin:0 auto;}
   h1{font-size:22px;margin-bottom:4px;}
   .sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
-  .card{
-    background:var(--card);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:16px;
-    margin-bottom:14px;
-  }
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
   label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;}
-  input, select{
-    width:100%;
-    background:#0f0f14;
-    border:1px solid var(--border);
-    color:var(--text);
-    padding:10px;
-    border-radius:8px;
-    font-size:15px;
-  }
+  input, select{width:100%;background:#0f0f14;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:15px;}
   input:focus, select:focus{outline:none;border-color:var(--accent);}
   .row{display:flex;gap:10px;margin-bottom:10px;}
   .row > div{flex:1;}
-  .layer{
-    display:flex;
-    gap:8px;
-    align-items:center;
-    background:#0f0f14;
-    border:1px solid var(--border);
-    border-radius:8px;
-    padding:10px;
-    margin-bottom:8px;
-  }
-  .layer input[type="text"]{flex:2;}
-  .layer input[type="number"]{flex:1;}
-  .layer select{flex:1;}
-  .layer .del{
-    flex:0 0 auto;
-    background:none;
-    border:none;
-    color:var(--red);
-    font-size:18px;
-    cursor:pointer;
-    padding:0 6px;
-  }
-  .add-btn{
-    width:100%;
-    background:transparent;
-    border:1px dashed var(--border);
-    color:var(--muted);
-    padding:10px;
-    border-radius:8px;
-    cursor:pointer;
-    font-size:14px;
-  }
+  h2{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0;}
+  .head-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .clear-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;}
+  .clear-btn:hover{border-color:var(--red);color:var(--red);}
+  .clear-btn.confirming{background:var(--red);border-color:var(--red);color:#fff;}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .layer{background:#0f0f14;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;}
+  .layer-top{display:flex;gap:8px;align-items:center;}
+  .layer-top .lbl{flex:2;min-width:0;}
+  .layer-top .typ{flex:1.2;min-width:0;}
+  .layer-top .val{flex:1;min-width:0;}
+  .layer .del{flex:0 0 auto;background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:0 6px;}
+  .layer-time{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+  .layer-time .months{width:130px;}
+  .layer-time .rdwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;}
+  .layer-time .rdwrap input{width:auto;}
+  .layer-gain{margin-left:auto;font-size:12px;font-weight:600;}
+  .layer-gain.pos{color:var(--green);} .layer-gain.neg{color:var(--red);}
+  .tax-hint{font-size:11px;color:var(--muted);margin-top:8px;}
+  .add-btn{width:100%;background:transparent;border:1px dashed var(--border);color:var(--muted);padding:10px;border-radius:8px;cursor:pointer;font-size:14px;}
   .add-btn:hover{border-color:var(--accent);color:var(--accent);}
-  .result-card{
-    background:linear-gradient(135deg,#1a1730,#181820);
-    border:1px solid var(--accent);
-    text-align:center;
-    padding:24px 16px;
-  }
-  .result-yield{
-    font-size:38px;
-    font-weight:700;
-  }
-  .result-yield.positive{color:var(--green);}
-  .result-yield.negative{color:var(--red);}
+  .result-card{background:linear-gradient(135deg,#1a1730,#181820);border:1px solid var(--accent);text-align:center;padding:24px 16px;}
+  .result-yield{font-size:38px;font-weight:700;}
+  .result-yield.positive,.result-amt.positive{color:var(--green);}
+  .result-yield.negative,.result-amt.negative{color:var(--red);}
   .result-amt{font-size:20px;margin-top:6px;}
-  .result-amt.positive{color:var(--green);}
-  .result-amt.negative{color:var(--red);}
-  .result-sub{color:var(--muted);font-size:12px;margin-top:8px;}
+  .result-sub{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.6;}
   .breakdown{margin-top:16px;text-align:left;}
-  .breakdown-row{
-    display:flex;
-    justify-content:space-between;
-    font-size:13px;
-    padding:6px 0;
-    border-bottom:1px solid var(--border);
-  }
+  .breakdown-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);}
   .breakdown-row:last-child{border-bottom:none;}
-  .breakdown-row .val.pos{color:var(--green);}
-  .breakdown-row .val.neg{color:var(--red);}
+  .breakdown-row small{color:var(--muted);}
+  .val.pos{color:var(--green);} .val.neg{color:var(--red);}
   .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-  .preset-chip{
-    background:var(--card);
-    border:1px solid var(--border);
-    color:var(--text);
-    padding:8px 12px;
-    border-radius:20px;
-    font-size:12px;
-    cursor:pointer;
-  }
+  .preset-chip{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:20px;font-size:12px;cursor:pointer;}
   .preset-chip:hover{border-color:var(--accent);}
   .save-row{display:flex;gap:8px;}
   .save-row input{flex:1;}
-  .save-btn{
-    background:var(--accent);
-    border:none;
-    color:#fff;
-    padding:10px 16px;
-    border-radius:8px;
-    cursor:pointer;
-    font-size:13px;
-    white-space:nowrap;
-  }
+  .save-btn{background:var(--accent);border:none;color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap;}
   .saved-list{margin-top:10px;}
-  .saved-item{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:8px 10px;
-    background:#0f0f14;
-    border:1px solid var(--border);
-    border-radius:8px;
-    margin-bottom:6px;
-    font-size:13px;
-  }
-  .saved-item button{
-    background:none;border:none;color:var(--blue);cursor:pointer;font-size:12px;margin-left:8px;
-  }
-  .saved-item .del-saved{color:var(--red);}
-  .tax-hint{font-size:11px;color:var(--muted);margin-top:-2px;margin-bottom:8px;}
-  h2{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 12px;}
-  @media (max-width:480px){
-    .layer{gap:6px;padding:8px;}
-    .layer input[type="text"]{flex:1 1 auto;min-width:0;}
-    .layer select{flex:0 0 92px;min-width:92px;padding-left:6px;padding-right:6px;}
-    .layer input[type="number"]{flex:0 0 58px;min-width:0;padding-left:7px;padding-right:7px;}
-  }
+  .saved-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#0f0f14;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:13px;}
+  .saved-item small{display:block;color:var(--muted);font-size:11px;margin-top:2px;}
+  .saved-item button{background:none;border:none;color:var(--blue);cursor:pointer;font-size:12px;margin-left:8px;}
+  .saved-item button.del-saved{color:var(--red);}
+  .saved-item button.del-saved.confirming{background:var(--red);color:#fff;border-radius:6px;padding:3px 8px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2a35;color:var(--text);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;white-space:nowrap;}
 </style>
 </head>
 <body>
+<div id="toast" class="toast"></div>
 <div class="wrap">
   <h1>Layered Return Calculator</h1>
-  <div class="sub">Stack tax, cashback, and idle interest on one principal to see your real effective yield.</div>
+  <div class="sub">Stack tax, cashback, and idle interest on one principal — each layer for the time it actually runs.</div>
 
   <div class="presets" id="presets"></div>
 
   <div class="card">
-    <h2>Principal</h2>
     <div class="row">
       <div>
-        <label>Amount (₹)</label>
+        <label for="principal">Principal (₹)</label>
         <input type="number" id="principal" value="10000" min="0">
       </div>
+      <div>
+        <label for="horizon">Total Period (months)</label>
+        <input type="number" id="horizon" value="12" min="1" step="1">
+      </div>
     </div>
+    <div class="hint">For an RD, enter the total amount you will deposit as the principal and the full tenure as the period.</div>
   </div>
 
   <div class="card">
-    <h2>Layers</h2>
+    <div class="head-row">
+      <h2>Layers</h2>
+      <button class="clear-btn" id="clearAll" type="button">Clear all</button>
+    </div>
     <div id="layers"></div>
-    <button class="add-btn" onclick="addLayer()">+ Add Layer</button>
+    <button class="add-btn" id="addLayer" type="button">+ Add Layer</button>
+    <div class="hint">Rates are per year. "Months active" pro-rates a layer — leave blank for the whole period. Tick "RD-style" when money goes in gradually: on average it sits only about half the tenure, so the real return is roughly half the headline rate.</div>
   </div>
 
   <div class="card result-card">
-    <div class="result-yield" id="resultYield">0.0%</div>
+    <div class="result-yield" id="resultYield">0.0% p.a.</div>
     <div class="result-amt" id="resultAmt">₹0</div>
-    <div class="result-sub" id="resultSub">vs Principal ₹0</div>
+    <div class="result-sub" id="resultSub"></div>
     <div class="breakdown" id="breakdown"></div>
   </div>
 
   <div class="card">
-    <h2>Save Scenario</h2>
+    <div class="head-row"><h2>Save Scenario</h2></div>
     <div class="save-row">
-      <input type="text" id="scenarioName" placeholder="e.g. FD + Tax + UPI stack">
-      <button class="save-btn" onclick="saveScenario()">Save</button>
+      <input type="text" id="scenarioName" placeholder="e.g. RD + Tax stack">
+      <button class="save-btn" id="saveBtn" type="button">Save</button>
     </div>
     <div class="saved-list" id="savedList"></div>
   </div>
@@ -198,246 +118,261 @@
 
 <script>
 const TAX_SLABS = [0,5,10,15,20,25,30];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 let layers = [];
 let layerId = 0;
 
-function newLayer(label, type, value){
+function inr(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function ordinal(d){ return (d%10===1&&d!==11)?'st':(d%10===2&&d!==12)?'nd':(d%10===3&&d!==13)?'rd':'th'; }
+function fmtDate(ts){
+  const d = new Date(ts);
+  return d.getDate() + ordinal(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+function esc(s){ const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+function $(id){ return document.getElementById(id); }
+
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.style.display='none'; }, 2200);
+}
+
+function newLayer(o){
   layerId++;
-  return {id: layerId, label: label||'', type: type||'add', value: value ?? 0};
+  o = o || {};
+  return {id:layerId, label:o.label||'', type:o.type||'add', value:o.value==null?0:o.value, months:o.months||'', rd:!!o.rd};
 }
 
-function addLayer(label, type, value){
-  layers.push(newLayer(label, type, value));
-  renderLayers();
-  calculate();
-}
-
-function removeLayer(id){
-  layers = layers.filter(l=>l.id!==id);
-  renderLayers();
-  calculate();
-}
-
-function updateLayer(id, field, val){
-  const l = layers.find(l=>l.id===id);
-  if(!l) return;
-  l[field] = (field==='value') ? parseFloat(val)||0 : val;
-  calculate();
-}
-
-function layerTypeLabel(type){
-  if(window.matchMedia('(max-width:480px)').matches){
-    return type === 'add' ? '+' : type === 'subtract' ? '−' : 'Tax';
+/* ---------- layer rendering (structure only; typing updates in place) ---------- */
+function layerHtml(l){
+  const typeSel = `<select class="typ" data-field="type">
+      <option value="add" ${l.type==='add'?'selected':''}>Add %</option>
+      <option value="subtract" ${l.type==='subtract'?'selected':''}>Subtract %</option>
+      <option value="tax" ${l.type==='tax'?'selected':''}>Tax (Auto)</option>
+    </select>`;
+  if(l.type==='tax'){
+    return `<div class="layer" data-id="${l.id}">
+      <div class="layer-top">
+        <input class="lbl" type="text" placeholder="Label" value="${esc(l.label)}" data-field="label">
+        ${typeSel}
+        <select class="val" data-field="value">${TAX_SLABS.map(s=>`<option value="${s}" ${s===Number(l.value)?'selected':''}>${s}% slab</option>`).join('')}</select>
+        <button class="del" type="button" data-action="del" aria-label="Delete layer">×</button>
+      </div>
+      <div class="layer-time"><span class="tax-hint">Taxed on the net gain of all layers above it. Time does not change the slab.</span><span class="layer-gain" data-role="gain"></span></div>
+    </div>`;
   }
-  return type === 'add' ? 'Add %' : type === 'subtract' ? 'Subtract %' : 'Tax (Auto)';
+  return `<div class="layer" data-id="${l.id}">
+    <div class="layer-top">
+      <input class="lbl" type="text" placeholder="Label (e.g. RD 6.5%)" value="${esc(l.label)}" data-field="label">
+      ${typeSel}
+      <input class="val" type="number" step="0.1" value="${l.value}" data-field="value" aria-label="Rate % per year">
+      <button class="del" type="button" data-action="del" aria-label="Delete layer">×</button>
+    </div>
+    <div class="layer-time">
+      <input class="months" type="number" min="0" step="0.5" placeholder="Months active" value="${l.months}" data-field="months" aria-label="Months active">
+      <label class="rdwrap"><input type="checkbox" data-field="rd" ${l.rd?'checked':''}> RD-style (deposited monthly)</label>
+      <span class="layer-gain" data-role="gain"></span>
+    </div>
+  </div>`;
 }
 
 function renderLayers(){
-  const container = document.getElementById('layers');
-  container.innerHTML = '';
-  layers.forEach(l=>{
-    const div = document.createElement('div');
-    if(l.type === 'tax'){
-      div.className = 'layer';
-      div.style.flexDirection = 'column';
-      div.style.alignItems = 'stretch';
-      div.innerHTML = `
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" placeholder="Label" value="${escapeHtml(l.label)}" oninput="updateLayer(${l.id},'label',this.value)" style="flex:2;">
-          <select onchange="updateLayer(${l.id},'type',this.value); renderLayers();" style="flex:1;">
-            <option value="add">${layerTypeLabel('add')}</option>
-            <option value="subtract">${layerTypeLabel('subtract')}</option>
-            <option value="tax" selected>${layerTypeLabel('tax')}</option>
-          </select>
-          <button class="del" onclick="removeLayer(${l.id})">×</button>
-        </div>
-        <div style="margin-top:8px;">
-          <select onchange="updateLayer(${l.id},'value',this.value)">
-            ${TAX_SLABS.map(s=>`<option value="${s}" ${s===l.value?'selected':''}>${s}% slab</option>`).join('')}
-          </select>
-        </div>
-        <div class="tax-hint" id="taxhint-${l.id}"></div>
-      `;
-    } else {
-      div.className = 'layer';
-      div.innerHTML = `
-        <input type="text" placeholder="Label (e.g. UPI Cashback)" value="${escapeHtml(l.label)}" oninput="updateLayer(${l.id},'label',this.value)">
-        <select onchange="updateLayer(${l.id},'type',this.value); renderLayers();">
-          <option value="add" ${l.type==='add'?'selected':''}>${layerTypeLabel('add')}</option>
-          <option value="subtract" ${l.type==='subtract'?'selected':''}>${layerTypeLabel('subtract')}</option>
-          <option value="tax" ${l.type==='tax'?'selected':''}>${layerTypeLabel('tax')}</option>
-        </select>
-        <input type="number" value="${l.value}" step="0.1" oninput="updateLayer(${l.id},'value',this.value)">
-        <button class="del" onclick="removeLayer(${l.id})">×</button>
-      `;
-    }
-    container.appendChild(div);
-  });
+  $('layers').innerHTML = layers.length ? layers.map(layerHtml).join('') : '<div class="hint" style="text-align:center;padding:10px 0;">No layers yet. Add one or pick a preset above.</div>';
+  calculate();
 }
 
-function escapeHtml(s){
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-window.matchMedia('(max-width:480px)').addEventListener('change', () => renderLayers());
-
+/* ---------- calculation ---------- */
 function calculate(){
-  const principal = parseFloat(document.getElementById('principal').value) || 0;
-  let runningPct = 0; // cumulative % change from principal
-  let breakdownRows = [];
+  const P = parseFloat($('principal').value) || 0;
+  const H = Math.max(parseFloat($('horizon').value) || 1, 1);
+  let cum = 0;
+  const rows = [];
 
   layers.forEach(l=>{
-    if(l.type === 'add'){
-      runningPct += l.value;
-      breakdownRows.push({label: l.label || 'Layer', pct: l.value});
-    } else if(l.type === 'subtract'){
-      runningPct -= l.value;
-      breakdownRows.push({label: l.label || 'Layer', pct: -l.value});
-    } else if(l.type === 'tax'){
-      // tax applies to the base rate layer immediately preceding it in the stack,
-      // approximated here as tax on the cumulative running % so far
-      const taxDrag = (runningPct * l.value) / 100;
-      runningPct -= taxDrag;
-      breakdownRows.push({label: (l.label||'Tax') + ` (${l.value}% slab)`, pct: -taxDrag});
+    let gain = 0, note = '';
+    if(l.type==='tax'){
+      gain = -Math.max(cum,0) * (Number(l.value)||0) / 100;
+      note = (Number(l.value)||0) + '% slab on net gain';
+    } else {
+      let m = parseFloat(l.months);
+      if(!(m>0)) m = H;
+      m = Math.min(m, H);
+      const f = l.rd ? (m+1)/(2*m) : 1;      // average-balance factor for gradual deposits
+      const sign = l.type==='subtract' ? -1 : 1;
+      gain = sign * P * (Number(l.value)||0)/100 * (m/12) * f;
+      note = (Number.isInteger(m)?m:m.toFixed(1)) + ' mo' + (l.rd ? ', RD avg balance' : '');
+    }
+    cum += gain;
+    rows.push({l, gain, note});
+    const el = document.querySelector(`.layer[data-id="${l.id}"] [data-role="gain"]`);
+    if(el){
+      el.textContent = (gain>=0?'+':'−') + inr(Math.abs(gain));
+      el.className = 'layer-gain ' + (gain>=0?'pos':'neg');
     }
   });
 
-  const finalAmt = principal * (1 + runningPct/100);
-  const yieldEl = document.getElementById('resultYield');
-  const amtEl = document.getElementById('resultAmt');
-  const subEl = document.getElementById('resultSub');
+  const finalAmt = P + cum;
+  const totalPct = P>0 ? cum/P*100 : 0;
+  const annual = totalPct * 12 / H;
 
-  yieldEl.textContent = (runningPct>=0?'+':'') + runningPct.toFixed(2) + '%';
-  yieldEl.className = 'result-yield ' + (runningPct>=0 ? 'positive':'negative');
+  const y = $('resultYield');
+  y.textContent = (annual>=0?'+':'') + annual.toFixed(2) + '% p.a.';
+  y.className = 'result-yield ' + (annual>=0?'positive':'negative');
+  const a = $('resultAmt');
+  a.textContent = inr(finalAmt);
+  a.className = 'result-amt ' + (finalAmt>=P?'positive':'negative');
+  $('resultSub').innerHTML = 'Over ' + H + ' month' + (H===1?'':'s') + ': ' + (cum>=0?'+':'−') + inr(Math.abs(cum)) + ' (' + (totalPct>=0?'+':'') + totalPct.toFixed(2) + '%) on ' + inr(P);
 
-  amtEl.textContent = '₹' + finalAmt.toLocaleString('en-IN', {maximumFractionDigits:0});
-  amtEl.className = 'result-amt ' + (finalAmt>=principal ? 'positive':'negative');
-
-  subEl.textContent = 'vs Principal ₹' + principal.toLocaleString('en-IN');
-
-  const bd = document.getElementById('breakdown');
-  bd.innerHTML = breakdownRows.map(r=>`
+  $('breakdown').innerHTML = rows.map(r=>`
     <div class="breakdown-row">
-      <span>${escapeHtml(r.label)}</span>
-      <span class="val ${r.pct>=0?'pos':'neg'}">${r.pct>=0?'+':''}${r.pct.toFixed(2)}%</span>
-    </div>
-  `).join('');
+      <span>${esc(r.l.label || (r.l.type==='tax'?'Tax':'Layer'))} <small>${esc(r.note)}</small></span>
+      <span class="val ${r.gain>=0?'pos':'neg'}">${r.gain>=0?'+':'−'}${inr(Math.abs(r.gain))}</span>
+    </div>`).join('');
 
-  // update tax hints
-  layers.forEach(l=>{
-    const hint = document.getElementById('taxhint-'+l.id);
-    if(hint){
-      hint.textContent = `Tax @ ${l.value}% slab applied on cumulative rate so far.`;
-    }
-  });
-
-  autoSaveState();
+  saveCurrent();
 }
 
-// Presets
+/* ---------- events (delegated) ---------- */
+$('layers').addEventListener('input', e=>{
+  const row = e.target.closest('.layer'); if(!row) return;
+  const l = layers.find(x=>x.id===Number(row.dataset.id)); if(!l) return;
+  const f = e.target.dataset.field; if(!f) return;
+  if(f==='type'||f==='rd'){
+    if(f==='rd'){ l.rd = e.target.checked; calculate(); return; }
+    l.type = e.target.value;
+    if(l.type==='tax' && !TAX_SLABS.includes(Number(l.value))) l.value = 30;
+    renderLayers(); return;
+  }
+  if(f==='label') l.label = e.target.value;
+  else if(f==='value') l.value = parseFloat(e.target.value)||0;
+  else if(f==='months') l.months = e.target.value;
+  calculate();
+});
+$('layers').addEventListener('change', e=>{
+  // select elements fire change in some browsers without input
+  if(e.target.tagName==='SELECT') e.target.dispatchEvent(new Event('input',{bubbles:true}));
+});
+$('layers').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-action="del"]'); if(!btn) return;
+  const id = Number(btn.closest('.layer').dataset.id);
+  layers = layers.filter(l=>l.id!==id);
+  renderLayers();
+});
+$('addLayer').addEventListener('click', ()=>{ layers.push(newLayer()); renderLayers(); });
+
+/* Clear all: tap twice to confirm */
+let clearArmed = false, clearTimer;
+$('clearAll').addEventListener('click', ()=>{
+  const btn = $('clearAll');
+  if(!layers.length){ toast('No layers to clear'); return; }
+  if(!clearArmed){
+    clearArmed = true; btn.textContent = 'Tap again to clear'; btn.classList.add('confirming');
+    toast('Tap "Clear all" again to remove every layer');
+    clearTimer = setTimeout(disarmClear, 2500);
+    return;
+  }
+  disarmClear();
+  layers = [];
+  renderLayers();
+  toast('All layers cleared');
+});
+function disarmClear(){
+  clearArmed = false; clearTimeout(clearTimer);
+  const btn = $('clearAll'); btn.textContent = 'Clear all'; btn.classList.remove('confirming');
+}
+
+['principal','horizon'].forEach(id=>$(id).addEventListener('input', calculate));
+
+/* ---------- presets ---------- */
 const PRESETS = {
-  'FD + Tax + UPI': [
+  'FD + Tax + UPI': {horizon:12, layers:[
     {label:'FD 7%', type:'add', value:7},
     {label:'Tax', type:'tax', value:30},
-    {label:'UPI Cashback', type:'add', value:1},
-  ],
-  'Credit Card Float': [
+    {label:'UPI Cashback', type:'add', value:1}]},
+  'RD 2 years + Tax': {horizon:24, layers:[
+    {label:'RD 6.5%', type:'add', value:6.5, rd:true},
+    {label:'Tax', type:'tax', value:30}]},
+  'Credit Card Float': {horizon:12, layers:[
     {label:'Card Reward 2%', type:'add', value:2},
-    {label:'FD Float 1%', type:'add', value:1},
-  ],
-  'Loan Arbitrage': [
+    {label:'FD Float 1%', type:'add', value:1}]},
+  'Loan Arbitrage': {horizon:12, layers:[
     {label:'Loan Cost', type:'subtract', value:8},
-    {label:'FD Return', type:'add', value:7.5},
-  ]
+    {label:'FD Return', type:'add', value:7.5}]}
 };
-
-function loadPreset(name){
-  layers = PRESETS[name].map(p=>newLayer(p.label,p.type,p.value));
-  renderLayers();
-  calculate();
-}
-
 function renderPresets(){
-  const container = document.getElementById('presets');
-  container.innerHTML = Object.keys(PRESETS).map(name=>
-    `<button class="preset-chip" onclick="loadPreset('${name}')">${name}</button>`
-  ).join('');
+  $('presets').innerHTML = Object.keys(PRESETS).map(n=>`<button class="preset-chip" type="button" data-preset="${esc(n)}">${esc(n)}</button>`).join('');
 }
-
-// Save / Load scenarios
-function saveScenario(){
-  const nameInput = document.getElementById('scenarioName');
-  const name = nameInput.value.trim();
-  if(!name){ alert('Enter a scenario name'); return; }
-  const principal = parseFloat(document.getElementById('principal').value)||0;
-  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
-  scenarios.push({name, principal, layers: JSON.parse(JSON.stringify(layers)), savedAt: Date.now()});
-  localStorage.setItem('lrc_scenarios', JSON.stringify(scenarios));
-  nameInput.value = '';
-  renderSaved();
-}
-
-function loadScenario(idx){
-  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
-  const s = scenarios[idx];
-  if(!s) return;
-  document.getElementById('principal').value = s.principal;
-  layers = s.layers.map(l=>newLayer(l.label,l.type,l.value));
+$('presets').addEventListener('click', e=>{
+  const b = e.target.closest('[data-preset]'); if(!b) return;
+  const p = PRESETS[b.dataset.preset]; if(!p) return;
+  $('horizon').value = p.horizon;
+  layers = p.layers.map(newLayer);
   renderLayers();
-  calculate();
-}
+});
 
-function deleteScenario(idx){
-  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
-  scenarios.splice(idx,1);
-  localStorage.setItem('lrc_scenarios', JSON.stringify(scenarios));
-  renderSaved();
-}
-
+/* ---------- saved scenarios ---------- */
+function getScenarios(){ try{ return JSON.parse(localStorage.getItem('lrc_scenarios')||'[]'); }catch(e){ return []; } }
+$('saveBtn').addEventListener('click', ()=>{
+  const name = $('scenarioName').value.trim();
+  if(!name){ toast('Enter a scenario name'); return; }
+  const list = getScenarios();
+  list.push({name, principal:parseFloat($('principal').value)||0, horizon:parseFloat($('horizon').value)||12, layers:JSON.parse(JSON.stringify(layers)), savedAt:Date.now()});
+  localStorage.setItem('lrc_scenarios', JSON.stringify(list));
+  $('scenarioName').value = '';
+  renderSaved(); toast('Scenario saved');
+});
 function renderSaved(){
-  const scenarios = JSON.parse(localStorage.getItem('lrc_scenarios')||'[]');
-  const list = document.getElementById('savedList');
-  if(scenarios.length===0){ list.innerHTML=''; return; }
-  list.innerHTML = scenarios.map((s,i)=>`
+  const list = getScenarios();
+  $('savedList').innerHTML = list.map((s,i)=>`
     <div class="saved-item">
-      <span>${escapeHtml(s.name)}</span>
-      <span>
-        <button onclick="loadScenario(${i})">Load</button>
-        <button class="del-saved" onclick="deleteScenario(${i})">Delete</button>
-      </span>
-    </div>
-  `).join('');
+      <span>${esc(s.name)}<small>${fmtDate(s.savedAt)} · ${s.horizon||12} mo · ${inr(s.principal)}</small></span>
+      <span><button type="button" data-load="${i}">Load</button><button type="button" class="del-saved" data-del="${i}">Delete</button></span>
+    </div>`).join('');
 }
+let delArmed = null, delTimer;
+$('savedList').addEventListener('click', e=>{
+  const ld = e.target.closest('[data-load]');
+  if(ld){
+    const s = getScenarios()[Number(ld.dataset.load)]; if(!s) return;
+    $('principal').value = s.principal; $('horizon').value = s.horizon||12;
+    layers = s.layers.map(newLayer); renderLayers(); toast('Scenario loaded'); return;
+  }
+  const dl = e.target.closest('[data-del]');
+  if(dl){
+    const idx = dl.dataset.del;
+    if(delArmed===idx){
+      const list = getScenarios(); list.splice(Number(idx),1);
+      localStorage.setItem('lrc_scenarios', JSON.stringify(list));
+      delArmed = null; clearTimeout(delTimer); renderSaved(); toast('Scenario deleted'); return;
+    }
+    delArmed = idx; dl.textContent = 'Tap again'; dl.classList.add('confirming');
+    toast('Tap Delete again to confirm');
+    clearTimeout(delTimer); delTimer = setTimeout(()=>{ delArmed=null; renderSaved(); }, 2500);
+  }
+});
 
-// Auto-save current working state (not named scenarios)
-function autoSaveState(){
-  const principal = document.getElementById('principal').value;
-  localStorage.setItem('lrc_current', JSON.stringify({principal, layers}));
+/* ---------- auto-save current working state ---------- */
+function saveCurrent(){
+  try{ localStorage.setItem('lrc_current', JSON.stringify({principal:$('principal').value, horizon:$('horizon').value, layers})); }catch(e){}
 }
-
-function restoreState(){
-  const raw = localStorage.getItem('lrc_current');
-  if(!raw) return false;
+function restoreCurrent(){
   try{
-    const state = JSON.parse(raw);
-    document.getElementById('principal').value = state.principal;
-    layers = (state.layers||[]).map(l=>newLayer(l.label,l.type,l.value));
+    const raw = localStorage.getItem('lrc_current'); if(!raw) return false;
+    const s = JSON.parse(raw);
+    $('principal').value = s.principal;
+    $('horizon').value = s.horizon || 12;     // older saves had no period
+    layers = (s.layers||[]).map(newLayer);
     return true;
   }catch(e){ return false; }
 }
 
-document.getElementById('principal').addEventListener('input', calculate);
-
-// init
 renderPresets();
-if(!restoreState()){
-  loadPreset('FD + Tax + UPI');
-} else {
-  renderLayers();
-  calculate();
+if(!restoreCurrent()){
+  const p = PRESETS['FD + Tax + UPI'];
+  $('horizon').value = p.horizon;
+  layers = p.layers.map(newLayer);
 }
+renderLayers();
 renderSaved();
 </script>
 </body>

@@ -307,15 +307,13 @@ function markDone(id){
   if(idx===-1) return;
   const p = payments[idx];
   let nextAmount = p.amount;
-  if(hasVariableAmount(p.type)){
+  if(p.type === 'Other'){
     const nextBillInput = document.getElementById(`nextBillAmount-${id}`);
     const enteredAmount = nextBillInput.value.trim();
-    if(isCreditCardType(p.type) || enteredAmount){
-      nextAmount = enteredAmount ? parseFloat(enteredAmount) : NaN;
+    if(enteredAmount){
+      nextAmount = parseFloat(enteredAmount);
       if(!Number.isFinite(nextAmount) || nextAmount <= 0){
-        nextBillInput.setCustomValidity(isCreditCardType(p.type)
-          ? 'Enter the next cycle bill amount before marking this bill done.'
-          : 'Enter a valid bill amount or leave it blank to reuse the initial amount.');
+        nextBillInput.setCustomValidity('Enter a valid bill amount or leave it blank to reuse the initial amount.');
         nextBillInput.reportValidity();
         nextBillInput.addEventListener('input', ()=>nextBillInput.setCustomValidity(''), {once:true});
         return;
@@ -500,7 +498,8 @@ function render(){
         </div>
         <div class="pay-type">${escapeHTML(p.type)}</div>
         <div class="pay-meta">₹${p.amount}${isCreditCardType(p.type) ? ' current bill' : ` every ${p.freq==1?'month':p.freq==3?'quarter':'year'}`}${p.account?` • from ${escapeHTML(p.account)}`:''} • ${escapeHTML(p.method || 'Automated')}${p.lastPaid?` • last paid ${escapeHTML(p.lastPaid)}`:''}</div>
-        ${hasVariableAmount(p.type) ? `<div class="row"><div class="field"><label for="nextBillAmount-${p.id}">${isCreditCardType(p.type) ? 'Next cycle bill amount' : 'Next bill amount'} (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" placeholder="${isCreditCardType(p.type) ? 'Enter after statement closes' : `Optional; blank reuses initial ₹${initialPaymentAmount(p).toFixed(0)}`}" ${isCreditCardType(p.type) ? 'required' : ''}></div></div>` : ''}
+        ${isCreditCardType(p.type) ? '<p class="summary-note">After the statement closes, use Edit to enter the new bill amount.</p>' : ''}
+        ${p.type === 'Other' ? `<div class="row"><div class="field"><label for="nextBillAmount-${p.id}">Next bill amount (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" placeholder="Optional; blank reuses initial ₹${initialPaymentAmount(p).toFixed(0)}"></div></div>` : ''}
         <span class="status-badge ${statusClass}">${statusLabel}</span>
       </div>
     `;
