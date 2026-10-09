@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RD Tracker · iWish</title>
+<style>
+:root{--bg:#0f1413;--card:#171e1c;--line:#26302d;--tx:#e8f0ed;--mut:#8a9a95;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,sans-serif;padding:16px;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(40px,env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto}
+h1{font-size:20px;margin:0 0 2px}.sub{color:var(--mut);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sum div span{display:block;color:var(--mut);font-size:12px}.sum div b{font-size:17px;color:var(--mint)}
+.sum .coral b{color:var(--coral)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+input{width:100%;background:#0f1413;color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;color-scheme:dark}
+input:focus{outline:none;border-color:var(--mint)}
+button{font:inherit;border:1px solid var(--line);background:transparent;color:var(--tx);border-radius:9px;padding:9px 12px;cursor:pointer}
+button.pri{background:var(--mint);color:#0f1413;border-color:var(--mint);font-weight:600}
+button.del.armed{background:var(--coral);color:#0f1413;border-color:var(--coral)}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}button.del:hover{border-color:var(--coral)}}
+.prev{margin-top:10px;font-size:13px;color:var(--mut)}.prev b{color:var(--mint)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.item h3{margin:0;font-size:16px}.meta{color:var(--mut);font-size:13px;margin-top:2px}
+.bar{height:8px;background:#0f1413;border-radius:6px;margin:10px 0 6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--mint)}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:13px;margin-top:8px}.kv span{color:var(--mut)}
+.od{color:var(--coral)}.done{color:var(--mint)}
+#toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0f1413;padding:9px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}.empty{text-align:center;color:var(--mut);padding:20px}
+</style></head><body><main>
+<h1>RD Tracker · iWish</h1>
+<div class="sub">Track ICICI iWish / recurring deposits. Stays in your browser.</div>
+
+<div class="card sum" id="sum"></div>
+
+<div class="card">
+ <div class="grid">
+  <div class="full"><label>Goal / name</label><input id="name" placeholder="e.g. Bike, Europe trip"></div>
+  <div><label>Monthly installment (₹)</label><input id="amt" type="number" inputmode="numeric" min="0"></div>
+  <div><label>Interest rate (% p.a.)</label><input id="rate" type="number" inputmode="decimal" step="0.01" min="0"></div>
+  <div><label>Tenure (months)</label><input id="ten" type="number" inputmode="numeric" min="1"></div>
+  <div><label>Start date</label><input id="start" type="date"></div>
+  <div class="full"><label>Installments already paid</label><input id="paid" type="number" inputmode="numeric" min="0" value="0"></div>
+ </div>
+ <div class="prev" id="prev">Enter amount, rate and tenure to see maturity.</div>
+ <div class="row"><button class="pri" id="save">Add RD</button><button id="cancel" hidden>Cancel edit</button></div>
+</div>
+
+<div id="list"></div>
+<div id="toast"></div>
+</main>
+<script>
+const KEY='as_rdtracker_v1';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $=id=>document.getElementById(id);
+let items=[],editId=null,armed=null,armT=null;
+try{items=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){items=[]}
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}};
+const inr=n=>Math.round(n).toLocaleString('en-IN');
+const fmtD=d=>`${d.getDate()}th ${MON[d.getMonth()]} ${d.getFullYear()}`;
+const addM=(iso,m)=>{const [y,mo,d]=iso.split('-').map(Number);const dt=new Date(y,mo-1+m,d);if(dt.getDate()!==d)dt.setDate(0);return dt};
+// installments deposited at start of each month, interest compounded quarterly
+const maturity=(P,r,n)=>{let s=0;for(let k=1;k<=n;k++)s+=P*Math.pow(1+r/400,4*(n-k+1)/12);return s};
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1800)}
+
+function preview(){
+ const P=+$('amt').value,r=+$('rate').value,n=+$('ten').value;
+ if(P>0&&n>0&&r>=0){const m=maturity(P,r,n),dep=P*n;
+  $('prev').innerHTML=`Deposit <b>₹${inr(dep)}</b> → Maturity <b>₹${inr(m)}</b> (interest ₹${inr(m-dep)})`}
+ else $('prev').textContent='Enter amount, rate and tenure to see maturity.';
+}
+['amt','rate','ten'].forEach(i=>$(i).addEventListener('input',preview));
+
+function summary(){
+ let mo=0,dep=0,mat=0,act=0;
+ items.forEach(x=>{const m=maturity(x.amt,x.rate,x.ten);mat+=m;dep+=x.amt*x.paid;if(x.paid<x.ten){mo+=x.amt;act++}});
+ $('sum').innerHTML=`<div><span>Monthly outflow</span><b>₹${inr(mo)}</b></div>
+ <div><span>Active RDs</span><b>${act}/${items.length}</b></div>
+ <div><span>Deposited so far</span><b>₹${inr(dep)}</b></div>
+ <div class="coral"><span>Total maturity value</span><b>₹${inr(mat)}</b></div>`;
+}
+function render(){
+ summary();
+ if(!items.length){$('list').innerHTML='<div class="card empty">No RDs yet. Add your first above.</div>';return}
+ const today=new Date();today.setHours(0,0,0,0);
+ $('list').innerHTML=items.map(x=>{
+  const m=maturity(x.amt,x.rate,x.ten),pct=Math.min(100,x.paid/x.ten*100),fin=x.paid>=x.ten;
+  const nd=fin?null:addM(x.start,x.paid),od=nd&&nd<today;
+  const days=nd?Math.round((nd-today)/864e5):0;
+  const st=fin?'<span class="done">Completed ✓</span>':od?`<span class="od">Overdue by ${-days} day${days==-1?'':'s'}</span>`:`Next in ${days} day${days==1?'':'s'}`;
+  return `<div class="card item" data-id="${x.id}">
+   <h3>${esc(x.name)||'Untitled RD'}</h3>
+   <div class="meta">₹${inr(x.amt)}/month · ${x.rate}% · ${x.ten} months</div>
+   <div class="bar"><i style="width:${pct}%"></i></div>
+   <div class="meta">${x.paid}/${x.ten} paid · ${st}</div>
+   <div class="kv"><div><span>Next due</span><br>${nd?fmtD(nd):'—'}</div><div><span>Matures on</span><br>${fmtD(addM(x.start,x.ten))}</div>
+   <div><span>Deposited</span><br>₹${inr(x.amt*x.paid)}</div><div><span>Maturity value</span><br>₹${inr(m)}</div></div>
+   <div class="row"><button class="pri" data-act="pay" ${fin?'disabled':''}>Mark paid</button><button data-act="undo" ${x.paid?'':'disabled'}>Undo</button><button data-act="edit">Edit</button><button class="del" data-act="del">Delete</button></div>
+  </div>`}).join('');
+}
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function resetForm(){editId=null;['name','amt','rate','ten'].forEach(i=>$(i).value='');$('paid').value=0;$('start').value=new Date().toISOString().slice(0,10);$('save').textContent='Add RD';$('cancel').hidden=true;preview()}
+$('save').addEventListener('click',()=>{
+ const x={id:editId||Date.now().toString(36),name:$('name').value.trim(),amt:+$('amt').value,rate:+$('rate').value,ten:Math.floor(+$('ten').value),start:$('start').value,paid:Math.floor(+$('paid').value)||0};
+ if(!(x.amt>0)||!(x.ten>0)||!(x.rate>=0)||$('rate').value===''||!x.start){toast('Fill amount, rate, tenure, date');return}
+ x.paid=Math.min(Math.max(x.paid,0),x.ten);
+ if(editId){items=items.map(i=>i.id===editId?x:i);toast('RD updated')}else{items.push(x);toast('RD added')}
+ persist();resetForm();render();
+});
+$('cancel').addEventListener('click',resetForm);
+$('list').addEventListener('click',e=>{
+ const b=e.target.closest('button[data-act]');if(!b)return;
+ const id=b.closest('.item').dataset.id,x=items.find(i=>i.id===id),a=b.dataset.act;
+ if(a==='pay'&&x.paid<x.ten){x.paid++;persist();render();toast(`Installment ${x.paid} marked paid`)}
+ else if(a==='undo'&&x.paid>0){x.paid--;persist();render();toast('Undone')}
+ else if(a==='edit'){editId=id;$('name').value=x.name;$('amt').value=x.amt;$('rate').value=x.rate;$('ten').value=x.ten;$('start').value=x.start;$('paid').value=x.paid;$('save').textContent='Save changes';$('cancel').hidden=false;preview();scrollTo({top:0,behavior:'smooth'})}
+ else if(a==='del'){
+  if(armed===id){items=items.filter(i=>i.id!==id);armed=null;persist();render();toast('Deleted')}
+  else{armed=id;b.classList.add('armed');b.textContent='Tap again';clearTimeout(armT);armT=setTimeout(()=>{armed=null;b.classList.remove('armed');b.textContent='Delete'},2500)}
+ }
+});
+resetForm();render();
+</script></body></html>
