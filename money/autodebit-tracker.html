@@ -221,6 +221,7 @@ function syncTypeFields(){
   document.getElementById('cycleDayField').hidden = !isCard;
   document.getElementById('frequencyField').hidden = isCard;
   document.getElementById('amountLabel').textContent = isCard ? 'Current bill amount (₹)' : 'Amount (₹)';
+  document.getElementById('payAmount').min = isCard ? '0' : '';
   if(isCard) document.getElementById('payFreq').value = '1';
 }
 
@@ -309,14 +310,15 @@ function hasVariableAmount(type){
 function addPayment(){
   const name = document.getElementById('payName').value.trim();
   const type = document.getElementById('payType').value;
-  const amount = parseFloat(document.getElementById('payAmount').value) || 0;
+  const amountValue = document.getElementById('payAmount').value.trim();
+  const amount = amountValue === '' ? NaN : Number(amountValue);
   const freq = isCreditCardType(type) ? 1 : parseFloat(document.getElementById('payFreq').value) || 1;
   const account = document.getElementById('payAccount').value.trim();
   const dueDate = document.getElementById('payDueDate').value;
   const method = document.getElementById('payMethod').value;
   const cycleDay = isCreditCardType(type) ? parseInt(document.getElementById('cycleDay').value, 10) : null;
 
-  if(!name || amount<=0 || !dueDate || (isCreditCardType(type) && (!cycleDay || cycleDay < 1 || cycleDay > 31))){
+  if(!name || !Number.isFinite(amount) || amount < 0 || (!isCreditCardType(type) && amount === 0) || !dueDate || (isCreditCardType(type) && (!cycleDay || cycleDay < 1 || cycleDay > 31))){
     alert(isCreditCardType(type)
       ? 'Enter a payment name, bill amount, statement cycle closing day (1-31), and next due date.'
       : 'Enter a payment name, amount, and next due date.');
@@ -566,11 +568,12 @@ function render(){
     const billFieldLabel = isCreditCardType(p.type) ? 'New bill amount (₹)' : 'Next bill amount (₹)';
     const billReminder = isCreditCardType(p.type)
       ? (p.nextCycleAmount ? `New bill amount ₹${Number(p.nextCycleAmount).toFixed(0)} saved for the next due cycle.` : cycleReminder(p) || 'Statement amount is up to date for the latest cycle.')
-      : `Optional; blank reuses initial ₹${initialPaymentAmount(p).toFixed(0)}.`;
+      : `Enter the bill amount when known. Leave blank to reuse the initial ₹${initialPaymentAmount(p).toFixed(0)}.`;
+    const collapsedByDefault = variableBillInput;
 
     return `
       <div class="pay-details">
-        <details open>
+        <details${collapsedByDefault ? '' : ' open'}>
           <summary class="pay-summary">
             <div class="pay-head">
               <span class="pay-name">${escapeHTML(p.name)}</span>
@@ -586,7 +589,7 @@ function render(){
             <span class="status-badge ${statusClass}">${statusLabel}</span>
           </summary>
           <div class="pay-details-body">
-            ${variableBillInput ? `<p class="summary-note">${escapeHTML(billReminder)}</p><div class="row"><div class="field"><label for="nextBillAmount-${p.id}">${billFieldLabel}</label><input type="number" id="nextBillAmount-${p.id}" min="0" step="0.01" value="${p.nextCycleAmount ?? ''}" placeholder="Optional; use 0 if there is no bill this cycle"></div></div>` : ''}
+            ${variableBillInput ? `<p class="summary-note">${escapeHTML(billReminder)}</p><div class="row"><div class="field"><label for="nextBillAmount-${p.id}">${billFieldLabel}</label><input type="number" id="nextBillAmount-${p.id}" min="0" step="0.01" value="${p.nextCycleAmount ?? ''}" placeholder="${isCreditCardType(p.type) ? 'Enter after statement is generated; 0 if no bill' : 'Enter the amount when the bill is known'}"></div></div>` : ''}
           </div>
         </details>
       </div>

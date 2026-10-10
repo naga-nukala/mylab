@@ -8,39 +8,56 @@
 <script src="pwa.js" defer></script>
 <title>Money Framework Dashboard</title>
 <style>
-  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--blue:#3b82f6;}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  [hidden]{display:none !important;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px 20px 90px;}
   .wrap{max-width:600px;margin:0 auto;}
   h1{font-size:20px;margin-bottom:4px;}
   p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
   .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
-  h2{font-size:14px;margin:0 0 10px 0;color:var(--sub);text-transform:uppercase;letter-spacing:.03em;}
+  h2{font-size:14px;margin:0 0 10px 0;color:var(--sub);text-transform:uppercase;letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center;}
+  h2 .total{color:var(--txt);font-size:13px;text-transform:none;letter-spacing:0;}
   label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
-  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
-  input:focus, select:focus{outline:2px solid var(--acc);}
+  input{width:100%;padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:14px;}
+  input:focus{outline:2px solid var(--acc);}
 
   .flow-box{text-align:center;padding:22px 16px;}
   .flow-num{font-size:34px;font-weight:800;}
   .flow-label{color:var(--sub);font-size:12px;}
   .bar{height:10px;border-radius:6px;background:#334155;overflow:hidden;margin-top:12px;display:flex;}
   .bar-seg{height:100%;}
-
-  .row{display:flex;gap:8px;margin-bottom:8px;}
-  .field{flex:1;min-width:0;}
-  .item{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
-  .item input{flex:1;}
-  .item .remove{background:none;border:none;color:var(--bad);font-size:14px;cursor:pointer;}
-  button.add{width:100%;padding:10px;border:1px dashed #475569;border-radius:8px;background:transparent;color:var(--txt);font-size:13px;cursor:pointer;margin-top:4px;}
-
-  .debt-line{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #334155;}
-  .debt-line:last-child{border-bottom:none;}
-  .priority-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--bad);font-weight:700;}
-
-  .stat-row{display:flex;gap:10px;}
+  .stat-row{display:flex;gap:10px;margin-top:12px;}
   .stat{flex:1;text-align:center;background:#0f172a;border-radius:10px;padding:12px;}
   .stat .n{font-size:18px;font-weight:700;}
   .stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
+
+  .row{display:flex;gap:8px;margin-bottom:8px;}
+  .field{flex:1;min-width:0;}
+  .btn-row{display:flex;gap:8px;margin-bottom:6px;}
+  .btn{flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+  .btn.primary{background:var(--acc);color:#052e16;}
+  .btn.ghost{background:transparent;border:1px solid #475569;color:var(--txt);flex:0 0 auto;padding:11px 16px;}
+  .btn.blue{background:var(--blue);color:#fff;}
+
+  .list-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #334155;}
+  .list-item:last-child{border-bottom:none;}
+  .li-main{flex:1;min-width:0;}
+  .li-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .li-meta{font-size:11px;color:var(--sub);margin-top:2px;}
+  .li-amt{font-weight:700;font-size:14px;white-space:nowrap;}
+  .li-actions{display:flex;gap:6px;}
+  .icon-btn{background:#0f172a;border:1px solid #334155;color:var(--txt);border-radius:6px;padding:6px 9px;font-size:12px;cursor:pointer;}
+  .icon-btn.edit{color:var(--blue);}
+  .icon-btn.del{color:var(--bad);}
+  .icon-btn.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--bad);font-weight:700;margin-left:6px;}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:14px 0;}
+  .priority{margin-top:10px;font-size:13px;color:var(--warn);}
+
+  .saved-note{text-align:center;color:var(--sub);font-size:12px;margin-top:8px;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #475569;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;}
+  .toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -54,9 +71,9 @@
     <div class="bar">
       <div class="bar-seg" id="segExp" style="background:var(--bad);"></div>
       <div class="bar-seg" id="segSave" style="background:var(--acc);"></div>
-      <div class="bar-seg" id="segInvest" style="background:#3b82f6;"></div>
+      <div class="bar-seg" id="segInvest" style="background:var(--blue);"></div>
     </div>
-    <div class="stat-row" style="margin-top:12px;">
+    <div class="stat-row">
       <div class="stat"><div class="n" id="savingsRate">0%</div><div class="l">Savings Rate</div></div>
       <div class="stat"><div class="n" id="investRate">0%</div><div class="l">Investment Rate</div></div>
     </div>
@@ -64,136 +81,322 @@
 
   <div class="card">
     <h2>Inflow</h2>
-    <label>Monthly Income (all sources, ₹)</label>
-    <input type="number" id="inflow" placeholder="e.g. 80000" oninput="calc()">
+    <label for="inflow">Monthly Income (all sources, ₹)</label>
+    <input type="number" inputmode="decimal" id="inflow" placeholder="e.g. 80000" data-field="inflow">
   </div>
 
   <div class="card">
-    <h2>Outflow (Expenses)</h2>
-    <div id="expensesList"></div>
-    <button class="add" onclick="addExpense()">+ Add Expense Category</button>
-  </div>
-
-  <div class="card">
-    <h2>Debts (highest interest cleared first)</h2>
-    <div id="debtsList"></div>
-    <button class="add" onclick="addDebt()">+ Add Debt</button>
-    <div id="debtPriority" style="margin-top:10px;font-size:13px;color:var(--warn);"></div>
-  </div>
-
-  <div class="card">
-    <h2>Savings & Investment</h2>
+    <h2>Outflow (Expenses) <span class="total" id="expTotal"></span></h2>
     <div class="row">
-      <div class="field"><label>Monthly Savings (₹)</label><input type="number" id="savings" value="0" oninput="calc()"></div>
-      <div class="field"><label>Monthly Investment (₹)</label><input type="number" id="invest" value="0" oninput="calc()"></div>
+      <div class="field"><input type="text" id="expName" placeholder="Category e.g. Rent" data-enter="submit-expense"></div>
+      <div class="field" style="max-width:130px;"><input type="number" inputmode="decimal" id="expAmount" placeholder="₹ / month" data-enter="submit-expense"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="expSubmit" data-action="submit-expense">+ Add Expense</button>
+      <button class="btn ghost" id="expCancel" data-action="cancel-expense" hidden>Cancel</button>
+    </div>
+    <div id="expensesList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Debts (highest interest cleared first) <span class="total" id="debtTotal"></span></h2>
+    <div class="row">
+      <div class="field"><input type="text" id="debtName" placeholder="Debt name" data-enter="submit-debt"></div>
+    </div>
+    <div class="row">
+      <div class="field"><input type="number" inputmode="decimal" id="debtAmount" placeholder="Outstanding ₹" data-enter="submit-debt"></div>
+      <div class="field"><input type="number" inputmode="decimal" id="debtRate" placeholder="Rate % p.a." data-enter="submit-debt"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="debtSubmit" data-action="submit-debt">+ Add Debt</button>
+      <button class="btn ghost" id="debtCancel" data-action="cancel-debt" hidden>Cancel</button>
+    </div>
+    <div id="debtsList"></div>
+    <div class="priority" id="debtPriority"></div>
+  </div>
+
+  <div class="card">
+    <h2>Savings &amp; Investment</h2>
+    <div class="row">
+      <div class="field"><label for="savings">Monthly Savings (₹)</label><input type="number" inputmode="decimal" id="savings" placeholder="0" data-field="savings"></div>
+      <div class="field"><label for="invest">Monthly Investment (₹)</label><input type="number" inputmode="decimal" id="invest" placeholder="0" data-field="invest"></div>
     </div>
   </div>
+
+  <button class="btn primary" style="width:100%;" data-action="save">💾 Save</button>
+  <div class="saved-note" id="savedNote"></div>
 </div>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
-const STORAGE_KEY = 'money_framework_state_v1';
-function inr(n){ return '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+const KEY = 'money_framework_v1';
+const $ = id => document.getElementById(id);
+const fmt = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function loadState(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if(saved && Array.isArray(saved.expenses) && Array.isArray(saved.debts)) return saved;
-  }catch(e){}
-  return {
-    inflow:'', savings:0, invest:0,
-    expenses:[{name:'Rent', amount:0}, {name:'Food', amount:0}],
-    debts:[{name:'', amount:0, rate:0}]
-  };
-}
-const state = loadState();
-let expenses = state.expenses;
-let debts = state.debts;
-
-function save(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    inflow: document.getElementById('inflow').value,
-    savings: document.getElementById('savings').value,
-    invest: document.getElementById('invest').value,
-    expenses, debts
-  }));
+function fmtDate(d){
+  const day = d.getDate();
+  const suffix = (day % 100 >= 11 && day % 100 <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[day % 10] || 'th');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return day + suffix + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
 }
 
-function addExpense(){ expenses.push({name:'', amount:0}); save(); renderExpenses(); }
-function removeExpense(i){ expenses.splice(i,1); save(); renderExpenses(); }
-function updateExpense(i, field, val){
-  expenses[i][field] = field==='name' ? val : (parseFloat(val)||0);
-  save();
-  calc();
+function defaults(){ return { inflow:0, savings:0, invest:0, expenses:[], debts:[], savedAt:null }; }
+function safeGet(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
+function safeSet(v){ try { localStorage.setItem(KEY, v); return true; } catch(e){ return false; } }
+
+let state = (function(){
+  try {
+    const s = JSON.parse(safeGet() || 'null');
+    if(s && typeof s === 'object') return Object.assign(defaults(), s);
+  } catch(e){}
+  return defaults();
+})();
+
+const editing = { expense:null, debt:null };
+const pendingDeletes = {};
+let toastTimer;
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-function addDebt(){ debts.push({name:'', amount:0, rate:0}); save(); renderDebts(); }
-function removeDebt(i){ debts.splice(i,1); save(); renderDebts(); }
-function updateDebt(i, field, val){
-  debts[i][field] = field==='name' ? val : (parseFloat(val)||0);
-  save();
-  updateDebtPriority();
+function updateSavedNote(){
+  $('savedNote').textContent = state.savedAt ? 'Last saved ' + fmtDate(new Date(state.savedAt)) : 'Not saved yet';
 }
 
+function persist(){
+  state.savedAt = Date.now();
+  const ok = safeSet(JSON.stringify(state));
+  updateSavedNote();
+  return ok;
+}
+
+function sum(list, key){ return list.reduce((s,x)=>s + (x[key]||0), 0); }
+
+function calcSummary(){
+  const exp = sum(state.expenses, 'amount');
+  const net = state.inflow - exp - state.savings - state.invest;
+  const netEl = $('netFlow');
+  netEl.textContent = (net >= 0 ? '+' : '−') + fmt(Math.abs(net));
+  netEl.style.color = net >= 0 ? 'var(--acc)' : 'var(--bad)';
+
+  const total = exp + state.savings + state.invest || 1;
+  $('segExp').style.width = (exp/total*100) + '%';
+  $('segSave').style.width = (state.savings/total*100) + '%';
+  $('segInvest').style.width = (state.invest/total*100) + '%';
+
+  $('savingsRate').textContent = state.inflow > 0 ? ((state.savings/state.inflow)*100).toFixed(0) + '%' : '0%';
+  $('investRate').textContent = state.inflow > 0 ? ((state.invest/state.inflow)*100).toFixed(0) + '%' : '0%';
+}
+
+// ---------- Structural renders (only on add / edit-save / delete / load) ----------
 function renderExpenses(){
-  const c = document.getElementById('expensesList');
-  c.innerHTML = expenses.map((e,i)=>`
-    <div class="item">
-      <input placeholder="Category" value="${e.name}" oninput="updateExpense(${i},'name',this.value)">
-      <input type="number" placeholder="₹" style="max-width:100px;" value="${e.amount}" oninput="updateExpense(${i},'amount',this.value)">
-      <button class="remove" onclick="removeExpense(${i})">✕</button>
-    </div>
-  `).join('');
-  calc();
+  const el = $('expensesList');
+  if(!state.expenses.length){
+    el.innerHTML = '<div class="empty">No expenses yet — add your first one above.</div>';
+  } else {
+    el.innerHTML = state.expenses.map(e => `
+      <div class="list-item">
+        <div class="li-main"><div class="li-name">${esc(e.name)}</div></div>
+        <div class="li-amt">${fmt(e.amount)}</div>
+        <div class="li-actions">
+          <button class="icon-btn edit" data-action="edit-expense" data-id="${e.id}">Edit</button>
+          <button class="icon-btn del" data-action="delete-expense" data-id="${e.id}" aria-label="Delete">✕</button>
+        </div>
+      </div>`).join('');
+  }
+  $('expTotal').textContent = state.expenses.length ? 'Total ' + fmt(sum(state.expenses,'amount')) : '';
+  calcSummary();
 }
 
 function renderDebts(){
-  const c = document.getElementById('debtsList');
-  c.innerHTML = debts.map((d,i)=>`
-    <div class="item">
-      <input placeholder="Debt name" value="${d.name}" oninput="updateDebt(${i},'name',this.value)">
-      <input type="number" placeholder="Amount ₹" style="max-width:110px;" value="${d.amount}" oninput="updateDebt(${i},'amount',this.value)">
-      <input type="number" placeholder="Rate %" style="max-width:80px;" value="${d.rate}" oninput="updateDebt(${i},'rate',this.value)">
-      <button class="remove" onclick="removeDebt(${i})">✕</button>
-    </div>
-  `).join('');
-  updateDebtPriority();
+  const el = $('debtsList');
+  const topRate = state.debts.length ? Math.max(...state.debts.map(d=>d.rate)) : 0;
+  const topId = (state.debts.find(d => d.rate === topRate) || {}).id;
+  if(!state.debts.length){
+    el.innerHTML = '<div class="empty">No debts added — great if that’s true!</div>';
+  } else {
+    el.innerHTML = state.debts.map(d => `
+      <div class="list-item">
+        <div class="li-main">
+          <div class="li-name">${esc(d.name)}${d.id === topId && state.debts.length > 1 ? '<span class="tag">Clear first</span>' : ''}</div>
+          <div class="li-meta">${d.rate}% p.a.</div>
+        </div>
+        <div class="li-amt">${fmt(d.amount)}</div>
+        <div class="li-actions">
+          <button class="icon-btn edit" data-action="edit-debt" data-id="${d.id}">Edit</button>
+          <button class="icon-btn del" data-action="delete-debt" data-id="${d.id}" aria-label="Delete">✕</button>
+        </div>
+      </div>`).join('');
+  }
+  $('debtTotal').textContent = state.debts.length ? 'Total ' + fmt(sum(state.debts,'amount')) : '';
+  const top = state.debts.find(d => d.id === topId);
+  $('debtPriority').textContent = top ? '🎯 Clear first: ' + top.name + ' (' + top.rate + '% interest)' : '';
 }
 
-function updateDebtPriority(){
-  const valid = debts.filter(d=>d.name && d.amount>0);
-  const el = document.getElementById('debtPriority');
-  if(valid.length===0){ el.textContent=''; return; }
-  const sorted = [...valid].sort((a,b)=>b.rate-a.rate);
-  el.textContent = `🎯 Clear first: ${sorted[0].name} (${sorted[0].rate}% interest)`;
+// ---------- Form helpers ----------
+function resetExpenseForm(){
+  editing.expense = null;
+  $('expName').value = ''; $('expAmount').value = '';
+  $('expSubmit').textContent = '+ Add Expense';
+  $('expCancel').hidden = true;
+}
+function resetDebtForm(){
+  editing.debt = null;
+  $('debtName').value = ''; $('debtAmount').value = ''; $('debtRate').value = '';
+  $('debtSubmit').textContent = '+ Add Debt';
+  $('debtCancel').hidden = true;
 }
 
-function calc(){
-  save();
-  const inflow = parseFloat(document.getElementById('inflow').value) || 0;
-  const totalExp = expenses.reduce((s,e)=>s+e.amount,0);
-  const savings = parseFloat(document.getElementById('savings').value) || 0;
-  const invest = parseFloat(document.getElementById('invest').value) || 0;
-
-  const net = inflow - totalExp - savings - invest;
-  const netEl = document.getElementById('netFlow');
-  netEl.textContent = (net>=0?'+':'') + inr(net);
-  netEl.style.color = net >= 0 ? 'var(--acc)' : 'var(--bad)';
-
-  const total = totalExp + savings + invest || 1;
-  document.getElementById('segExp').style.width = (totalExp/total*100)+'%';
-  document.getElementById('segSave').style.width = (savings/total*100)+'%';
-  document.getElementById('segInvest').style.width = (invest/total*100)+'%';
-
-  document.getElementById('savingsRate').textContent = inflow>0 ? ((savings/inflow)*100).toFixed(0)+'%' : '0%';
-  document.getElementById('investRate').textContent = inflow>0 ? ((invest/inflow)*100).toFixed(0)+'%' : '0%';
+function submitExpense(){
+  const name = $('expName').value.trim();
+  const amount = parseFloat($('expAmount').value);
+  if(!name || !(amount > 0)){ toast('Enter a category and an amount above 0'); return; }
+  if(editing.expense !== null){
+    const e = state.expenses.find(x => x.id === editing.expense);
+    if(e){ e.name = name; e.amount = amount; }
+    toast('Expense updated');
+  } else {
+    state.expenses.push({ id: uid(), name, amount });
+    toast('Expense added');
+  }
+  resetExpenseForm();
+  persist();
+  renderExpenses();
+  $('expName').focus();
 }
 
-document.getElementById('inflow').value = state.inflow || '';
-document.getElementById('savings').value = state.savings || 0;
-document.getElementById('invest').value = state.invest || 0;
+function submitDebt(){
+  const name = $('debtName').value.trim();
+  const amount = parseFloat($('debtAmount').value);
+  const rate = parseFloat($('debtRate').value);
+  if(!name || !(amount > 0)){ toast('Enter a debt name and outstanding amount'); return; }
+  if(isNaN(rate) || rate < 0){ toast('Enter the interest rate (0 or more)'); return; }
+  if(editing.debt !== null){
+    const d = state.debts.find(x => x.id === editing.debt);
+    if(d){ d.name = name; d.amount = amount; d.rate = rate; }
+    toast('Debt updated');
+  } else {
+    state.debts.push({ id: uid(), name, amount, rate });
+    toast('Debt added');
+  }
+  resetDebtForm();
+  persist();
+  renderDebts();
+  $('debtName').focus();
+}
+
+function editExpense(id){
+  const e = state.expenses.find(x => x.id === id);
+  if(!e) return;
+  $('expName').value = e.name;
+  $('expAmount').value = e.amount;
+  editing.expense = id;
+  $('expSubmit').textContent = '✓ Update Expense';
+  $('expCancel').hidden = false;
+  $('expName').scrollIntoView({behavior:'smooth', block:'center'});
+  $('expName').focus();
+}
+
+function editDebt(id){
+  const d = state.debts.find(x => x.id === id);
+  if(!d) return;
+  $('debtName').value = d.name;
+  $('debtAmount').value = d.amount;
+  $('debtRate').value = d.rate;
+  editing.debt = id;
+  $('debtSubmit').textContent = '✓ Update Debt';
+  $('debtCancel').hidden = false;
+  $('debtName').scrollIntoView({behavior:'smooth', block:'center'});
+  $('debtName').focus();
+}
+
+// tap-twice delete (no native confirm dialogs)
+function confirmDelete(key, btn, action){
+  if(pendingDeletes[key]){
+    clearTimeout(pendingDeletes[key]);
+    delete pendingDeletes[key];
+    action();
+    return;
+  }
+  btn.textContent = '✔';
+  btn.classList.add('confirming');
+  toast('Tap ✕ again to confirm delete');
+  pendingDeletes[key] = setTimeout(() => {
+    delete pendingDeletes[key];
+    btn.textContent = '✕';
+    btn.classList.remove('confirming');
+  }, 2500);
+}
+
+function deleteExpense(id, btn){
+  confirmDelete('exp-' + id, btn, () => {
+    state.expenses = state.expenses.filter(x => x.id !== id);
+    if(editing.expense === id) resetExpenseForm();
+    persist(); renderExpenses(); toast('Expense deleted');
+  });
+}
+function deleteDebt(id, btn){
+  confirmDelete('debt-' + id, btn, () => {
+    state.debts = state.debts.filter(x => x.id !== id);
+    if(editing.debt === id) resetDebtForm();
+    persist(); renderDebts(); toast('Debt deleted');
+  });
+}
+
+// ---------- Event delegation ----------
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('[data-action]');
+  if(!t) return;
+  const id = t.dataset.id;
+  switch(t.dataset.action){
+    case 'submit-expense': submitExpense(); break;
+    case 'cancel-expense': resetExpenseForm(); break;
+    case 'edit-expense': editExpense(id); break;
+    case 'delete-expense': deleteExpense(id, t); break;
+    case 'submit-debt': submitDebt(); break;
+    case 'cancel-debt': resetDebtForm(); break;
+    case 'edit-debt': editDebt(id); break;
+    case 'delete-debt': deleteDebt(id, t); break;
+    case 'save': {
+      const ok = persist();
+      toast(ok ? 'Saved ✓' : 'Couldn’t save — browser storage is blocked');
+      break;
+    }
+  }
+});
+
+document.addEventListener('keydown', ev => {
+  if(ev.key !== 'Enter') return;
+  const t = ev.target.closest('[data-enter]');
+  if(!t) return;
+  ev.preventDefault();
+  if(t.dataset.enter === 'submit-expense') submitExpense();
+  else if(t.dataset.enter === 'submit-debt') submitDebt();
+});
+
+// numeric fields: update state + summary only (no list re-render, so focus is kept)
+document.addEventListener('input', ev => {
+  const f = ev.target.dataset && ev.target.dataset.field;
+  if(!f) return;
+  state[f] = parseFloat(ev.target.value) || 0;
+  persist();
+  calcSummary();
+});
+
+// ---------- Init ----------
+$('inflow').value = state.inflow || '';
+$('savings').value = state.savings || '';
+$('invest').value = state.invest || '';
 renderExpenses();
 renderDebts();
-calc();
+updateSavedNote();
 </script>
 </body>
 </html>
