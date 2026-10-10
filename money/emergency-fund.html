@@ -24,15 +24,9 @@ h1{font-size:22px;margin:8px 0 2px;letter-spacing:-.2px}
 .bar>i{display:block;height:100%;width:0;background:var(--coral);border-radius:99px;transition:width .35s ease}
 .bar>i.done{background:var(--mint)}
 .pct{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-top:6px}
-.types{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.types .card{margin:0}
-.types h3{margin:0 0 4px;font-size:14px;display:flex;justify-content:space-between;align-items:baseline}
-.types h3 span{font-weight:400;color:var(--mute);font-size:12px}
-.types .amt{font-size:18px;font-weight:600}
-.types .tg{color:var(--mute);font-size:12px}
 label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
-input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit}
-input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+input[type=text],input[type=date]{color-scheme:dark;width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit}
+input[type=text]:focus,input[type=date]:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
 .seg button{background:none;border:0;color:var(--mute);padding:9px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
@@ -61,13 +55,18 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
   .mini:hover,.chip:hover{border-color:var(--mint)}
   .btn:hover{filter:brightness(1.08)}
 }
+.proj{font-size:12px;color:var(--mute);margin-top:8px;line-height:1.5}.proj b{color:var(--text)}.proj .ok{color:var(--mint)}.proj .need{color:var(--coral)}
+.bn{padding:10px 0;border-top:1px solid var(--line)}
+.bn:first-of-type{border-top:0;padding-top:4px}
+.bn .bt{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.bn .bar{height:8px;margin-top:8px}
+.card h3.sec{margin:0 0 6px;font-size:14px}
 .empty{color:var(--mute);text-align:center;padding:26px 10px;border:1px dashed var(--line);border-radius:var(--r)}
 #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--card2);border:1px solid var(--mint);color:var(--text);padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:.25s}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 .err{color:var(--coral);font-size:12px;min-height:16px;margin-top:6px}
 @media (prefers-reduced-motion:reduce){.bar>i,#toast{transition:none}}
-@media (max-width:380px){.types{grid-template-columns:1fr}}
-</style>
+@media (max-width:380px){</style>
 </head>
 <body>
 <div class="wrap">
@@ -76,7 +75,7 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
   <p class="sub">Track the FDs and mutual funds that make up your emergency fund. Saved only on this device.</p>
 
   <div class="card total" id="total"></div>
-  <div class="types" id="types"></div>
+  <div class="card" id="byname"></div>
 
   <div class="card">
     <div id="formTitle" style="font-weight:600">Add a fund</div>
@@ -97,6 +96,18 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
         <input type="text" id="fTgt" inputmode="numeric" placeholder="0" autocomplete="off">
       </div>
     </div>
+    <div class="row2">
+      <div>
+        <label for="fSip">Monthly investment / SIP (₹)</label>
+        <input type="text" id="fSip" inputmode="numeric" placeholder="0" autocomplete="off">
+      </div>
+      <div>
+        <label for="fRate">Interest / return (% per year)</label>
+        <input type="text" id="fRate" inputmode="decimal" placeholder="e.g. 7.1" autocomplete="off">
+      </div>
+    </div>
+    <label for="fDate">Target date</label>
+    <input type="date" id="fDate">
     <div class="err" id="err" role="status"></div>
     <div class="btns">
       <button class="btn" id="saveBtn" type="button" data-act="save">Add fund</button>
@@ -136,6 +147,21 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
     return d.getDate()+'th '+m[d.getMonth()]+' '+d.getFullYear();
   }
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function dts(d){return new Date(d+'T00:00:00').getTime();}
+  function monthsLeft(d){
+    var n=new Date();n.setHours(0,0,0,0);
+    return (dts(d)-n.getTime())/86400000/30.4375;
+  }
+  function plan(f){
+    if(!f.date)return null;
+    var n=monthsLeft(f.date), r=(f.rate||0)/100/12, sip=f.sip||0;
+    if(n<=0)return {past:true,fv:f.amount,extra:0,need:Math.max(f.target-f.amount,0)};
+    var g=Math.pow(1+r,n);
+    var fv=f.amount*g+sip*(r>0?(g-1)/r:n);
+    var sh=f.target-fv;
+    var extra=sh<=0?0:(r>0?sh*r/(g-1):sh/n);
+    return {n:n,fv:fv,extra:extra};
+  }
   function pct(a,t){return t>0?Math.round(a/t*100):0;}
   var $=function(id){return document.getElementById(id);};
 
@@ -158,19 +184,63 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
   }
 
   function renderSummary(){
-    var s=sums(), fd=sums('FD'), mf=sums('MF');
+    var s=sums(), sip=0, extra=0, dated=0;
+    state.funds.forEach(function(f){
+      sip+=f.sip||0;
+      var p=plan(f);
+      if(p){dated++;if(!p.past)extra+=p.extra;}
+    });
+    var note='';
+    if(sip>0)note+='Running SIPs <b>'+inr(sip)+'</b>/month<br>';
+    if(extra>0)note+='Add <b class="need">'+inr(Math.ceil(extra))+'</b>/month more to reach all targets on time';
+    else if(dated)note+='<b class="ok">On track</b> with current SIPs';
     $('total').innerHTML=
       '<div class="of">Emergency fund so far</div>'+
       '<div class="big">'+inr(s.a)+'</div>'+
       '<div class="of">of '+inr(s.t)+' target · '+s.c+' fund'+(s.c===1?'':'s')+'</div>'+
-      barHtml(s.a,s.t);
-    function tc(label,x){
-      return '<div class="card"><h3>'+label+'<span>'+x.c+' fund'+(x.c===1?'':'s')+'</span></h3>'+
-        '<div class="amt">'+inr(x.a)+'</div><div class="tg">of '+inr(x.t)+'</div>'+barHtml(x.a,x.t)+'</div>';
-    }
-    $('types').innerHTML=tc('FD',fd)+tc('MF',mf);
+      barHtml(s.a,s.t)+(note?'<div class="proj">'+note+'</div>':'');
+    renderByName();
   }
 
+  function groups(){
+    var m={},order=[];
+    state.funds.forEach(function(f){
+      var k=f.name.trim().toLowerCase();
+      if(!m[k]){m[k]={name:f.name,types:{},a:0,t:0,sip:0,fv:0,extra:0,dated:false};order.push(k);}
+      var g=m[k];g.types[f.type]=1;g.a+=f.amount;g.t+=f.target;g.sip+=f.sip||0;
+      var p=plan(f);
+      if(p){g.dated=true;g.fv+=p.fv;g.extra+=p.extra;}else g.fv+=f.amount;
+    });
+    return order.map(function(k){return m[k];});
+  }
+
+  function renderByName(){
+    var gs=groups();
+    if(!gs.length){$('byname').innerHTML='<h3 class="sec">By name</h3><div class="of" style="color:var(--mute);font-size:13px">Funds you add will show up here.</div>';return;}
+    $('byname').innerHTML='<h3 class="sec">By name</h3>'+gs.map(function(g){
+      var tags=Object.keys(g.types).map(function(t){return '<span class="tag '+t+'">'+t+'</span>';}).join('');
+      var line='';
+      if(g.sip>0)line+='SIP <b>'+inr(g.sip)+'</b>/month';
+      if(g.dated){
+        line+=(line?' · ':'')+'projected <b>'+inr(g.fv)+'</b>';
+        line+=g.extra>0?' · add <b class="need">'+inr(Math.ceil(g.extra))+'</b>/month more':' · <b class="ok">on track</b>';
+      }
+      return '<div class="bn"><div class="bt"><span>'+tags+esc(g.name)+'</span><span>'+inr(g.a)+' / '+inr(g.t)+'</span></div>'+
+        barHtml(g.a,g.t)+(line?'<div class="proj">'+line+'</div>':'')+'</div>';
+    }).join('');
+  }
+
+  function projHtml(f){
+    var p=plan(f), sip=f.sip||0;
+    var head=sip>0?'SIP <b>'+inr(sip)+'</b>/month<br>':'';
+    if(!p)return '<div class="proj">'+head+'Add a target date to see the plan.</div>';
+    var when=fmtDate(dts(f.date)), rate=f.rate?f.rate+'% a year':'0% interest';
+    if(p.past)return '<div class="proj">'+head+'Target date '+when+' has passed'+(p.need>0?' · <b class="need">'+inr(p.need)+'</b> still short':' · target reached')+'</div>';
+    var left=Math.max(1,Math.round(p.n));
+    var line=head+'Grows to <b>'+inr(p.fv)+'</b> by '+when+' at '+rate+' ('+left+' month'+(left===1?'':'s')+' left)<br>';
+    line+=p.extra>0?'Add <b class="need">'+inr(Math.ceil(p.extra))+'</b>/month more to reach the target':'<b class="ok">On track</b> at this SIP';
+    return '<div class="proj">'+line+'</div>';
+  }
   function renderList(){
     var items=state.funds.filter(function(f){return filter==='ALL'||f.type===filter;});
     if(!items.length){
@@ -181,7 +251,7 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
       return '<div class="card fund" data-id="'+f.id+'">'+
         '<div class="top"><div class="nm"><span class="tag '+f.type+'">'+f.type+'</span>'+esc(f.name)+'</div>'+
         '<div class="nums"><b>'+inr(f.amount)+'</b><br>of '+inr(f.target)+'</div></div>'+
-        barHtml(f.amount,f.target)+
+        barHtml(f.amount,f.target)+projHtml(f)+
         '<div class="meta"><span>Updated '+fmtDate(f.updated)+'</span>'+
         '<div class="acts"><button class="mini" data-act="edit" data-id="'+f.id+'">Edit</button>'+
         '<button class="mini" data-act="del" data-id="'+f.id+'">Delete</button></div></div></div>';
@@ -197,7 +267,7 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
 
   function resetForm(){
     editId=null;
-    $('fName').value='';$('fAmt').value='';$('fTgt').value='';$('err').textContent='';
+    $('fName').value='';$('fAmt').value='';$('fTgt').value='';$('fRate').value='';$('fSip').value='';$('fDate').value='';$('err').textContent='';
     setType('FD');
     $('formTitle').textContent='Add a fund';
     $('saveBtn').textContent='Add fund';
@@ -205,16 +275,17 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
   }
 
   function onSave(){
-    var name=$('fName').value.trim(), amt=num($('fAmt').value), tgt=num($('fTgt').value);
+    var name=$('fName').value.trim(), amt=num($('fAmt').value), tgt=num($('fTgt').value), rate=num($('fRate').value), sip=num($('fSip').value), date=$('fDate').value;
     if(!name){$('err').textContent='Enter a name for this fund.';$('fName').focus();return;}
     if(!tgt){$('err').textContent='Enter a target amount greater than 0.';$('fTgt').focus();return;}
+    if(!date){$('err').textContent='Pick the date you want to reach the target by.';$('fDate').focus();return;}
     $('err').textContent='';
     if(editId){
       var f=state.funds.filter(function(x){return x.id===editId;})[0];
-      if(f){f.name=name;f.type=curType;f.amount=amt;f.target=tgt;f.updated=Date.now();}
+      if(f){f.name=name;f.type=curType;f.amount=amt;f.target=tgt;f.rate=rate;f.sip=sip;f.date=date;f.updated=Date.now();}
       toast('Fund updated');
     }else{
-      state.funds.push({id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name,type:curType,amount:amt,target:tgt,updated:Date.now()});
+      state.funds.push({id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name,type:curType,amount:amt,target:tgt,rate:rate,sip:sip,date:date,updated:Date.now()});
       toast('Fund added');
     }
     save();resetForm();renderAll();
@@ -225,6 +296,7 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
     if(!f)return;
     editId=id;
     $('fName').value=f.name;$('fAmt').value=f.amount?f.amount.toLocaleString('en-IN'):'';$('fTgt').value=f.target.toLocaleString('en-IN');
+    $('fRate').value=f.rate?String(f.rate):'';$('fSip').value=f.sip?f.sip.toLocaleString('en-IN'):'';$('fDate').value=f.date||'';
     setType(f.type);
     $('formTitle').textContent='Edit fund';
     $('saveBtn').textContent='Save changes';
@@ -263,12 +335,12 @@ input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-c
     else if(a==='del')onDelete(t,t.dataset.id);
   });
 
-  ['fName','fAmt','fTgt'].forEach(function(id){
+  ['fName','fAmt','fTgt','fSip','fRate'].forEach(function(id){
     $(id).addEventListener('keydown',function(e){if(e.key==='Enter')onSave();});
   });
 
   // Format amounts with Indian grouping as the user types, caret-safe enough for numeric fields
-  ['fAmt','fTgt'].forEach(function(id){
+  ['fAmt','fTgt','fSip'].forEach(function(id){
     $(id).addEventListener('input',function(){
       var raw=this.value.replace(/[^0-9]/g,'');
       this.value=raw?Number(raw).toLocaleString('en-IN'):'';
