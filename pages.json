@@ -1,5 +1,6 @@
 {
   "money": [
+    { "name": "Upcoming Bills Dashboard", "file": "upcoming-bills-dashboard.html" },
     { "name": "Per Day Cost", "file": "perday-cost-calculator.html" },
 	{ "name": "Emergency Fund Calculator", "file": "emergency-fund-calculator.html" },
 	{ "name": "Insurance Calculator", "file": "insurance-coverage-checker.html" },

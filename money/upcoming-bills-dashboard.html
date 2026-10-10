@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Upcoming Bills Dashboard</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  a{color:var(--mint);}
+  .wrap{max-width:680px;margin:0 auto;}
+  header{margin-bottom:16px;}
+  h1{font-size:22px;margin:0 0 6px;}
+  .sub{color:var(--sub);font-size:13px;line-height:1.5;margin:0;}
+  .nav{margin:0 0 14px;font-size:13px;}
+  .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+  .stat,.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .stat{text-align:center;min-width:0;}
+  .stat strong{display:block;font-size:20px;}
+  .stat span{color:var(--sub);font-size:11px;}
+  .card{margin-bottom:12px;}
+  .card h2{font-size:15px;margin:0 0 10px;}
+  .bill{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .bill:last-child{border-bottom:0;padding-bottom:0;}
+  .bill-name{font-size:14px;font-weight:700;overflow-wrap:anywhere;}
+  .bill-amount{font-size:14px;font-weight:700;white-space:nowrap;}
+  .bill-meta{color:var(--sub);font-size:12px;line-height:1.5;}
+  .bill-date{grid-column:1/-1;font-size:12px;color:var(--mint);}
+  .bill-date.overdue{color:var(--bad);}
+  .bill-date.soon{color:var(--warn);}
+  .empty,.message{color:var(--sub);font-size:13px;line-height:1.5;}
+  .message.error{color:var(--bad);}
+  .sources{display:flex;flex-wrap:wrap;gap:8px;}
+  .sources a{border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12px;text-decoration:none;}
+  .note{color:var(--sub);font-size:11px;line-height:1.5;margin:10px 0 0;}
+  @media(max-width:420px){body{padding:14px;}.summary{gap:5px;}.stat{padding:10px 4px;}.stat strong{font-size:17px;}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <p class="nav"><a href="../index.html">← Index</a></p>
+  <header>
+    <h1>🗓️ Upcoming Bills</h1>
+    <p class="sub">A combined view of SIM renewals, auto-debits, and loan payments from your existing trackers. Update items in their source tracker.</p>
+  </header>
+
+  <section class="summary" aria-label="Bill summary">
+    <div class="stat"><strong id="dueSoon">0</strong><span>Due next 30 days</span></div>
+    <div class="stat"><strong id="overdue" style="color:var(--bad);">0</strong><span>Overdue</span></div>
+    <div class="stat"><strong id="totalAmount">₹0</strong><span>Due next 30 days</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Due items</h2>
+    <div id="billsList" aria-live="polite"></div>
+    <p class="note">Loan amounts and dates are estimates based on your Debt Planner entries. Loan amounts can differ from lender statements; SIM renewal dates use recharge date plus plan validity.</p>
+  </section>
+
+  <section class="card">
+    <h2>Open a tracker</h2>
+    <div class="sources">
+      <a href="sim-tracker.html">SIM Tracker</a>
+      <a href="autodebit-tracker.html">Auto-Debit Tracker</a>
+      <a href="debt-dashboard.html">Debt Planner</a>
+    </div>
+  </section>
+</main>
+
+<script>
+const SOURCE_KEYS = {
+  sims: 'sim_tracker_entries',
+  payments: 'autodebit_tracker_entries',
+  loans: 'debt_dashboard_loans_v3'
+};
+const $ = id => document.getElementById(id);
+
+function readEntries(key, label){
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw === null) return [];
+    const entries = JSON.parse(raw);
+    if(!Array.isArray(entries)) throw new Error('Saved data is not a list.');
+    return entries;
+  }catch(error){
+    console.error(`Could not read ${label} data.`, error);
+    return { error: `Could not read ${label} data. Open its tracker and check the saved entries.` };
+  }
+}
+
+function parseDate(value){
+  if(typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+}
+
+function addMonths(date, months){
+  const year = date.getFullYear();
+  const month = date.getMonth() + months;
+  const day = date.getDate();
+  const targetYear = year + Math.floor(month / 12);
+  const targetMonth = ((month % 12) + 12) % 12;
+  return new Date(targetYear, targetMonth, Math.min(day, new Date(targetYear, targetMonth + 1, 0).getDate()));
+}
+
+function nextMonthlyDate(startDate, today){
+  const months = (today.getFullYear() - startDate.getFullYear()) * 12 + today.getMonth() - startDate.getMonth();
+  let next = addMonths(startDate, Math.max(0, months));
+  if(next <= today) next = addMonths(startDate, Math.max(0, months) + 1);
+  return next;
+}
+
+function daysBetween(dateA, dateB){
+  const utcA = Date.UTC(dateA.getFullYear(), dateA.getMonth(), dateA.getDate());
+  const utcB = Date.UTC(dateB.getFullYear(), dateB.getMonth(), dateB.getDate());
+  return Math.round((utcA - utcB) / 86400000);
+}
+
+function validAmount(value){
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function money(value){
+  return '₹' + value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g, character => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[character]);
+}
+
+function monthlyEMI(loan){
+  const custom = validAmount(loan.customEmi);
+  if(custom) return custom;
+  const principal = validAmount(loan.originalAmount);
+  const months = Number(loan.tenureMonths);
+  const rate = Number(loan.rate);
+  if(!principal || !Number.isFinite(months) || months <= 0 || !Number.isFinite(rate) || rate < 0) return null;
+  const monthlyRate = rate / 1200;
+  if(monthlyRate === 0) return principal / months;
+  const factor = Math.pow(1 + monthlyRate, months);
+  const amount = principal * monthlyRate * factor / (factor - 1);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function loanOutstanding(loan){
+  const entered = validAmount(loan.manualOutstanding);
+  if(loan.kind !== 'emi' || loan.manualOverride) return entered;
+  let balance = validAmount(loan.originalAmount);
+  const emi = monthlyEMI(loan);
+  const start = parseDate(loan.startDate);
+  const rate = Number(loan.rate);
+  if(!balance || !emi || !start || !Number.isFinite(rate) || rate < 0) return null;
+  const today = new Date();
+  const elapsed = Math.max(0, (today.getFullYear() - start.getFullYear()) * 12 + today.getMonth() - start.getMonth());
+  for(let month = 0; month < elapsed && balance > 0.5; month++){
+    balance += balance * rate / 1200 - emi;
+  }
+  return Math.max(0, balance);
+}
+
+function loadBills(today){
+  const sources = [
+    ['SIM Tracker', readEntries(SOURCE_KEYS.sims, 'SIM Tracker')],
+    ['Auto-Debit Tracker', readEntries(SOURCE_KEYS.payments, 'Auto-Debit Tracker')],
+    ['Debt Planner', readEntries(SOURCE_KEYS.loans, 'Debt Planner')]
+  ];
+  const bills = [];
+  const errors = [];
+
+  sources.forEach(([source, entries])=>{
+    if(!Array.isArray(entries)){
+      errors.push(entries.error);
+      return;
+    }
+    if(source === 'SIM Tracker'){
+      entries.forEach(sim=>{
+        const lastRecharge = parseDate(sim.lastRecharge);
+        const validity = Number(sim.validityDays);
+        const amount = validAmount(sim.rcAmount);
+        if(!lastRecharge || !Number.isFinite(validity) || validity <= 0 || !amount) return;
+        const dueDate = new Date(lastRecharge);
+        dueDate.setDate(dueDate.getDate() + validity);
+        const number = sim.numLast4 ? ` (•${escapeHTML(sim.numLast4)})` : '';
+        bills.push({name:`${sim.member || 'SIM'} — ${sim.carrier || 'Recharge'}${number}`, source:'SIM recharge', date:dueDate, amount});
+      });
+    } else if(source === 'Auto-Debit Tracker'){
+      entries.forEach(payment=>{
+        const date = parseDate(payment.dueDate);
+        const amount = validAmount(payment.amount);
+        if(!date || !amount) return;
+        bills.push({name:payment.name || 'Auto-debit', source:payment.type || 'Auto-debit', date, amount});
+      });
+    } else {
+      entries.forEach(loan=>{
+        const startDate = parseDate(loan.startDate);
+        const outstanding = loanOutstanding(loan);
+        const rate = Number(loan.rate);
+        if(!startDate || outstanding === null || outstanding <= 0 || !Number.isFinite(rate) || rate < 0) return;
+
+        if(loan.kind === 'emi'){
+          const amount = monthlyEMI(loan);
+          if(amount) bills.push({name:`${loan.lender || 'Loan'} EMI`, source:'Loan payment', date:nextMonthlyDate(startDate, today), amount});
+        } else if(loan.kind === 'bullet'){
+          const maturity = addMonths(startDate, Math.max(0, Number(loan.tenureMonths) || 0));
+          const interestDate = nextMonthlyDate(startDate, today);
+          if(maturity >= today && interestDate <= maturity){
+            bills.push({name:`${loan.lender || 'Gold loan'} interest`, source:'Estimated monthly interest', date:interestDate, amount:outstanding * rate / 1200});
+          }
+          bills.push({name:`${loan.lender || 'Gold loan'} maturity`, source:'Estimated principal due', date:maturity, amount:outstanding});
+        } else if(loan.kind === 'revolving'){
+          const minPct = Number(loan.minPct);
+          if(Number.isFinite(minPct) && minPct > 0){
+            bills.push({name:`${loan.lender || 'Credit account'} minimum payment`, source:'Estimated loan payment', date:nextMonthlyDate(startDate, today), amount:outstanding * minPct / 100});
+          }
+        }
+      });
+    }
+  });
+
+  return {bills, errors};
+}
+
+function formatDue(date, today){
+  const days = daysBetween(date, today);
+  if(days < 0) return {text:`Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} · ${date.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}`, className:'overdue'};
+  if(days === 0) return {text:'Due today', className:'soon'};
+  return {text:`Due in ${days} day${days === 1 ? '' : 's'} · ${date.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}`, className:days <= 7 ? 'soon' : ''};
+}
+
+function render(){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const {bills, errors} = loadBills(today);
+  bills.sort((a,b)=>a.date-b.date || a.name.localeCompare(b.name));
+  const upcoming = bills.filter(bill=>{
+    const days = daysBetween(bill.date, today);
+    return days >= 0 && days <= 30;
+  });
+  const overdue = bills.filter(bill=>daysBetween(bill.date, today) < 0);
+
+  $('dueSoon').textContent = upcoming.length;
+  $('overdue').textContent = overdue.length;
+  $('totalAmount').textContent = money(upcoming.reduce((total, bill)=>total + bill.amount, 0));
+
+  const messages = errors.map(error=>`<p class="message error">${escapeHTML(error)}</p>`).join('');
+  const rows = bills.map(bill=>{
+    const due = formatDue(bill.date, today);
+    return `<article class="bill">
+      <span class="bill-name">${escapeHTML(bill.name)}</span>
+      <span class="bill-amount">${money(bill.amount)}</span>
+      <span class="bill-meta">${escapeHTML(bill.source)}</span>
+      <span class="bill-date ${due.className}">${escapeHTML(due.text)}</span>
+    </article>`;
+  }).join('');
+  $('billsList').innerHTML = messages + (rows || '<p class="empty">No upcoming or overdue bills found. Add entries in one of the trackers below.</p>');
+}
+
+render();
+</script>
+</body>
+</html>
