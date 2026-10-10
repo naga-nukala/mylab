@@ -33,11 +33,14 @@
   .summary .n.coral{color:var(--coral);}
   .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
 
-  details.card summary{cursor:pointer;font-size:14px;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none;}
-  details.card summary::-webkit-details-marker{display:none;}
-  details.card summary::after{content:'▾';color:var(--sub);transition:transform .2s;}
-  details.card[open] summary::after{transform:rotate(180deg);}
-  details.card summary .count{margin-left:auto;font-size:11px;font-weight:600;color:var(--sub);}
+  details.card > summary,details.quick > summary{cursor:pointer;font-size:14px;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none;}
+  details.card > summary::-webkit-details-marker,details.quick > summary::-webkit-details-marker{display:none;}
+  details.card > summary::after,details.quick > summary::after{content:'▾';color:var(--sub);transition:transform .2s;}
+  details.card[open] > summary::after,details.quick[open] > summary::after{transform:rotate(180deg);}
+  details.quick{background:#0f172a;border-radius:10px;padding:10px 12px;margin-bottom:12px;border:1px dashed #475569;}
+  details.quick > summary{font-size:13px;font-weight:700;color:var(--mint);}
+  details.quick[open] > summary{margin-bottom:10px;}
+  details.card > summary .count{margin-left:auto;font-size:11px;font-weight:600;color:var(--sub);}
   details.card[open] > summary{margin-bottom:12px;}
 
   .metric{margin-bottom:10px;}
@@ -55,7 +58,11 @@
 
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;border-radius:20px;background:#0f172a;border:1px solid var(--line);font-size:12px;}
-  .chip.fixed{padding-right:10px;}
+  .chip.def{border-color:var(--acc);background:rgba(34,197,94,.1);}
+  .chip .tick{color:#475569;}
+  .chip.def .tick{color:var(--acc);font-weight:800;}
+  .check-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);margin:4px 0 8px;}
+  .check-row input{width:auto;}
   .chip button{border:none;background:none;color:var(--sub);font-size:13px;padding:0 4px;line-height:1;}
   .chip button.confirming{color:#fff;background:var(--bad);border-radius:10px;}
   .add-inline{display:flex;gap:6px;}
@@ -114,27 +121,43 @@
 
   <details class="card" data-key="add" open>
     <summary><span id="formTitle">Add purchase</span></summary>
+
+    <details class="quick" data-key="quick">
+      <summary>⚡ Quick add from Amazon / Flipkart</summary>
+      <div class="list-title">One order: paste and fill</div>
+      <div class="hint" style="margin:0 0 6px;">Open the order (or invoice) page, select all, copy, and paste it here. The form is filled with the item, date, price, shipping, fees and promotion it can find. Check the values, then save. This is a best-effort read, and nothing leaves your browser.</div>
+      <textarea id="pasteBox" placeholder="Paste the order details text here"></textarea>
+      <button class="ghost" type="button" data-action="parsePaste" style="margin-top:6px;">Fill form from pasted text</button>
+      <div id="pasteMsg" class="hint"></div>
+
+      <div class="list-title">Many items: one per line</div>
+      <div class="hint" style="margin:0 0 6px;">Write each as item name, then price. All lines use the Date, Type, Payment method, Paid with, Shopped from and Bought by chosen in the form below.</div>
+      <textarea id="bulkBox" placeholder="Baby wipes 349&#10;USB cable, 199&#10;Water bottle - ₹1,299"></textarea>
+      <button class="ghost" type="button" data-action="bulkAdd" style="margin-top:6px;">Add all lines</button>
+      <div id="bulkMsg" class="hint"></div>
+    </details>
+
     <div class="row">
       <div class="field" style="flex-basis:100%;"><label for="fItem">Item</label><input type="text" id="fItem" placeholder="e.g. Baby stroller" maxlength="80"></div>
     </div>
     <div class="row">
       <div class="field"><label for="fDate">Date</label><input type="date" id="fDate"></div>
+      <div class="field"><label for="fType">Type</label><select id="fType"></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fMethod">Payment method</label><select id="fMethod"></select></div>
       <div class="field"><label for="fPaidWith">Paid with</label><select id="fPaidWith"></select></div>
+    </div>
+    <div class="row">
       <div class="field"><label for="fPrice" id="lPrice">Price (₹)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 1499"></div>
-    </div>
-    <div class="row">
       <div class="field"><label for="fShip" id="lShip">Shipping (₹)</label><input type="number" id="fShip" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
-      <div class="field"><label for="fFee" id="lFee">Marketplace fee (₹)</label><input type="number" id="fFee" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
     </div>
     <div class="row">
+      <div class="field"><label for="fFee" id="lFee">Marketplace fee (₹)</label><input type="number" id="fFee" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
       <div class="field"><label for="fPromo" id="lPromo">Promotion applied (₹, reduces total)</label><input type="number" id="fPromo" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
       <div class="field"><label for="fExch" id="lExch">Exchange value (₹, reduces total)</label><input type="number" id="fExch" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
     </div>
     <div class="total-line"><span>Total = Price + Shipping + Fee − Promotion − Exchange</span><b id="totalPreview">₹0</b></div>
-    <div class="row">
-      <div class="field"><label for="fMethod">Payment method</label><select id="fMethod"></select></div>
-      <div class="field"><label for="fType">Type</label><select id="fType"></select></div>
-    </div>
     <div class="row">
       <div class="field"><label for="fStore">Shopped from</label><select id="fStore"></select></div>
       <div class="field"><label for="fBuyer">Bought by</label><select id="fBuyer"></select></div>
@@ -151,6 +174,7 @@
     <div class="row">
       <div class="field" style="flex-basis:100%;"><label for="fNotes">Notes</label><textarea id="fNotes" maxlength="300"></textarea></div>
     </div>
+    <label class="check-row"><input type="checkbox" id="keepFields"> After saving, keep Date, Type, Payment method, Paid with, Shopped from and Bought by for the next item</label>
     <div id="formMsg" class="hint" style="color:var(--warn);"></div>
     <button class="primary" id="saveBtn" type="button" data-action="save">+ Add Purchase</button>
     <button class="ghost" id="cancelBtn" type="button" data-action="cancelEdit" style="display:none;width:100%;margin-top:8px;">Cancel edit</button>
@@ -226,6 +250,7 @@
     <div class="list-title">Paid With</div>
     <div class="chips" id="chips-paidwith"></div>
     <div class="add-inline"><input type="text" id="new-paidwith" placeholder="e.g. Money, Gift card" maxlength="40"><button type="button" data-action="addOption" data-list="paidwith" aria-label="Add paid with option">+</button></div>
+    <div class="hint">Tick ✓ on any option to make it the default for new purchases. Tick it again to clear.</div>
     <div class="hint">Any Paid With option containing the word "reward" (like Reward points) is counted in points as Rewards. Everything else is counted in ₹.</div>
     <div class="hint">Removing an option here does not change purchases already saved with it.</div>
   </details>
@@ -237,6 +262,9 @@ const ENTRIES_KEY = 'shopping_tracker_v1';
 const LISTS_KEY = 'shopping_tracker_lists_v1';
 const DRAFT_KEY = 'shopping_tracker_draft_v1';
 const UI_KEY = 'shopping_tracker_ui_v1';
+const DEFAULTS_KEY = 'shopping_tracker_defaults_v1';
+const DEFAULT_FIELDS = { fType:'types', fStore:'stores', fBuyer:'buyers', fMethod:'methods', fPaidWith:'paidwith' };
+const KEEP_IDS = ['fDate','fType','fMethod','fPaidWith','fStore','fBuyer'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DEFAULT_LISTS = {
   types: ['Electronics','Medical','Kids','Clothing','Home','Grocery','Other'],
@@ -255,6 +283,7 @@ function write(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }
 let entries = read(ENTRIES_KEY, []);
 let lists = Object.assign({}, DEFAULT_LISTS, read(LISTS_KEY, {}));
 FIXED_PAID.forEach(m => { if(!lists.paidwith.includes(m)) lists.paidwith.push(m); });
+let defaults = read(DEFAULTS_KEY, {});
 let editingId = null;
 let pending = {};
 let toastTimer;
@@ -316,7 +345,13 @@ function fillSelect(id, items, blankLabel, current){
 function renderLists(){
   LIST_KEYS.forEach(k => {
     $('chips-' + k).innerHTML = lists[k].length
-      ? lists[k].map((v, i) => '<span class="chip' + ((k === 'paidwith' && FIXED_PAID.includes(v)) ? ' fixed' : '') + '">' + esc(v) + ((k === 'paidwith' && FIXED_PAID.includes(v)) ? '' : '<button type="button" data-action="removeOption" data-list="' + k + '" data-index="' + i + '" aria-label="Remove ' + esc(v) + '">✕</button>') + '</span>').join('')
+      ? lists[k].map((v, i) => {
+          const isDef = defaults[k] === v;
+          const fixed = k === 'paidwith' && FIXED_PAID.includes(v);
+          return '<span class="chip' + (isDef ? ' def' : '') + '">' + esc(v) +
+            '<button type="button" class="tick" data-action="toggleDefault" data-list="' + k + '" data-index="' + i + '" title="' + (isDef ? 'Default (tap to clear)' : 'Make default') + '" aria-label="' + (isDef ? 'Clear default ' : 'Make default ') + esc(v) + '" aria-pressed="' + isDef + '">✓</button>' +
+            (fixed ? '' : '<button type="button" data-action="removeOption" data-list="' + k + '" data-index="' + i + '" aria-label="Remove ' + esc(v) + '">✕</button>') + '</span>';
+        }).join('')
       : '<span class="hint">Nothing added yet.</span>';
   });
   fillSelect('fType', lists.types, 'Select type');
@@ -324,7 +359,22 @@ function renderLists(){
   fillSelect('fBuyer', lists.buyers, lists.buyers.length ? 'Select name' : 'Add names in Manage lists');
   fillSelect('fMethod', lists.methods, 'Select method');
   fillSelect('fPaidWith', lists.paidwith, 'Select (Money if blank)');
+  applyDefaults();
   updateLabels();
+}
+function applyDefaults(){
+  if(editingId !== null) return;
+  Object.keys(DEFAULT_FIELDS).forEach(id => {
+    const k = DEFAULT_FIELDS[id], el = $(id);
+    if(!el.value && defaults[k] && lists[k].includes(defaults[k])) el.value = defaults[k];
+  });
+}
+function toggleDefault(k, i){
+  const v = lists[k][i];
+  if(defaults[k] === v) delete defaults[k]; else defaults[k] = v;
+  write(DEFAULTS_KEY, defaults);
+  renderLists();
+  toast(defaults[k] ? v + ' is now the default' : 'Default cleared');
 }
 function addOption(k){
   const input = $('new-' + k);
@@ -337,6 +387,7 @@ function addOption(k){
 function removeOption(k, i, btn){
   if(k === 'paidwith' && FIXED_PAID.includes(lists[k][i])) return;
   confirmTap('opt-' + k + '-' + i, btn, '✕', () => {
+    if(defaults[k] === lists[k][i]){ delete defaults[k]; write(DEFAULTS_KEY, defaults); }
     lists[k].splice(i, 1); write(LISTS_KEY, lists);
     renderLists(); renderAll(); toast('Removed');
   });
@@ -364,12 +415,14 @@ function loadDraft(){
     if(el.tagName === 'SELECT' && d[id] && ![...el.options].some(o => o.value === d[id])) return;
     el.value = d[id];
   }});
+  applyDefaults();
   updateLabels();
 }
 function clearForm(){
   FORM_IDS.forEach(id => { $(id).value = ''; });
   $('fDate').value = todayISO();
   $('formMsg').textContent = '';
+  applyDefaults();
   updateLabels();
   try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
 }
@@ -392,6 +445,7 @@ function saveEntry(){
   const rec = { date:f.fDate, item:f.fItem.trim(), type:f.fType, price, shipping:extras[0], fee:extras[1], promo:extras[2], exchange:extras[3],
     store:f.fStore, buyer:f.fBuyer, method:f.fMethod, paidWith:f.fPaidWith, mode:undefined,
     useful:f.fUseful, wear:f.fWear, cue:f.fCue.trim(), notes:f.fNotes.trim() };
+  const wasEditing = editingId !== null;
   if(editingId !== null){
     const i = entries.findIndex(e => e.id === editingId);
     if(i > -1) entries[i] = Object.assign({}, entries[i], rec);
@@ -402,7 +456,10 @@ function saveEntry(){
     toast('Purchase added');
   }
   write(ENTRIES_KEY, entries);
-  clearForm(); renderAll();
+  const keep = {}; KEEP_IDS.forEach(id => { keep[id] = $(id).value; });
+  clearForm();
+  if(!wasEditing && $('keepFields').checked){ KEEP_IDS.forEach(id => { $(id).value = keep[id]; }); saveDraft(); updateLabels(); $('fItem').focus(); }
+  renderAll();
 }
 function editEntry(id){
   const e = entries.find(x => x.id === id); if(!e) return;
@@ -605,6 +662,103 @@ function renderNotUseful(){
 }
 function renderAll(){ renderFilters(); renderMetrics(); renderInsights(); renderNotUseful(); renderEntries(); }
 
+/* ---------- quick add ---------- */
+const MONTH_IDX = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,
+  january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+const AMT = /([-−–]?)\s*(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)/i;
+function iso(y, m, d){ if(!m || m < 1 || m > 12 || d < 1 || d > 31) return ''; return y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0'); }
+function findDate(text){
+  const tryLine = t => {
+    let m = t.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?,?\s+(\d{4})/);
+    if(m && MONTH_IDX[m[2].toLowerCase()]) return iso(+m[3], MONTH_IDX[m[2].toLowerCase()], +m[1]);
+    m = t.match(/([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/);
+    if(m && MONTH_IDX[m[1].toLowerCase()]) return iso(+m[3], MONTH_IDX[m[1].toLowerCase()], +m[2]);
+    m = t.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if(m) return iso(+m[3], +m[2], +m[1]);
+    return '';
+  };
+  const lines = text.split(/\r?\n/);
+  for(let i = 0; i < lines.length; i++){
+    if(/order placed|ordered on|order date|placed on|order id.*date|invoice date/i.test(lines[i])){
+      const r = tryLine(lines[i] + ' ' + (lines[i+1] || ''));
+      if(r) return r;
+    }
+  }
+  return tryLine(text);
+}
+function labelAmount(lines, re){
+  for(let i = 0; i < lines.length; i++){
+    if(re.test(lines[i])){
+      const m = lines[i].match(AMT);
+      if(!m && /\bfree\b/i.test(lines[i])) return 0;
+      const next = m || ((lines[i+1] || '').match(AMT));
+      if(next && (m || !/[a-z]{4,}/i.test((lines[i+1] || '').replace(AMT, '')))) return parseFloat(next[2].replace(/,/g, ''));
+    }
+  }
+  return null;
+}
+function parseOrderText(text){
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const r = {};
+  const subtotal = labelAmount(lines, /item\(?s?\)?\s*subtotal|items?\s*subtotal|^price\s*\(\d+\s*items?\)|listing price/i);
+  const total = labelAmount(lines, /grand total|total amount|order total|amount paid|total payable|^total\b/i);
+  const ship = labelAmount(lines, /shipping|delivery (charge|fee)|handling/i);
+  const fee = labelAmount(lines, /marketplace fee|platform fee|packaging fee|convenience fee|protect promise fee/i);
+  const promo = labelAmount(lines, /promotion applied|coupon|^discount|^savings|gift card.*applied/i);
+  const exch = labelAmount(lines, /exchange/i);
+  if(subtotal !== null){
+    r.price = subtotal;
+    if(ship) r.ship = ship; if(fee) r.fee = fee; if(promo) r.promo = promo; if(exch) r.exch = exch;
+  } else if(total !== null){
+    r.price = total;
+  } else {
+    const any = text.match(AMT);
+    if(any) r.price = parseFloat(any[2].replace(/,/g, ''));
+  }
+  const date = findDate(text); if(date) r.date = date;
+  const skip = /order|total|₹|rs\.|inr|deliver|shipping|payment|invoice|address|qty|quantity|sold by|return|replace|track|buy it again|view|write|ship to|arriving|date|subtotal|summary|rating|help|support|gst|cancel|download|archive|seller|^\d+$/i;
+  const cand = lines.find(l => l.length >= 8 && l.length <= 200 && /[A-Za-z]{3}/.test(l) && !skip.test(l));
+  if(cand) r.item = cand.slice(0, 80);
+  const store = /amazon/i.test(text) ? 'amazon' : /flipkart/i.test(text) ? 'flipkart' : '';
+  if(store){ const hit = lists.stores.find(x => x.toLowerCase().includes(store)); if(hit) r.store = hit; }
+  const lower = text.toLowerCase();
+  const mHit = lists.methods.find(x => lower.includes(x.toLowerCase())); if(mHit) r.method = mHit;
+  return r;
+}
+function parsePaste(){
+  const text = $('pasteBox').value;
+  if(!text.trim()){ $('pasteMsg').textContent = 'Paste the order details first.'; return; }
+  const r = parseOrderText(text);
+  const map = { item:'fItem', date:'fDate', price:'fPrice', ship:'fShip', fee:'fFee', promo:'fPromo', exch:'fExch', store:'fStore', method:'fMethod' };
+  const done = [];
+  Object.keys(map).forEach(k => { if(r[k] !== undefined){ $(map[k]).value = r[k]; done.push(k === 'ship' ? 'shipping' : k); } });
+  if(!done.length){ $('pasteMsg').textContent = 'Could not find anything to fill. Try copying the full order page.'; return; }
+  if(editingId !== null){ resetEditUI(); }
+  updateLabels(); saveDraft();
+  $('pasteMsg').textContent = 'Filled: ' + done.join(', ') + '. Please check the values, pick Type and Paid with if needed, then save.';
+  $('pasteBox').value = '';
+}
+function bulkAdd(){
+  const date = $('fDate').value;
+  if(!date){ $('bulkMsg').textContent = 'Pick a date in the form first.'; return; }
+  const lines = $('bulkBox').value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if(!lines.length){ $('bulkMsg').textContent = 'Add at least one line, like: Baby wipes 349'; return; }
+  const added = [], bad = [];
+  lines.forEach(line => {
+    const m = line.match(/^(.*?)[\s,|:\-–]*(?:₹|Rs\.?\s*)?\s*([\d,]+(?:\.\d{1,2})?)\s*$/i);
+    const name = m ? m[1].replace(/[\s,|:\-–₹]+$/, '').trim() : '';
+    const price = m ? parseFloat(m[2].replace(/,/g, '')) : NaN;
+    if(!name || isNaN(price)){ bad.push(line); return; }
+    added.push({ id: uid(), date, item: name.slice(0, 80), type: $('fType').value, price, shipping:0, fee:0, promo:0, exchange:0,
+      store: $('fStore').value, buyer: $('fBuyer').value, method: $('fMethod').value, paidWith: $('fPaidWith').value,
+      useful:'', wear:'', cue:'', notes:'' });
+  });
+  if(added.length){ entries.push(...added); write(ENTRIES_KEY, entries); renderAll(); }
+  $('bulkBox').value = bad.join('\n');
+  $('bulkMsg').textContent = (added.length ? 'Added ' + plural(added.length, 'item') + '. ' : '') + (bad.length ? bad.length + ' line' + (bad.length === 1 ? '' : 's') + ' left in the box: each needs an item name and a price at the end.' : '');
+  if(added.length) toast('Added ' + plural(added.length, 'item'));
+}
+
 /* ---------- events (delegation) ---------- */
 document.addEventListener('click', ev => {
   const b = ev.target.closest('[data-action]'); if(!b) return;
@@ -614,6 +768,9 @@ document.addEventListener('click', ev => {
   else if(a === 'edit') editEntry(b.dataset.id);
   else if(a === 'delete') deleteEntry(b.dataset.id, b);
   else if(a === 'addOption') addOption(b.dataset.list);
+  else if(a === 'parsePaste') parsePaste();
+  else if(a === 'bulkAdd') bulkAdd();
+  else if(a === 'toggleDefault') toggleDefault(b.dataset.list, Number(b.dataset.index));
   else if(a === 'removeOption') removeOption(b.dataset.list, Number(b.dataset.index), b);
 });
 LIST_KEYS.forEach(k => $('new-' + k).addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); addOption(k); } }));
@@ -623,6 +780,8 @@ $('filterType').addEventListener('change', renderEntries);
 
 /* remember which sections are open */
 const ui = read(UI_KEY, {});
+$('keepFields').checked = ui.__keep === true;
+$('keepFields').addEventListener('change', () => { ui.__keep = $('keepFields').checked; write(UI_KEY, ui); });
 document.querySelectorAll('details[data-key]').forEach(d => {
   if(ui[d.dataset.key] !== undefined) d.open = ui[d.dataset.key];
   d.addEventListener('toggle', () => { ui[d.dataset.key] = d.open; write(UI_KEY, ui); });

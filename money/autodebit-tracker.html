@@ -227,6 +227,61 @@ function addMonths(dateString, months){
   return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
 }
 
+function latestGeneratedCycle(cycleDay){
+  if(!Number.isInteger(Number(cycleDay)) || Number(cycleDay) < 1 || Number(cycleDay) > 31){
+    return null;
+  }
+  const today = new Date();
+  let year = today.getFullYear();
+  let month = today.getMonth();
+  const day = Math.min(Number(cycleDay), new Date(year, month + 1, 0).getDate());
+  if(today.getDate() < day){
+    month -= 1;
+    if(month < 0){
+      month = 11;
+      year -= 1;
+    }
+  }
+  const closingDay = Math.min(Number(cycleDay), new Date(year, month + 1, 0).getDate());
+  const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(closingDay).padStart(2, '0')}`;
+  return { date, month: date.slice(0, 7) };
+}
+
+function cycleReminder(payment){
+  const cycle = latestGeneratedCycle(payment.cycleDay);
+  if(!cycle) return 'Enter a valid statement cycle day to enable statement reminders.';
+  if(payment.billAmountUpdatedCycle === cycle.month) return '';
+  const date = new Date(`${cycle.date}T00:00:00`).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+  return `Statement generated on ${date}. Enter the new bill amount below.`;
+}
+
+function updateCardBillAmount(id){
+  const payment = payments.find(item=>item.id===id);
+  const input = document.getElementById(`nextBillAmount-${id}`);
+  if(!payment || !input) return;
+  const cycle = latestGeneratedCycle(payment.cycleDay);
+  if(!cycle){
+    alert('Enter a valid statement cycle day before updating the bill amount.');
+    return;
+  }
+  const amount = parseFloat(input.value);
+  if(!Number.isFinite(amount) || amount <= 0){
+    input.setCustomValidity('Enter a bill amount greater than zero.');
+    input.reportValidity();
+    input.addEventListener('input', ()=>input.setCustomValidity(''), {once:true});
+    return;
+  }
+  if(payment.lastPaid){
+    payment.amount = amount;
+    delete payment.nextCycleAmount;
+  } else {
+    payment.nextCycleAmount = amount;
+  }
+  payment.billAmountUpdatedCycle = cycle.month;
+  save();
+  render();
+}
+
 function historyRecords(payment){
   return (payment.history || []).map(record => typeof record === 'string'
     ? { dueDate: record, amount: payment.amount }
@@ -265,12 +320,14 @@ function addPayment(){
   if(editingId !== null){
     const idx = payments.findIndex(p=>p.id===editingId);
     if(idx > -1){
-      payments[idx] = { ...payments[idx], name, type, amount, initialAmount:amount, freq, account, dueDate, method, cycleDay };
+      payments[idx] = { ...payments[idx], name, type, amount, initialAmount:amount, freq, account, dueDate, method, cycleDay,
+        ...(isCreditCardType(type) ? {billAmountUpdatedCycle:latestGeneratedCycle(cycleDay).month} : {}) };
     }
     editingId = null;
     document.getElementById('addBtn').textContent = '+ Add Auto-Debit';
   } else {
-    payments.push({ id: Date.now(), name, type, amount, initialAmount:amount, freq, account, dueDate, method, cycleDay });
+    payments.push({ id: Date.now(), name, type, amount, initialAmount:amount, freq, account, dueDate, method, cycleDay,
+      ...(isCreditCardType(type) ? {billAmountUpdatedCycle:latestGeneratedCycle(cycleDay).month} : {}) });
   }
   save();
 
@@ -307,11 +364,12 @@ function markDone(id){
   if(idx===-1) return;
   const p = payments[idx];
   let nextAmount = p.amount;
-  if(p.type === 'Other'){
+  if(hasVariableAmount(p.type)){
     const nextBillInput = document.getElementById(`nextBillAmount-${id}`);
     const enteredAmount = nextBillInput.value.trim();
-    if(enteredAmount){
-      nextAmount = parseFloat(enteredAmount);
+    const amountForNextCycle = enteredAmount || p.nextCycleAmount;
+    if(amountForNextCycle){
+      nextAmount = parseFloat(amountForNextCycle);
       if(!Number.isFinite(nextAmount) || nextAmount <= 0){
         nextBillInput.setCustomValidity('Enter a valid bill amount or leave it blank to reuse the initial amount.');
         nextBillInput.reportValidity();
@@ -319,12 +377,16 @@ function markDone(id){
         return;
       }
     } else {
-      nextAmount = initialPaymentAmount(p);
+      nextAmount = isCreditCardType(p.type) ? p.amount : initialPaymentAmount(p);
     }
   }
   const nextDue = addMonths(p.dueDate, parseInt(p.freq, 10) || 1);
   const history = [...historyRecords(p), { dueDate: p.dueDate, amount: p.amount, nextAmount }];
-  payments[idx] = { ...p, amount: nextAmount, lastPaid: p.dueDate, dueDate: nextDue, history };
+  payments[idx] = { ...p, amount: nextAmount, lastPaid: p.dueDate, dueDate: nextDue, history,
+    nextCycleAmount:undefined,
+    ...(isCreditCardType(p.type) && document.getElementById(`nextBillAmount-${id}`).value.trim()
+      ? {billAmountUpdatedCycle:latestGeneratedCycle(p.cycleDay).month}
+      : {}) };
   save();
   render();
 }
@@ -398,7 +460,11 @@ function renderCalendar(){
     }
     if(isCreditCardType(payment.type) && payment.cycleDay){
       const cycleDay = Math.min(Number(payment.cycleDay), daysInMonth);
-      addEvent(cycleDay, {name:payment.name, amount:null, status:'Statement closes', description:payment.type, className:'cycle-event'});
+      const cycleDate = `${monthKey}-${String(cycleDay).padStart(2, '0')}`;
+      const today = new Date();
+      const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const status = cycleDate <= todayString ? 'Statement generated' : 'Statement closes';
+      addEvent(cycleDay, {name:payment.name, amount:null, status, description:payment.type, className:'cycle-event'});
     }
   });
 
@@ -498,7 +564,7 @@ function render(){
         </div>
         <div class="pay-type">${escapeHTML(p.type)}</div>
         <div class="pay-meta">₹${p.amount}${isCreditCardType(p.type) ? ' current bill' : ` every ${p.freq==1?'month':p.freq==3?'quarter':'year'}`}${p.account?` • from ${escapeHTML(p.account)}`:''} • ${escapeHTML(p.method || 'Automated')}${p.lastPaid?` • last paid ${escapeHTML(p.lastPaid)}`:''}</div>
-        ${isCreditCardType(p.type) ? '<p class="summary-note">After the statement closes, use Edit to enter the new bill amount.</p>' : ''}
+        ${isCreditCardType(p.type) ? `<p class="summary-note">${escapeHTML(p.nextCycleAmount ? `New bill amount ₹${Number(p.nextCycleAmount).toFixed(0)} saved for the next due cycle.` : cycleReminder(p) || 'Statement amount is up to date for the latest cycle.')}</p><div class="row"><div class="field"><label for="nextBillAmount-${p.id}">New bill amount (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" value="${p.nextCycleAmount || ''}" placeholder="Enter after statement is generated"></div><button type="button" class="calendar-nav" onclick="updateCardBillAmount(${p.id})">Save amount</button></div>` : ''}
         ${p.type === 'Other' ? `<div class="row"><div class="field"><label for="nextBillAmount-${p.id}">Next bill amount (₹)</label><input type="number" id="nextBillAmount-${p.id}" min="0.01" step="0.01" placeholder="Optional; blank reuses initial ₹${initialPaymentAmount(p).toFixed(0)}"></div></div>` : ''}
         <span class="status-badge ${statusClass}">${statusLabel}</span>
       </div>

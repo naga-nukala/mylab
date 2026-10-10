@@ -36,7 +36,7 @@
 
   /* Flip cards */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
-  .flip{height:150px;perspective:900px;cursor:pointer;}
+  .flip{height:196px;perspective:900px;cursor:pointer;}
   .flip-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.2,.75,.25,1);transform-style:preserve-3d;}
   .flip.flipped .flip-inner{transform:rotateY(180deg);}
   @media (hover:hover) and (pointer:fine){.flip:hover .flip-inner{transform:rotateY(180deg);}}
@@ -47,6 +47,17 @@
   .bname{font-size:16px;font-weight:700;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
   .btotal{font-size:20px;font-weight:800;color:var(--mint);}
   .bmeta{font-size:11px;color:var(--sub);}
+  .ylist{margin:6px 0;font-size:11px;}
+  .yrow{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px dashed #ffffff14;}
+  .yrow:last-child{border-bottom:none;}
+  .yrow span:first-child{color:var(--sub);}
+  .yrow span:last-child{font-weight:700;}
+  .ymore{font-size:10px;color:var(--sub);margin-top:2px;}
+  .noyears{font-size:11px;color:var(--sub);margin:6px 0;}
+  .ov-line{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+  .ov-line:last-child{border-bottom:none;}
+  .ov-line span:last-child{font-weight:700;color:var(--acc);white-space:nowrap;}
+  .ov-line span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .hint-flip{font-size:10px;color:var(--coral);font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
   .back .bname{color:#10181b;}
   .back-actions{display:flex;flex-direction:column;gap:6px;}
@@ -105,6 +116,8 @@
   <div class="section-title">Boards <span style="text-transform:none;letter-spacing:0;">· tap a card to flip</span></div>
   <div class="grid" id="boards"></div>
 
+  <div id="overview"></div>
+
   <div id="detail"></div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -120,9 +133,9 @@ let pending = {}, toastTimer;
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
-    if(s && Array.isArray(s.boards)) return { boards:s.boards, selected:s.selected||null, open:s.open||{} };
+    if(s && Array.isArray(s.boards)) return { boards:s.boards, selected:s.selected||null, open:s.open||{}, ov:s.ov||{} };
   }catch(e){}
-  return { boards:[], selected:null, open:{} };
+  return { boards:[], selected:null, open:{}, ov:{} };
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -136,6 +149,11 @@ function fmtDate(iso){
 }
 function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function boardTotal(b){ return b.entries.reduce((s,e)=>s+e.amount,0); }
+function yearTotals(b){
+  const m = {};
+  b.entries.forEach(e=>{ const y=e.date.slice(0,4); m[y]=(m[y]||0)+e.amount; });
+  return Object.keys(m).sort((a,c)=>c-a).map(y=>[y,m[y]]);
+}
 function current(){ return state.boards.find(b=>b.id===state.selected); }
 
 function toast(msg){
@@ -159,6 +177,27 @@ function renderSummary(){
   document.getElementById('sumBoards').textContent = state.boards.length;
   document.getElementById('sumEntries').textContent = state.boards.reduce((s,b)=>s+b.entries.length,0);
 }
+function yearBlock(b){
+  const yt = yearTotals(b);
+  if(!yt.length) return '<div class="noyears">No contributions yet</div>';
+  const rows = yt.slice(0,3).map(([y,t])=>`<div class="yrow"><span>${y}</span><span>${money(t)}</span></div>`).join('');
+  return `<div class="ylist">${rows}${yt.length>3?`<div class="ymore">+${yt.length-3} earlier year${yt.length-3===1?'':'s'} · open board</div>`:''}</div>`;
+}
+function renderOverview(){
+  const el = document.getElementById('overview');
+  const years = {};
+  state.boards.forEach(b=>yearTotals(b).forEach(([y,t])=>{ (years[y]=years[y]||[]).push({name:b.name,total:t}); }));
+  const ys = Object.keys(years).sort((a,c)=>c-a);
+  if(!ys.length){ el.innerHTML=''; return; }
+  el.innerHTML = '<div class="section-title">Year-wise across boards</div>' + ys.map((y,i)=>{
+    const list = years[y].sort((a,c)=>c.total-a.total);
+    const isOpen = y in state.ov ? state.ov[y] : i===0;
+    return `<div class="year${isOpen?' open':''}">
+      <button class="year-head" data-action="toggle-ov" data-year="${y}"><span class="chev">▶</span><span class="yr">${y}</span><span class="cnt">${list.length} board${list.length===1?'':'s'}</span><span class="ytot">${money(list.reduce((s,r)=>s+r.total,0))}</span></button>
+      <div class="year-body">${list.map(r=>`<div class="ov-line"><span>${esc(r.name)}</span><span>${money(r.total)}</span></div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
 function renderBoards(){
   const el = document.getElementById('boards');
   if(!state.boards.length){ el.innerHTML = '<div class="empty" style="grid-column:1/-1;">No boards yet. Add your first board above.</div>'; return; }
@@ -167,8 +206,8 @@ function renderBoards(){
       <div class="flip-inner">
         <div class="face front">
           <div class="bname">${esc(b.name)}</div>
+          ${yearBlock(b)}
           <div><div class="btotal">${money(boardTotal(b))}</div><div class="bmeta">${b.entries.length} contribution${b.entries.length===1?'':'s'}</div></div>
-          <div class="hint-flip">Flip for actions</div>
         </div>
         <div class="face back">
           <div class="bname">${esc(b.name)}</div>
@@ -219,7 +258,7 @@ function renderDetail(){
     </div>
     ${stacks}`;
 }
-function renderAll(){ renderSummary(); renderBoards(); renderDetail(); }
+function renderAll(){ renderSummary(); renderBoards(); renderOverview(); renderDetail(); }
 
 /* ---------- Actions ---------- */
 function saveBoard(){
@@ -283,6 +322,10 @@ document.addEventListener('click', ev=>{
     const b=current(); const y=t.dataset.year; if(!b) return;
     state.open[b.id]=state.open[b.id]||{};
     state.open[b.id][y] = !t.parentElement.classList.contains('open');
+    t.parentElement.classList.toggle('open'); save(); return;
+  }
+  if(a==='toggle-ov'){
+    const y=t.dataset.year; state.ov[y]=!t.parentElement.classList.contains('open');
     t.parentElement.classList.toggle('open'); save(); return;
   }
   if(a==='edit-entry'){
