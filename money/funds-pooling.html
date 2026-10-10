@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1412">
+<title>Funds Pooling Planner</title>
+<style>
+  :root{
+    --bg:#0f1412; --card:#171e1b; --card2:#1e2723; --line:#2a3631;
+    --text:#e8f1ec; --muted:#8fa399; --mint:#a7e8c5; --coral:#ff8c70;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 14px 90px}
+  .back{color:var(--muted);text-decoration:none;font-size:13px}
+  h1{font-size:22px;margin:8px 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+
+  .summary{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+  .tot-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .tot{font-size:30px;font-weight:700;color:var(--mint);margin:2px 0 10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .box{background:var(--card2);border-radius:12px;padding:10px}
+  .box .k{font-size:11px;color:var(--muted)}
+  .box .v{font-size:16px;font-weight:600;margin-top:2px}
+  .gap.short .v{color:var(--coral)} .gap.ok .v{color:var(--mint)}
+  .bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--card2);margin-top:12px}
+  .bar span{display:block;height:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font-size:11px;color:var(--muted)}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+
+  input,textarea{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);
+    border-radius:10px;padding:11px 12px;font:inherit;font-size:15px;outline:none}
+  input:focus,textarea:focus{border-color:var(--mint)}
+  textarea{resize:vertical;min-height:56px}
+  ::placeholder{color:#5f726a}
+
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}
+  .head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .num{flex:0 0 28px;height:28px;border-radius:50%;background:var(--mint);color:#0f1412;
+    font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .mv{display:flex;gap:4px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card2);color:var(--text);
+    border-radius:10px;padding:8px 11px;font-size:14px}
+  button:disabled{opacity:.3;cursor:default}
+  .amt{margin-bottom:8px}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
+  .cum{font-size:12px;color:var(--muted)} .cum b{color:var(--mint);font-weight:600}
+  .del{color:var(--coral);border-color:#4a2e27;font-size:13px}
+  .del.armed{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+
+  .add{width:100%;background:var(--mint);color:#0f1412;border:0;font-weight:700;padding:14px;border-radius:14px;font-size:15px}
+  .tools{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:12px;color:var(--muted)}
+  .reset{font-size:12px;padding:6px 10px;color:var(--coral);border-color:#4a2e27}
+  .reset.armed{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:22px 8px}
+
+  .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);
+    background:var(--card2);border:1px solid var(--mint);color:var(--text);padding:10px 16px;border-radius:12px;
+    font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:10}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  @media (hover:hover) and (pointer:fine){
+    button:hover:not(:disabled){border-color:var(--mint)}
+    .add:hover{filter:brightness(1.08)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← Little Lab</a>
+  <h1>Funds Pooling Planner</h1>
+  <p class="sub">List your sources in the order you'll use them — Gold Loan, OD, FD break, etc.</p>
+
+  <div class="summary">
+    <div class="tot-label">Total pooled</div>
+    <div class="tot" data-role="total">₹0</div>
+    <div class="grid">
+      <div class="box"><div class="k">Target needed (₹)</div>
+        <input id="target" inputmode="decimal" placeholder="Optional" style="padding:6px 8px;margin-top:3px"></div>
+      <div class="box gap" data-role="gapbox"><div class="k" data-role="gaplabel">Gap</div><div class="v" data-role="gap">—</div></div>
+      <div class="box"><div class="k">Steps</div><div class="v" data-role="count">0</div></div>
+      <div class="box"><div class="k">Last updated</div><div class="v" data-role="updated" style="font-size:13px">—</div></div>
+    </div>
+    <div class="bar" data-role="bar"></div>
+    <div class="legend" data-role="legend"></div>
+  </div>
+
+  <div id="list"></div>
+  <button class="add" data-action="add">+ Add step</button>
+
+  <div class="tools">
+    <span>Saved on this device only</span>
+    <button class="reset" data-action="reset">Reset all</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<datalist id="opts">
+  <option value="Gold Loan"><option value="Overdraft (OD)"><option value="FD Break / FD Loan">
+  <option value="Personal Loan"><option value="Credit Card"><option value="Savings Account">
+  <option value="Mutual Fund Redemption"><option value="PF Withdrawal"><option value="Family / Friends">
+</datalist>
+
+<script>
+(function(){
+  var KEY='as_fundspooling_v1';
+  var COLORS=['#a7e8c5','#ff8c70','#7fc7e8','#e8d27f','#c79fe8','#8fe8a0','#e89fb8','#9fb4e8'];
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var state={target:'',steps:[],updated:''};
+  var listEl=document.getElementById('list');
+  var toastEl=document.getElementById('toast');
+  var armed=null, armTimer=null, toastTimer=null;
+
+  function uid(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+  function num(v){var n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isNaN(n)?0:n}
+  function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function dateStr(iso){if(!iso)return '—';var d=new Date(iso);return d.getDate()+'th '+MON[d.getMonth()]+' '+d.getFullYear()}
+
+  function load(){
+    try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);
+      state.target=o.target||'';state.steps=Array.isArray(o.steps)?o.steps:[];state.updated=o.updated||'';}}catch(e){}
+  }
+  function save(){
+    state.updated=new Date().toISOString();
+    try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
+  }
+  function toast(msg){
+    toastEl.textContent=msg;toastEl.classList.add('show');
+    clearTimeout(toastTimer);toastTimer=setTimeout(function(){toastEl.classList.remove('show')},1800);
+  }
+
+  // structural rebuild (add / remove / move / load only)
+  function build(){
+    if(!state.steps.length){
+      listEl.innerHTML='<div class="empty">No steps yet. Tap “+ Add step” to start your pooling sequence.</div>';
+      refresh();return;
+    }
+    listEl.innerHTML=state.steps.map(function(s,i){
+      return '<div class="step" data-index="'+i+'">'+
+        '<div class="head"><span class="num" data-role="num">'+(i+1)+'</span>'+
+        '<input data-role="name" list="opts" placeholder="Name (e.g. Gold Loan)" value="'+esc(s.name)+'">'+
+        '<div class="mv"><button data-action="up" aria-label="Move up"'+(i===0?' disabled':'')+'>↑</button>'+
+        '<button data-action="down" aria-label="Move down"'+(i===state.steps.length-1?' disabled':'')+'>↓</button></div></div>'+
+        '<input class="amt" data-role="amount" inputmode="decimal" placeholder="Amount (₹)" value="'+esc(s.amount)+'">'+
+        '<textarea data-role="notes" placeholder="Notes — rate, tenure, EMI, due date…">'+esc(s.notes)+'</textarea>'+
+        '<div class="foot"><span class="cum" data-role="cum"></span>'+
+        '<button class="del" data-action="del">Delete</button></div></div>';
+    }).join('');
+    refresh();
+  }
+
+  // in-place update (typing) — never touches inputs
+  function refresh(){
+    var run=0,total=0;
+    var rows=listEl.querySelectorAll('.step');
+    state.steps.forEach(function(s,i){
+      var a=num(s.amount);run+=a;total+=a;
+      if(rows[i]){rows[i].querySelector('[data-role=cum]').innerHTML='Running total: <b>'+inr(run)+'</b>';}
+    });
+    var q=function(r){return document.querySelector('[data-role='+r+']')};
+    q('total').textContent=inr(total);
+    q('count').textContent=state.steps.length;
+    q('updated').textContent=dateStr(state.updated);
+    var t=num(state.target);
+    var gb=q('gapbox');
+    if(t>0){
+      var g=t-total;
+      gb.className='box gap '+(g>0?'short':'ok');
+      q('gaplabel').textContent=g>0?'Still short by':(g<0?'Surplus':'Target met');
+      q('gap').textContent=g===0?'✓':inr(Math.abs(g));
+    }else{gb.className='box gap';q('gaplabel').textContent='Gap';q('gap').textContent='—';}
+    var bar='',leg='';
+    state.steps.forEach(function(s,i){
+      var a=num(s.amount);if(a<=0||total<=0)return;
+      var c=COLORS[i%COLORS.length];
+      bar+='<span style="width:'+(a/total*100)+'%;background:'+c+'"></span>';
+      leg+='<span><i style="background:'+c+'"></i>'+esc(s.name||('Step '+(i+1)))+' '+Math.round(a/total*100)+'%</span>';
+    });
+    q('bar').innerHTML=bar;q('legend').innerHTML=leg;
+  }
+
+  function disarm(){
+    armed=null;clearTimeout(armTimer);
+    document.querySelectorAll('.armed').forEach(function(b){b.classList.remove('armed');
+      b.textContent=b.getAttribute('data-action')==='reset'?'Reset all':'Delete'});
+  }
+  function arm(btn,id,label){
+    disarm();armed=id;btn.classList.add('armed');btn.textContent='Tap again';
+    toast(label);armTimer=setTimeout(disarm,2500);
+  }
+
+  // events
+  document.addEventListener('input',function(e){
+    var t=e.target;
+    if(t.id==='target'){state.target=t.value;save();refresh();return;}
+    var row=t.closest&&t.closest('.step');if(!row)return;
+    var i=+row.getAttribute('data-index'),role=t.getAttribute('data-role');
+    if(!state.steps[i]||!role)return;
+    state.steps[i][role]=t.value;save();refresh();
+  });
+
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-action]');if(!b)return;
+    var act=b.getAttribute('data-action');
+    var row=b.closest('.step'),i=row?+row.getAttribute('data-index'):-1;
+    if(act==='add'){
+      disarm();state.steps.push({id:uid(),name:'',amount:'',notes:''});save();build();
+      var ins=listEl.querySelectorAll('[data-role=name]');ins[ins.length-1].focus();
+    }else if(act==='up'&&i>0){
+      disarm();var s=state.steps.splice(i,1)[0];state.steps.splice(i-1,0,s);save();build();
+    }else if(act==='down'&&i>=0&&i<state.steps.length-1){
+      disarm();var s2=state.steps.splice(i,1)[0];state.steps.splice(i+1,0,s2);save();build();
+    }else if(act==='del'&&i>=0){
+      var id=state.steps[i].id;
+      if(armed===id){disarm();state.steps.splice(i,1);save();build();toast('Step deleted');}
+      else arm(b,id,'Tap again to delete');
+    }else if(act==='reset'){
+      if(armed==='reset'){disarm();state={target:'',steps:[],updated:''};
+        document.getElementById('target').value='';save();build();toast('Plan cleared');}
+      else arm(b,'reset','Tap again to clear everything');
+    }
+  });
+
+  load();
+  document.getElementById('target').value=state.target||'';
+  build();
+})();
+</script>
+</body>
+</html>
