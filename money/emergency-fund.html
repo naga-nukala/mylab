@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1412">
+<title>Emergency Fund Dashboard · Little Lab</title>
+<style>
+:root{
+  --bg:#0f1412; --card:#171e1b; --card2:#1e2723; --line:#2a3631;
+  --text:#e8efec; --mute:#8fa39b; --mint:#a7e8c5; --coral:#ff8c70;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:18px 14px 90px}
+a.back{color:var(--mute);text-decoration:none;font-size:13px}
+h1{font-size:22px;margin:8px 0 2px;letter-spacing:-.2px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.total .big{font-size:30px;font-weight:700;color:var(--mint);letter-spacing:-.5px}
+.total .of{color:var(--mute);font-size:13px}
+.bar{height:10px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;width:0;background:var(--coral);border-radius:99px;transition:width .35s ease}
+.bar>i.done{background:var(--mint)}
+.pct{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-top:6px}
+.types{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.types .card{margin:0}
+.types h3{margin:0 0 4px;font-size:14px;display:flex;justify-content:space-between;align-items:baseline}
+.types h3 span{font-weight:400;color:var(--mute);font-size:12px}
+.types .amt{font-size:18px;font-weight:600}
+.types .tg{color:var(--mute);font-size:12px}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
+input[type=text]{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit}
+input[type=text]:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{background:none;border:0;color:var(--mute);padding:9px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--mint);color:#0f1412}
+.btns{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;border:0;border-radius:10px;padding:12px;font:inherit;font-weight:700;cursor:pointer;background:var(--mint);color:#0f1412}
+.btn.ghost{flex:0 0 auto;background:var(--card2);color:var(--text);border:1px solid var(--line);font-weight:500}
+.btn:focus-visible,.seg button:focus-visible,.mini:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.hd{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 8px}
+.hd h2{font-size:15px;margin:0}
+.chips{display:flex;gap:6px}
+.chip{background:var(--card2);border:1px solid var(--line);color:var(--mute);border-radius:99px;padding:4px 11px;font:inherit;font-size:12px;cursor:pointer}
+.chip[aria-pressed=true]{color:#0f1412;background:var(--mint);border-color:var(--mint)}
+.fund .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.fund .nm{font-weight:600}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;margin-right:6px;vertical-align:1px}
+.tag.FD{background:rgba(167,232,197,.15);color:var(--mint)}
+.tag.MF{background:rgba(255,140,112,.15);color:var(--coral)}
+.fund .nums{text-align:right;font-size:13px;color:var(--mute)}
+.fund .nums b{color:var(--text);font-size:15px}
+.meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--mute)}
+.acts{display:flex;gap:6px}
+.mini{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
+.mini.armed{background:var(--coral);color:#0f1412;border-color:var(--coral);font-weight:700}
+@media (hover:hover) and (pointer:fine){
+  .mini:hover,.chip:hover{border-color:var(--mint)}
+  .btn:hover{filter:brightness(1.08)}
+}
+.empty{color:var(--mute);text-align:center;padding:26px 10px;border:1px dashed var(--line);border-radius:var(--r)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--card2);border:1px solid var(--mint);color:var(--text);padding:10px 16px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:.25s}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.err{color:var(--coral);font-size:12px;min-height:16px;margin-top:6px}
+@media (prefers-reduced-motion:reduce){.bar>i,#toast{transition:none}}
+@media (max-width:380px){.types{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← Little Lab</a>
+  <h1>Emergency Fund Dashboard</h1>
+  <p class="sub">Track the FDs and mutual funds that make up your emergency fund. Saved only on this device.</p>
+
+  <div class="card total" id="total"></div>
+  <div class="types" id="types"></div>
+
+  <div class="card">
+    <div id="formTitle" style="font-weight:600">Add a fund</div>
+    <label for="fName">Name</label>
+    <input type="text" id="fName" placeholder="e.g. HDFC FD, Parag Parikh Liquid" autocomplete="off">
+    <label>Type</label>
+    <div class="seg" id="fType">
+      <button type="button" data-type="FD" aria-pressed="true">FD</button>
+      <button type="button" data-type="MF" aria-pressed="false">MF</button>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="fAmt">Present amount (₹)</label>
+        <input type="text" id="fAmt" inputmode="numeric" placeholder="0" autocomplete="off">
+      </div>
+      <div>
+        <label for="fTgt">Target (₹)</label>
+        <input type="text" id="fTgt" inputmode="numeric" placeholder="0" autocomplete="off">
+      </div>
+    </div>
+    <div class="err" id="err" role="status"></div>
+    <div class="btns">
+      <button class="btn" id="saveBtn" type="button" data-act="save">Add fund</button>
+      <button class="btn ghost" id="cancelBtn" type="button" data-act="cancel" hidden>Cancel</button>
+    </div>
+  </div>
+
+  <div class="hd">
+    <h2>Your funds</h2>
+    <div class="chips" id="filter">
+      <button class="chip" data-f="ALL" aria-pressed="true">All</button>
+      <button class="chip" data-f="FD" aria-pressed="false">FD</button>
+      <button class="chip" data-f="MF" aria-pressed="false">MF</button>
+    </div>
+  </div>
+  <div id="list"></div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var KEY='as_emergencyfund_v1';
+  var state={funds:[]};
+  var editId=null, curType='FD', filter='ALL', armed=null, armTimer=null;
+
+  function load(){
+    try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.funds))state=s;}catch(e){}
+  }
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  }
+  function inr(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:0});}
+  function num(v){var n=parseFloat(String(v).replace(/[^0-9.]/g,''));return isNaN(n)?0:n;}
+  function fmtDate(ts){
+    var d=new Date(ts);
+    var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return d.getDate()+'th '+m[d.getMonth()]+' '+d.getFullYear();
+  }
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function pct(a,t){return t>0?Math.round(a/t*100):0;}
+  var $=function(id){return document.getElementById(id);};
+
+  function toast(msg){
+    var t=$('toast');t.textContent=msg;t.classList.add('show');
+    clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show');},1800);
+  }
+
+  function sums(type){
+    var a=0,t=0,c=0;
+    state.funds.forEach(function(f){if(!type||f.type===type){a+=f.amount;t+=f.target;c++;}});
+    return {a:a,t:t,c:c};
+  }
+
+  function barHtml(a,t){
+    var p=pct(a,t), w=Math.min(p,100);
+    return '<div class="bar"><i class="'+(p>=100?'done':'')+'" style="width:'+w+'%"></i></div>'+
+      '<div class="pct"><span>'+p+'% of target</span><span>'+
+      (t>a?inr(t-a)+' to go':(t>0?'Target reached':'Set a target'))+'</span></div>';
+  }
+
+  function renderSummary(){
+    var s=sums(), fd=sums('FD'), mf=sums('MF');
+    $('total').innerHTML=
+      '<div class="of">Emergency fund so far</div>'+
+      '<div class="big">'+inr(s.a)+'</div>'+
+      '<div class="of">of '+inr(s.t)+' target · '+s.c+' fund'+(s.c===1?'':'s')+'</div>'+
+      barHtml(s.a,s.t);
+    function tc(label,x){
+      return '<div class="card"><h3>'+label+'<span>'+x.c+' fund'+(x.c===1?'':'s')+'</span></h3>'+
+        '<div class="amt">'+inr(x.a)+'</div><div class="tg">of '+inr(x.t)+'</div>'+barHtml(x.a,x.t)+'</div>';
+    }
+    $('types').innerHTML=tc('FD',fd)+tc('MF',mf);
+  }
+
+  function renderList(){
+    var items=state.funds.filter(function(f){return filter==='ALL'||f.type===filter;});
+    if(!items.length){
+      $('list').innerHTML='<div class="empty">'+(state.funds.length?'No '+filter+' funds yet.':'No funds yet. Add your first FD or MF above.')+'</div>';
+      return;
+    }
+    $('list').innerHTML=items.map(function(f){
+      return '<div class="card fund" data-id="'+f.id+'">'+
+        '<div class="top"><div class="nm"><span class="tag '+f.type+'">'+f.type+'</span>'+esc(f.name)+'</div>'+
+        '<div class="nums"><b>'+inr(f.amount)+'</b><br>of '+inr(f.target)+'</div></div>'+
+        barHtml(f.amount,f.target)+
+        '<div class="meta"><span>Updated '+fmtDate(f.updated)+'</span>'+
+        '<div class="acts"><button class="mini" data-act="edit" data-id="'+f.id+'">Edit</button>'+
+        '<button class="mini" data-act="del" data-id="'+f.id+'">Delete</button></div></div></div>';
+    }).join('');
+  }
+
+  function renderAll(){renderSummary();renderList();}
+
+  function setType(t){
+    curType=t;
+    document.querySelectorAll('#fType button').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.type===t?'true':'false');});
+  }
+
+  function resetForm(){
+    editId=null;
+    $('fName').value='';$('fAmt').value='';$('fTgt').value='';$('err').textContent='';
+    setType('FD');
+    $('formTitle').textContent='Add a fund';
+    $('saveBtn').textContent='Add fund';
+    $('cancelBtn').hidden=true;
+  }
+
+  function onSave(){
+    var name=$('fName').value.trim(), amt=num($('fAmt').value), tgt=num($('fTgt').value);
+    if(!name){$('err').textContent='Enter a name for this fund.';$('fName').focus();return;}
+    if(!tgt){$('err').textContent='Enter a target amount greater than 0.';$('fTgt').focus();return;}
+    $('err').textContent='';
+    if(editId){
+      var f=state.funds.filter(function(x){return x.id===editId;})[0];
+      if(f){f.name=name;f.type=curType;f.amount=amt;f.target=tgt;f.updated=Date.now();}
+      toast('Fund updated');
+    }else{
+      state.funds.push({id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name,type:curType,amount:amt,target:tgt,updated:Date.now()});
+      toast('Fund added');
+    }
+    save();resetForm();renderAll();
+  }
+
+  function onEdit(id){
+    var f=state.funds.filter(function(x){return x.id===id;})[0];
+    if(!f)return;
+    editId=id;
+    $('fName').value=f.name;$('fAmt').value=f.amount?f.amount.toLocaleString('en-IN'):'';$('fTgt').value=f.target.toLocaleString('en-IN');
+    setType(f.type);
+    $('formTitle').textContent='Edit fund';
+    $('saveBtn').textContent='Save changes';
+    $('cancelBtn').hidden=false;
+    $('fName').scrollIntoView({behavior:'smooth',block:'center'});
+    $('fName').focus({preventScroll:true});
+  }
+
+  function onDelete(btn,id){
+    if(armed===id){
+      state.funds=state.funds.filter(function(x){return x.id!==id;});
+      armed=null;clearTimeout(armTimer);
+      if(editId===id)resetForm();
+      save();renderAll();toast('Fund deleted');
+      return;
+    }
+    armed=id;
+    btn.textContent='Tap again to delete';btn.classList.add('armed');
+    clearTimeout(armTimer);
+    armTimer=setTimeout(function(){armed=null;renderList();},3000);
+  }
+
+  document.addEventListener('click',function(e){
+    var t=e.target.closest('[data-act],[data-type],[data-f]');
+    if(!t)return;
+    if(t.dataset.type&&t.closest('#fType')){setType(t.dataset.type);return;}
+    if(t.dataset.f){
+      filter=t.dataset.f;
+      document.querySelectorAll('#filter .chip').forEach(function(c){c.setAttribute('aria-pressed',c.dataset.f===filter?'true':'false');});
+      renderList();return;
+    }
+    var a=t.dataset.act;
+    if(a==='save')onSave();
+    else if(a==='cancel')resetForm();
+    else if(a==='edit')onEdit(t.dataset.id);
+    else if(a==='del')onDelete(t,t.dataset.id);
+  });
+
+  ['fName','fAmt','fTgt'].forEach(function(id){
+    $(id).addEventListener('keydown',function(e){if(e.key==='Enter')onSave();});
+  });
+
+  // Format amounts with Indian grouping as the user types, caret-safe enough for numeric fields
+  ['fAmt','fTgt'].forEach(function(id){
+    $(id).addEventListener('input',function(){
+      var raw=this.value.replace(/[^0-9]/g,'');
+      this.value=raw?Number(raw).toLocaleString('en-IN'):'';
+    });
+  });
+
+  load();
+  renderAll();
+})();
+</script>
+</body>
+</html>
