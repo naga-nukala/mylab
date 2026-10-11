@@ -50,11 +50,16 @@
   .icon-btn{background:#0f172a;border:1px solid #334155;color:var(--txt);border-radius:6px;padding:6px 9px;font-size:12px;cursor:pointer;}
   .icon-btn.edit{color:var(--blue);}
   .icon-btn.del{color:var(--bad);}
+  .icon-btn.confirming{background:var(--warn);color:#1c1917;border-color:var(--warn);}
   .icon-btn.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
   .tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--bad);font-weight:700;margin-left:6px;}
   .empty{text-align:center;color:var(--sub);font-size:13px;padding:14px 0;}
   .priority{margin-top:10px;font-size:13px;color:var(--warn);}
 
+  .sec-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--sub);margin:0 0 8px;}
+  .sec-head span:last-child{color:var(--txt);font-weight:600;}
+  .sec-divider{border-top:1px solid #334155;margin:16px 0 12px;}
+  .hint{font-size:11px;color:var(--sub);margin:-2px 0 8px;line-height:1.5;}
   .saved-note{text-align:center;color:var(--sub);font-size:12px;margin-top:8px;}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #475569;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;}
   .toast.show{opacity:1;}
@@ -80,9 +85,8 @@
   </div>
 
   <div class="card">
-    <h2>Inflow</h2>
-    <label for="inflow">Monthly Income (all sources, ₹)</label>
-    <input type="number" inputmode="decimal" id="inflow" placeholder="e.g. 80000" data-field="inflow">
+    <h2>Inflow <span class="total" id="inflowTotal"></span></h2>
+    <div id="sec-inflow"></div>
   </div>
 
   <div class="card">
@@ -116,15 +120,26 @@
   </div>
 
   <div class="card">
-    <h2>Savings &amp; Investment</h2>
-    <div class="row">
-      <div class="field"><label for="savings">Monthly Savings (₹)</label><input type="number" inputmode="decimal" id="savings" placeholder="0" data-field="savings"></div>
-      <div class="field"><label for="invest">Monthly Investment (₹)</label><input type="number" inputmode="decimal" id="invest" placeholder="0" data-field="invest"></div>
-    </div>
+    <h2>Savings &amp; Investment <span class="total" id="siTotal"></span></h2>
+    <div class="sec-head"><span>Savings</span><span id="savingsTotal"></span></div>
+    <div id="sec-savings"></div>
+    <div class="sec-divider"></div>
+    <div class="sec-head"><span>Investment</span><span id="investTotal"></span></div>
+    <div id="sec-invest"></div>
   </div>
 
   <button class="btn primary" style="width:100%;" data-action="save">💾 Save</button>
   <div class="saved-note" id="savedNote"></div>
+
+  <div class="card" style="margin-top:14px;">
+    <h2>Saved sets</h2>
+    <div class="hint">Give the current details a name to keep a copy you can load later. Saving under an existing name updates it.</div>
+    <div class="row">
+      <div class="field"><input type="text" id="snapName" maxlength="40" placeholder="Name e.g. Oct 2026 plan" data-enter="save-snap"></div>
+    </div>
+    <div class="btn-row"><button class="btn blue" data-action="save-snap">💾 Save as name</button></div>
+    <div id="snapList"></div>
+  </div>
 
   <div class="card" id="recoveryCard" style="margin-top:14px;" hidden>
     <h2>Recover earlier data</h2>
@@ -149,9 +164,20 @@ function fmtDate(d){
   return day + suffix + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
 }
 
-function defaults(){ return { inflow:0, savings:0, invest:0, expenses:[], debts:[], savedAt:null }; }
-function safeGet(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
-function safeSet(v){ try { localStorage.setItem(KEY, v); return true; } catch(e){ return false; } }
+const SNAP_KEY = 'money_framework_snapshots_v1';
+const SECS = {
+  inflow:  { key:'inflowItems',  legacy:['inflow','income','monthlyIncome','monthlyInflow','salary'], label:'Income',
+             ph:'Source e.g. Salary', add:'+ Add Source', upd:'✓ Update Source', empty:'No sources yet — add your first one above.', added:'Source added', updated:'Source updated', deleted:'Source deleted' },
+  savings: { key:'savingsItems', legacy:['savings','monthlySavings','saving'], label:'Savings',
+             ph:'Saved in e.g. Emergency fund', add:'+ Add Saving', upd:'✓ Update Saving', empty:'No savings added yet.', added:'Saving added', updated:'Saving updated', deleted:'Saving deleted' },
+  invest:  { key:'investItems',  legacy:['invest','investment','investments','monthlyInvestment','monthlyInvest'], label:'Investment',
+             ph:'Invested in e.g. Index fund SIP', add:'+ Add Investment', upd:'✓ Update Investment', empty:'No investments added yet.', added:'Investment added', updated:'Investment updated', deleted:'Investment deleted' }
+};
+const SEC_NAMES = Object.keys(SECS);
+function emptyData(){ return { inflowItems:[], savingsItems:[], investItems:[], expenses:[], debts:[] }; }
+function defaults(){ return Object.assign(emptyData(), { savedAt:null }); }
+function safeGet(k){ try { return localStorage.getItem(k || KEY); } catch(e){ return null; } }
+function safeSet(v, k){ try { localStorage.setItem(k || KEY, v); return true; } catch(e){ return false; } }
 
 // ---------- Legacy-data helpers (older versions used different field names / keys) ----------
 function pick(o, keys){
@@ -176,16 +202,29 @@ function normDebts(arr){
     return (name !== undefined && amount > 0) ? { id: (x && x.id) ? String(x.id) : uid(), name: String(name), amount, rate } : null;
   }).filter(Boolean);
 }
+function normItems(arr){
+  return (Array.isArray(arr) ? arr : []).map(x => {
+    const name = pick(x, ['name','source','label','title','category']);
+    const amount = num(pick(x, ['amount','value','amt']));
+    return (name !== undefined && amount > 0) ? { id: (x && x.id) ? String(x.id) : uid(), name: String(name), amount } : null;
+  }).filter(Boolean);
+}
 function normalizeLegacy(o){
   if(!o || typeof o !== 'object' || Array.isArray(o)) return null;
   const out = {
-    inflow: num(pick(o, ['inflow','income','monthlyIncome','monthlyInflow','salary'])),
-    savings: num(pick(o, ['savings','monthlySavings','saving'])),
-    invest: num(pick(o, ['invest','investment','investments','monthlyInvestment','monthlyInvest'])),
     expenses: normExpenses(pick(o, ['expenses','outflow','outflows','expenseList'])),
     debts: normDebts(pick(o, ['debts','loans','debtList']))
   };
-  const found = out.inflow > 0 || out.savings > 0 || out.invest > 0 || out.expenses.length || out.debts.length;
+  SEC_NAMES.forEach(sec => {
+    const c = SECS[sec];
+    let items = normItems(o[c.key]);
+    if(!items.length){
+      const n = num(pick(o, c.legacy));
+      if(n > 0) items = [{ id: uid(), name: c.label, amount: n }];
+    }
+    out[c.key] = items;
+  });
+  const found = SEC_NAMES.some(sec => out[SECS[sec].key].length) || out.expenses.length || out.debts.length;
   return found ? out : null;
 }
 
@@ -201,7 +240,8 @@ let state = (function(){
   return base;
 })();
 
-const editing = { expense:null, debt:null };
+const editing = { expense:null, debt:null, inflow:null, savings:null, invest:null };
+let snaps = [];
 const pendingDeletes = {};
 let toastTimer;
 
@@ -226,23 +266,75 @@ function persist(){
 
 function sum(list, key){ return list.reduce((s,x)=>s + (x[key]||0), 0); }
 
+function totalsOf(d){
+  const inflow = sum(d.inflowItems || [], 'amount');
+  const savings = sum(d.savingsItems || [], 'amount');
+  const invest = sum(d.investItems || [], 'amount');
+  const exp = sum(d.expenses || [], 'amount');
+  return { inflow, savings, invest, exp, net: inflow - exp - savings - invest };
+}
+function hasData(d){
+  d = d || state;
+  return SEC_NAMES.some(sec => (d[SECS[sec].key] || []).length) || (d.expenses || []).length > 0 || (d.debts || []).length > 0;
+}
+
 function calcSummary(){
-  const exp = sum(state.expenses, 'amount');
-  const net = state.inflow - exp - state.savings - state.invest;
+  const t = totalsOf(state);
+  const net = t.net;
   const netEl = $('netFlow');
   netEl.textContent = (net >= 0 ? '+' : '−') + fmt(Math.abs(net));
   netEl.style.color = net >= 0 ? 'var(--acc)' : 'var(--bad)';
 
-  const total = exp + state.savings + state.invest || 1;
-  $('segExp').style.width = (exp/total*100) + '%';
-  $('segSave').style.width = (state.savings/total*100) + '%';
-  $('segInvest').style.width = (state.invest/total*100) + '%';
+  const total = t.exp + t.savings + t.invest || 1;
+  $('segExp').style.width = (t.exp/total*100) + '%';
+  $('segSave').style.width = (t.savings/total*100) + '%';
+  $('segInvest').style.width = (t.invest/total*100) + '%';
 
-  $('savingsRate').textContent = state.inflow > 0 ? ((state.savings/state.inflow)*100).toFixed(0) + '%' : '0%';
-  $('investRate').textContent = state.inflow > 0 ? ((state.invest/state.inflow)*100).toFixed(0) + '%' : '0%';
+  $('savingsRate').textContent = t.inflow > 0 ? ((t.savings/t.inflow)*100).toFixed(0) + '%' : '0%';
+  $('investRate').textContent = t.inflow > 0 ? ((t.invest/t.inflow)*100).toFixed(0) + '%' : '0%';
 }
 
 // ---------- Structural renders (only on add / edit-save / delete / load) ----------
+function secMarkup(sec){
+  const c = SECS[sec];
+  return `
+    <div class="row">
+      <div class="field"><input type="text" id="${sec}Name" placeholder="${c.ph}" data-enter="submit-item" data-sec="${sec}"></div>
+      <div class="field" style="max-width:130px;"><input type="number" inputmode="decimal" id="${sec}Amount" placeholder="₹ / month" data-enter="submit-item" data-sec="${sec}"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="${sec}Submit" data-action="submit-item" data-sec="${sec}">${c.add}</button>
+      <button class="btn ghost" id="${sec}Cancel" data-action="cancel-item" data-sec="${sec}" hidden>Cancel</button>
+    </div>
+    <div id="${sec}List"></div>`;
+}
+
+function renderItems(sec){
+  const c = SECS[sec];
+  const list = state[c.key];
+  const el = $(sec + 'List');
+  if(!list.length){
+    el.innerHTML = '<div class="empty">' + c.empty + '</div>';
+  } else {
+    el.innerHTML = list.map(x => `
+      <div class="list-item">
+        <div class="li-main"><div class="li-name">${esc(x.name)}</div></div>
+        <div class="li-amt">${fmt(x.amount)}</div>
+        <div class="li-actions">
+          <button class="icon-btn edit" data-action="edit-item" data-sec="${sec}" data-id="${x.id}">Edit</button>
+          <button class="icon-btn del" data-action="delete-item" data-sec="${sec}" data-id="${x.id}" aria-label="Delete">✕</button>
+        </div>
+      </div>`).join('');
+  }
+  const tot = sum(list, 'amount');
+  $(sec + 'Total').textContent = list.length ? 'Total ' + fmt(tot) : '';
+  if(sec !== 'inflow'){
+    const si = sum(state.savingsItems, 'amount') + sum(state.investItems, 'amount');
+    $('siTotal').textContent = si > 0 ? 'Total ' + fmt(si) : '';
+  }
+  calcSummary();
+}
+
 function renderExpenses(){
   const el = $('expensesList');
   if(!state.expenses.length){
@@ -299,6 +391,54 @@ function resetDebtForm(){
   $('debtName').value = ''; $('debtAmount').value = ''; $('debtRate').value = '';
   $('debtSubmit').textContent = '+ Add Debt';
   $('debtCancel').hidden = true;
+}
+
+function resetItemForm(sec){
+  editing[sec] = null;
+  $(sec + 'Name').value = ''; $(sec + 'Amount').value = '';
+  $(sec + 'Submit').textContent = SECS[sec].add;
+  $(sec + 'Cancel').hidden = true;
+}
+
+function submitItem(sec){
+  const c = SECS[sec];
+  const name = $(sec + 'Name').value.trim();
+  const amount = parseFloat($(sec + 'Amount').value);
+  if(!name || !(amount > 0)){ toast('Enter a name and an amount above 0'); return; }
+  const list = state[c.key];
+  if(editing[sec] !== null){
+    const x = list.find(i => i.id === editing[sec]);
+    if(x){ x.name = name; x.amount = amount; }
+    toast(c.updated);
+  } else {
+    list.push({ id: uid(), name, amount });
+    toast(c.added);
+  }
+  resetItemForm(sec);
+  persist();
+  renderItems(sec);
+  $(sec + 'Name').focus();
+}
+
+function editItem(sec, id){
+  const x = state[SECS[sec].key].find(i => i.id === id);
+  if(!x) return;
+  $(sec + 'Name').value = x.name;
+  $(sec + 'Amount').value = x.amount;
+  editing[sec] = id;
+  $(sec + 'Submit').textContent = SECS[sec].upd;
+  $(sec + 'Cancel').hidden = false;
+  $(sec + 'Name').scrollIntoView({behavior:'smooth', block:'center'});
+  $(sec + 'Name').focus();
+}
+
+function deleteItem(sec, id, btn){
+  confirmDelete(sec + '-' + id, btn, () => {
+    const c = SECS[sec];
+    state[c.key] = state[c.key].filter(i => i.id !== id);
+    if(editing[sec] === id) resetItemForm(sec);
+    persist(); renderItems(sec); toast(c.deleted);
+  });
 }
 
 function submitExpense(){
@@ -365,19 +505,20 @@ function editDebt(id){
 }
 
 // tap-twice delete (no native confirm dialogs)
-function confirmDelete(key, btn, action){
+function confirmDelete(key, btn, action, armText, msg){
   if(pendingDeletes[key]){
     clearTimeout(pendingDeletes[key]);
     delete pendingDeletes[key];
     action();
     return;
   }
-  btn.textContent = '✔';
+  const orig = btn.textContent;
+  btn.textContent = armText || '✔';
   btn.classList.add('confirming');
-  toast('Tap ✕ again to confirm delete');
+  toast(msg || 'Tap ✕ again to confirm delete');
   pendingDeletes[key] = setTimeout(() => {
     delete pendingDeletes[key];
-    btn.textContent = '✕';
+    btn.textContent = orig;
     btn.classList.remove('confirming');
   }, 2500);
 }
@@ -413,8 +554,8 @@ function scanCandidates(){
       const objs = v.filter(x => x && typeof x === 'object');
       const d = normDebts(objs.filter(x => pick(x, RATE_KEYS) !== undefined));
       const e = normExpenses(objs.filter(x => pick(x, RATE_KEYS) === undefined));
-      if(d.length) out.push({ key:k, data:{ inflow:0, savings:0, invest:0, expenses:[], debts:d } });
-      if(e.length) out.push({ key:k, data:{ inflow:0, savings:0, invest:0, expenses:e, debts:[] } });
+      if(d.length) out.push({ key:k, data:Object.assign(emptyData(), { debts:d }) });
+      if(e.length) out.push({ key:k, data:Object.assign(emptyData(), { expenses:e }) });
     } else {
       const n = normalizeLegacy(v);
       if(n) out.push({ key:k, data:n });
@@ -426,11 +567,12 @@ function scanCandidates(){
 
 function summarize(d){
   const parts = [];
-  if(d.inflow > 0) parts.push('Income ' + fmt(d.inflow));
+  const t = totalsOf(d);
+  if(t.inflow > 0) parts.push('Income ' + fmt(t.inflow));
   if(d.expenses.length) parts.push(d.expenses.length + ' expense' + (d.expenses.length > 1 ? 's' : ''));
   if(d.debts.length) parts.push(d.debts.length + ' debt' + (d.debts.length > 1 ? 's' : ''));
-  if(d.savings > 0) parts.push('Savings ' + fmt(d.savings));
-  if(d.invest > 0) parts.push('Investment ' + fmt(d.invest));
+  if(t.savings > 0) parts.push('Savings ' + fmt(t.savings));
+  if(t.invest > 0) parts.push('Investment ' + fmt(t.invest));
   return parts.join(' · ');
 }
 
@@ -457,9 +599,12 @@ function importCandidate(i){
   const c = candidates[i];
   if(!c) return;
   const d = c.data;
-  if(!state.inflow) state.inflow = d.inflow;
-  if(!state.savings) state.savings = d.savings;
-  if(!state.invest) state.invest = d.invest;
+  SEC_NAMES.forEach(sec => {
+    const k = SECS[sec].key;
+    d[k].forEach(x => {
+      if(!state[k].some(y => y.name === x.name && y.amount === x.amount)) state[k].push({ id: uid(), name: x.name, amount: x.amount });
+    });
+  });
   d.expenses.forEach(e => {
     if(!state.expenses.some(x => x.name === e.name && x.amount === e.amount)) state.expenses.push({ id: uid(), name: e.name, amount: e.amount });
   });
@@ -467,13 +612,100 @@ function importCandidate(i){
     if(!state.debts.some(y => y.name === x.name && y.amount === x.amount && y.rate === x.rate)) state.debts.push({ id: uid(), name: x.name, amount: x.amount, rate: x.rate });
   });
   persist();
-  $('inflow').value = state.inflow || '';
-  $('savings').value = state.savings || '';
-  $('invest').value = state.invest || '';
-  renderExpenses();
-  renderDebts();
+  renderAll();
   $('recoveryCard').hidden = true;
   toast('Imported from ' + c.key);
+}
+
+// ---------- Named saved sets ----------
+function snapData(){
+  const o = {};
+  SEC_NAMES.forEach(sec => { const k = SECS[sec].key; o[k] = state[k].map(x => ({ id:x.id, name:x.name, amount:x.amount })); });
+  o.expenses = state.expenses.map(x => ({ id:x.id, name:x.name, amount:x.amount }));
+  o.debts = state.debts.map(x => ({ id:x.id, name:x.name, amount:x.amount, rate:x.rate }));
+  return o;
+}
+
+function loadSnaps(){
+  try {
+    const v = JSON.parse(safeGet(SNAP_KEY) || '[]');
+    snaps = (Array.isArray(v) ? v : []).filter(s => s && s.id && s.name && s.data);
+  } catch(e){ snaps = []; }
+}
+
+function renderSnaps(){
+  const el = $('snapList');
+  if(!snaps.length){
+    el.innerHTML = '<div class="empty">No saved sets yet — type a name above and save.</div>';
+    return;
+  }
+  el.innerHTML = [...snaps].sort((a,b) => b.savedAt - a.savedAt).map(s => {
+    const t = totalsOf(s.data);
+    const net = (t.net < 0 ? '−' : '+') + fmt(Math.abs(t.net));
+    return `
+      <div class="list-item">
+        <div class="li-main">
+          <div class="li-name">${esc(s.name)}</div>
+          <div class="li-meta">${fmtDate(new Date(s.savedAt))} · Inflow ${fmt(t.inflow)} · Net ${net}</div>
+        </div>
+        <div class="li-actions">
+          <button class="icon-btn edit" data-action="load-snap" data-id="${s.id}">Load</button>
+          <button class="icon-btn del" data-action="delete-snap" data-id="${s.id}" aria-label="Delete">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function saveSnapshot(){
+  const name = $('snapName').value.trim();
+  if(!name){ toast('Give this set a name first'); $('snapName').focus(); return; }
+  if(!hasData()){ toast('Nothing to save yet — add some details first'); return; }
+  const data = snapData();
+  const now = Date.now();
+  const ex = snaps.find(s => s.name.toLowerCase() === name.toLowerCase());
+  let msg;
+  if(ex){ ex.name = name; ex.data = data; ex.savedAt = now; msg = 'Updated “' + name + '”'; }
+  else { snaps.push({ id: uid(), name, savedAt: now, data }); msg = 'Saved as “' + name + '”'; }
+  const ok = safeSet(JSON.stringify(snaps), SNAP_KEY);
+  renderSnaps();
+  toast(ok ? msg : 'Couldn’t save — browser storage is blocked');
+}
+
+function loadSnapshot(id, btn){
+  const s = snaps.find(x => x.id === id);
+  if(!s) return;
+  const apply = () => {
+    const n = normalizeLegacy(s.data) || emptyData();
+    Object.keys(emptyData()).forEach(k => { state[k] = n[k] || []; });
+    resetAllForms();
+    persist();
+    renderAll();
+    $('snapName').value = s.name;
+    toast('Loaded “' + s.name + '”');
+  };
+  const differs = hasData() && JSON.stringify(snapData()) !== JSON.stringify(s.data);
+  if(differs) confirmDelete('load-' + id, btn, apply, 'Replace?', 'Current details will be replaced — tap again to confirm');
+  else apply();
+}
+
+function deleteSnapshot(id, btn){
+  confirmDelete('snap-' + id, btn, () => {
+    snaps = snaps.filter(x => x.id !== id);
+    safeSet(JSON.stringify(snaps), SNAP_KEY);
+    renderSnaps();
+    toast('Saved set deleted');
+  });
+}
+
+function resetAllForms(){
+  resetExpenseForm(); resetDebtForm();
+  SEC_NAMES.forEach(resetItemForm);
+}
+
+function renderAll(){
+  SEC_NAMES.forEach(renderItems);
+  renderExpenses();
+  renderDebts();
 }
 
 // ---------- Event delegation ----------
@@ -490,6 +722,13 @@ document.addEventListener('click', ev => {
     case 'cancel-debt': resetDebtForm(); break;
     case 'edit-debt': editDebt(id); break;
     case 'delete-debt': deleteDebt(id, t); break;
+    case 'submit-item': submitItem(t.dataset.sec); break;
+    case 'cancel-item': resetItemForm(t.dataset.sec); break;
+    case 'edit-item': editItem(t.dataset.sec, id); break;
+    case 'delete-item': deleteItem(t.dataset.sec, id, t); break;
+    case 'save-snap': saveSnapshot(); break;
+    case 'load-snap': loadSnapshot(id, t); break;
+    case 'delete-snap': deleteSnapshot(id, t); break;
     case 'recover-toggle': toggleRecovery(); break;
     case 'import-candidate': importCandidate(parseInt(t.dataset.idx, 10)); break;
     case 'save': {
@@ -507,28 +746,19 @@ document.addEventListener('keydown', ev => {
   ev.preventDefault();
   if(t.dataset.enter === 'submit-expense') submitExpense();
   else if(t.dataset.enter === 'submit-debt') submitDebt();
-});
-
-// numeric fields: update state + summary only (no list re-render, so focus is kept)
-document.addEventListener('input', ev => {
-  const f = ev.target.dataset && ev.target.dataset.field;
-  if(!f) return;
-  state[f] = parseFloat(ev.target.value) || 0;
-  persist();
-  calcSummary();
+  else if(t.dataset.enter === 'submit-item') submitItem(t.dataset.sec);
+  else if(t.dataset.enter === 'save-snap') saveSnapshot();
 });
 
 // ---------- Init ----------
-$('inflow').value = state.inflow || '';
-$('savings').value = state.savings || '';
-$('invest').value = state.invest || '';
-renderExpenses();
-renderDebts();
+SEC_NAMES.forEach(sec => { $('sec-' + sec).innerHTML = secMarkup(sec); });
+loadSnaps();
+renderAll();
+renderSnaps();
 updateSavedNote();
 
 (function autoOfferRecovery(){
-  const empty = !state.inflow && !state.savings && !state.invest && !state.expenses.length && !state.debts.length;
-  if(!empty) return;
+  if(hasData()) return;
   if(scanCandidates().length) showRecovery(true);
 })();
 </script>
