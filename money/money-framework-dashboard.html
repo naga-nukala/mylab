@@ -125,6 +125,13 @@
 
   <button class="btn primary" style="width:100%;" data-action="save">💾 Save</button>
   <div class="saved-note" id="savedNote"></div>
+
+  <div class="card" id="recoveryCard" style="margin-top:14px;" hidden>
+    <h2>Recover earlier data</h2>
+    <div class="li-meta" id="recoveryHint" style="margin-bottom:6px;line-height:1.5;"></div>
+    <div id="recoveryList"></div>
+  </div>
+  <button class="btn ghost" style="width:100%;margin-top:10px;" data-action="recover-toggle">🔍 Recover earlier data</button>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -146,12 +153,52 @@ function defaults(){ return { inflow:0, savings:0, invest:0, expenses:[], debts:
 function safeGet(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
 function safeSet(v){ try { localStorage.setItem(KEY, v); return true; } catch(e){ return false; } }
 
+// ---------- Legacy-data helpers (older versions used different field names / keys) ----------
+function pick(o, keys){
+  if(!o || typeof o !== 'object') return undefined;
+  for(const k of keys){ if(o[k] !== undefined && o[k] !== null && o[k] !== '') return o[k]; }
+  return undefined;
+}
+function num(v){ const n = parseFloat(String(v).replace(/[₹,\s]/g,'')); return isNaN(n) ? 0 : n; }
+const RATE_KEYS = ['rate','interest','interestRate','roi'];
+function normExpenses(arr){
+  return (Array.isArray(arr) ? arr : []).map(x => {
+    const name = pick(x, ['name','category','title','label']);
+    const amount = num(pick(x, ['amount','value','cost','amt']));
+    return (name !== undefined && amount > 0) ? { id: (x && x.id) ? String(x.id) : uid(), name: String(name), amount } : null;
+  }).filter(Boolean);
+}
+function normDebts(arr){
+  return (Array.isArray(arr) ? arr : []).map(x => {
+    const name = pick(x, ['name','lender','title','label']);
+    const amount = num(pick(x, ['amount','outstanding','balance','principal']));
+    const rate = num(pick(x, RATE_KEYS));
+    return (name !== undefined && amount > 0) ? { id: (x && x.id) ? String(x.id) : uid(), name: String(name), amount, rate } : null;
+  }).filter(Boolean);
+}
+function normalizeLegacy(o){
+  if(!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  const out = {
+    inflow: num(pick(o, ['inflow','income','monthlyIncome','monthlyInflow','salary'])),
+    savings: num(pick(o, ['savings','monthlySavings','saving'])),
+    invest: num(pick(o, ['invest','investment','investments','monthlyInvestment','monthlyInvest'])),
+    expenses: normExpenses(pick(o, ['expenses','outflow','outflows','expenseList'])),
+    debts: normDebts(pick(o, ['debts','loans','debtList']))
+  };
+  const found = out.inflow > 0 || out.savings > 0 || out.invest > 0 || out.expenses.length || out.debts.length;
+  return found ? out : null;
+}
+
 let state = (function(){
+  const base = defaults();
   try {
     const s = JSON.parse(safeGet() || 'null');
-    if(s && typeof s === 'object') return Object.assign(defaults(), s);
+    if(s && typeof s === 'object'){
+      const n = normalizeLegacy(s);
+      if(n) return Object.assign(base, n, { savedAt: s.savedAt || null });
+    }
   } catch(e){}
-  return defaults();
+  return base;
 })();
 
 const editing = { expense:null, debt:null };
@@ -350,6 +397,85 @@ function deleteDebt(id, btn){
   });
 }
 
+// ---------- Recover earlier data (non-destructive: old keys are never touched) ----------
+let candidates = [];
+
+function scanCandidates(){
+  const out = [];
+  const keys = [];
+  try { for(let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch(e){ return out; }
+  keys.forEach(k => {
+    if(k === KEY) return;
+    let v;
+    try { v = JSON.parse(localStorage.getItem(k)); } catch(e){ return; }
+    if(Array.isArray(v)){
+      if(!/money|framework|inflow|outflow|expense|debt|mf_/i.test(k)) return;
+      const objs = v.filter(x => x && typeof x === 'object');
+      const d = normDebts(objs.filter(x => pick(x, RATE_KEYS) !== undefined));
+      const e = normExpenses(objs.filter(x => pick(x, RATE_KEYS) === undefined));
+      if(d.length) out.push({ key:k, data:{ inflow:0, savings:0, invest:0, expenses:[], debts:d } });
+      if(e.length) out.push({ key:k, data:{ inflow:0, savings:0, invest:0, expenses:e, debts:[] } });
+    } else {
+      const n = normalizeLegacy(v);
+      if(n) out.push({ key:k, data:n });
+    }
+  });
+  const likely = c => /money|framework|inflow|outflow|mf_/i.test(c.key) ? 0 : 1;
+  return out.sort((a,b) => likely(a) - likely(b));
+}
+
+function summarize(d){
+  const parts = [];
+  if(d.inflow > 0) parts.push('Income ' + fmt(d.inflow));
+  if(d.expenses.length) parts.push(d.expenses.length + ' expense' + (d.expenses.length > 1 ? 's' : ''));
+  if(d.debts.length) parts.push(d.debts.length + ' debt' + (d.debts.length > 1 ? 's' : ''));
+  if(d.savings > 0) parts.push('Savings ' + fmt(d.savings));
+  if(d.invest > 0) parts.push('Investment ' + fmt(d.invest));
+  return parts.join(' · ');
+}
+
+function showRecovery(auto){
+  candidates = scanCandidates();
+  const card = $('recoveryCard');
+  card.hidden = false;
+  $('recoveryHint').textContent = candidates.length
+    ? (auto ? 'Found data from an earlier version of this page. Tap Import to bring it back.' : 'Tap Import on the one that looks right. Your old data stays untouched.')
+    : 'Nothing found in this browser for this site address. Browser storage is separate for each web address — open this page at the same address where your old data lived (e.g. your GitHub Pages link), then tap Recover again.';
+  $('recoveryList').innerHTML = candidates.map((c, i) => `
+    <div class="list-item">
+      <div class="li-main"><div class="li-name">${esc(c.key)}</div><div class="li-meta">${esc(summarize(c.data))}</div></div>
+      <div class="li-actions"><button class="icon-btn edit" data-action="import-candidate" data-idx="${i}">Import</button></div>
+    </div>`).join('');
+}
+
+function toggleRecovery(){
+  if(!$('recoveryCard').hidden){ $('recoveryCard').hidden = true; return; }
+  showRecovery(false);
+}
+
+function importCandidate(i){
+  const c = candidates[i];
+  if(!c) return;
+  const d = c.data;
+  if(!state.inflow) state.inflow = d.inflow;
+  if(!state.savings) state.savings = d.savings;
+  if(!state.invest) state.invest = d.invest;
+  d.expenses.forEach(e => {
+    if(!state.expenses.some(x => x.name === e.name && x.amount === e.amount)) state.expenses.push({ id: uid(), name: e.name, amount: e.amount });
+  });
+  d.debts.forEach(x => {
+    if(!state.debts.some(y => y.name === x.name && y.amount === x.amount && y.rate === x.rate)) state.debts.push({ id: uid(), name: x.name, amount: x.amount, rate: x.rate });
+  });
+  persist();
+  $('inflow').value = state.inflow || '';
+  $('savings').value = state.savings || '';
+  $('invest').value = state.invest || '';
+  renderExpenses();
+  renderDebts();
+  $('recoveryCard').hidden = true;
+  toast('Imported from ' + c.key);
+}
+
 // ---------- Event delegation ----------
 document.addEventListener('click', ev => {
   const t = ev.target.closest('[data-action]');
@@ -364,6 +490,8 @@ document.addEventListener('click', ev => {
     case 'cancel-debt': resetDebtForm(); break;
     case 'edit-debt': editDebt(id); break;
     case 'delete-debt': deleteDebt(id, t); break;
+    case 'recover-toggle': toggleRecovery(); break;
+    case 'import-candidate': importCandidate(parseInt(t.dataset.idx, 10)); break;
     case 'save': {
       const ok = persist();
       toast(ok ? 'Saved ✓' : 'Couldn’t save — browser storage is blocked');
@@ -397,6 +525,12 @@ $('invest').value = state.invest || '';
 renderExpenses();
 renderDebts();
 updateSavedNote();
+
+(function autoOfferRecovery(){
+  const empty = !state.inflow && !state.savings && !state.invest && !state.expenses.length && !state.debts.length;
+  if(!empty) return;
+  if(scanCandidates().length) showRecovery(true);
+})();
 </script>
 </body>
 </html>
