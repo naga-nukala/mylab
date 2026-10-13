@@ -17,8 +17,8 @@
   .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
   label{display:block;font-size:14px;margin-bottom:6px;font-weight:600;}
   .hint{font-size:12px;color:var(--sub);margin-bottom:8px;}
-  input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
-  input:focus{outline:2px solid var(--acc);}
+  input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
+  input:focus,select:focus{outline:2px solid var(--acc);}
   input[readonly]{border-style:dashed;color:var(--acc);font-weight:700;cursor:not-allowed;}
   .result-box{text-align:center;padding:24px 16px;}
   .result-num{font-size:36px;font-weight:800;color:var(--acc);}
@@ -89,7 +89,7 @@
       <div class="split-row"><label for="cur_savings">Savings account<small>Instant</small></label><input type="number" id="cur_savings" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
       <div class="split-row"><label for="cur_cash">Cash in hand<small>Instant</small></label><input type="number" id="cur_cash" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
       <div class="split-row"><label for="cur_liquid">Liquid mutual fund<small>1 working day</small></label><input type="number" id="cur_liquid" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
-      <div class="split-row"><label for="cur_fd">Fixed deposit<small>Premature-break penalty applies</small></label><input type="number" id="cur_fd" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+      <div class="split-row"><label for="cur_fd">Fixed deposit<small>Premature-break penalty applies</small></label><div><input type="number" id="cur_fd" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"><select id="cur_fd_tracker" aria-label="Pick an active FD from FD Tracker" style="margin-top:6px;"><option value="">Choose from FD Tracker</option></select><small class="hint" style="display:block;margin:6px 0 0;">Selecting an FD fills its invested principal. <a href="fd-tracker.html" style="color:var(--acc);">Open FD Tracker</a></small></div></div>
       <div class="split-row"><label for="cur_rd">Recurring deposit<small>Premature-break penalty applies</small></label><input type="number" id="cur_rd" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
       <div class="split-row"><label for="cur_other">Other<small>Only if quickly convertible to cash</small></label><input type="number" id="cur_other" data-group="cur" min="0" step="100" inputmode="decimal" placeholder="0"></div>
       <div class="hint split-foot">Total fills the field above automatically.</div>
@@ -139,9 +139,11 @@
 <script>
 const DRAFT_KEY = 'emergencyFundCalculator_draft_v1';
 const REFERENCES_KEY = 'emergencyFundCalculator_references_v1';
+const FD_STORAGE_KEY = 'fd_tracker_v1';
+const FD_PICKER_ID = 'cur_fd_tracker';
 const MAIN_IDS = ['monthlyExp', 'months', 'current', 'monthlyContrib'];
 const SPLIT_IDS = ['cur_savings','cur_cash','cur_liquid','cur_fd','cur_rd','cur_other','mon_savings','mon_liquid','mon_rd','mon_cash','mon_other'];
-const FIELD_IDS = MAIN_IDS.concat(SPLIT_IDS);
+const FIELD_IDS = MAIN_IDS.concat(SPLIT_IDS, [FD_PICKER_ID]);
 const GROUPS = { cur: {main:'current', sum:'curSum', box:'curSplit'}, mon: {main:'monthlyContrib', sum:'monSum', box:'monSplit'} };
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -173,6 +175,32 @@ function confirmTwice(key, btn, label, action){
 function readStorage(key, fallback){
   try{ const value = JSON.parse(localStorage.getItem(key)); return value === null ? fallback : value; }
   catch(error){ return fallback; }
+}
+
+function emergencyFDs(){
+  const fds = readStorage(FD_STORAGE_KEY, []);
+  return Array.isArray(fds) ? fds.filter(fd => fd.status === 'Active' && Number.isFinite(Number(fd.investedAmount)) && Number(fd.investedAmount) > 0) : [];
+}
+
+function populateFDPicker(){
+  const picker = document.getElementById(FD_PICKER_ID);
+  const fds = emergencyFDs();
+  picker.innerHTML = '<option value="">Choose from FD Tracker</option>' + fds.map(fd => {
+    const details = [fd.bankAccount, fd.owner, fd.purpose].filter(Boolean).join(' · ');
+    return `<option value="${escapeHtml(fd.id)}">${escapeHtml(details || 'FD')} — ${formatCurrency(Number(fd.investedAmount))}</option>`;
+  }).join('');
+}
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+
+function pickEmergencyFD(){
+  const id = document.getElementById(FD_PICKER_ID).value;
+  const fd = emergencyFDs().find(item => item.id === id);
+  if(fd) document.getElementById('cur_fd').value = Number(fd.investedAmount);
+  syncSplit('cur');
+  calc();
 }
 
 function saveDraft(){
@@ -216,6 +244,7 @@ function getValues(){
 function getSplits(){
   const out = {};
   SPLIT_IDS.forEach(id => { const v = document.getElementById(id).value; if(v.trim() !== '') out[id] = v; });
+  if(document.getElementById(FD_PICKER_ID).value) out[FD_PICKER_ID] = document.getElementById(FD_PICKER_ID).value;
   return out;
 }
 
@@ -276,6 +305,7 @@ function restoreReference(id){
   if(!reference) return;
   const splits = reference.splits || {};
   SPLIT_IDS.forEach(fid => { document.getElementById(fid).value = splits[fid] !== undefined ? splits[fid] : ''; });
+  document.getElementById(FD_PICKER_ID).value = splits[FD_PICKER_ID] || '';
   MAIN_IDS.forEach(fid => { document.getElementById(fid).value = reference[fid]; });
   document.getElementById('curSplit').open = SPLIT_IDS.some(fid => fid.startsWith('cur_') && splits[fid] !== undefined);
   document.getElementById('monSplit').open = SPLIT_IDS.some(fid => fid.startsWith('mon_') && splits[fid] !== undefined);
@@ -295,6 +325,7 @@ function resetCalculator(){
   document.getElementById('monthlyExp').value = '';
   document.getElementById('months').value = '9';
   SPLIT_IDS.forEach(fid => { document.getElementById(fid).value = ''; });
+  document.getElementById(FD_PICKER_ID).value = '';
   document.getElementById('current').value = '0';
   document.getElementById('monthlyContrib').value = '0';
   syncAllSplits();
@@ -324,10 +355,13 @@ document.getElementById('savedReferences').addEventListener('click', e => {
 });
 document.getElementById('saveRefBtn').addEventListener('click', saveReference);
 document.getElementById('resetBtn').addEventListener('click', resetCalculator);
+document.getElementById(FD_PICKER_ID).addEventListener('change', pickEmergencyFD);
+document.getElementById('cur_fd').addEventListener('input', () => { document.getElementById(FD_PICKER_ID).value = ''; saveDraft(); });
 const clearBtn = document.getElementById('clearRefsBtn');
 clearBtn.addEventListener('click', () => confirmTwice('clear-all', clearBtn, 'Clear all', clearReferences));
 document.querySelectorAll('[data-group]').forEach(input => input.addEventListener('input', () => { syncSplit(input.dataset.group); calc(); }));
 
+populateFDPicker();
 loadDraft();
 syncAllSplits();
 ['cur','mon'].forEach(g => { if(document.querySelector(`[data-group="${g}"]:not([value=""])`) && [...document.querySelectorAll(`[data-group="${g}"]`)].some(i => i.value.trim() !== '')) document.getElementById(GROUPS[g].box).open = true; });

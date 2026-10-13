@@ -73,6 +73,7 @@
 
 <script>
 const STORAGE_KEY = 'financial_life_plan_v2';
+const FD_STORAGE_KEY = 'fd_tracker_v1';
 function safeGetItem(key){
   try { return localStorage.getItem(key); } catch(e) { return null; }
 }
@@ -94,6 +95,39 @@ let state = JSON.parse(safeGetItem(STORAGE_KEY) || 'null') || {
 };
 
 function save(){ safeSetItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function emergencyFDs(){
+  try {
+    const fds = JSON.parse(safeGetItem(FD_STORAGE_KEY) || '[]');
+    return Array.isArray(fds) ? fds.filter(fd => fd.status === 'Active' && Number.isFinite(Number(fd.investedAmount)) && Number(fd.investedAmount) > 0) : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+
+function emergencyFDAmount(){
+  const selected = emergencyFDs().find(fd => fd.id === state.emergencyFund.selectedFDId);
+  return selected ? Number(selected.investedAmount) : 0;
+}
+
+function emergencyFDOptions(){
+  const fds = emergencyFDs();
+  return `<option value="">${fds.length ? 'Select an active FD' : 'No active FDs found'}</option>` +
+    fds.map(fd => {
+      const details = [fd.bankAccount, fd.owner, fd.purpose].filter(Boolean).join(' · ');
+      return `<option value="${escapeHtml(fd.id)}">${escapeHtml(details || 'FD')} — ₹${Number(fd.investedAmount).toLocaleString('en-IN')}</option>`;
+    }).join('');
+}
+
+function selectEmergencyFD(id){
+  state.emergencyFund.selectedFDId = id;
+  save();
+  patchUI();
+}
 
 function saveLifeStage(isNone){
   if(isNone && document.getElementById('ls-none').checked){
@@ -148,9 +182,10 @@ function fvOfSIP(monthlyAmt, annualReturnPct, years){
 function emergencyFundStatus(){
   const { monthlyExpense, currentSavings } = state.emergencyFund;
   if(monthlyExpense<=0) return {status:'red', msg:'Enter your monthly expense to see your safety net.'};
-  const months = currentSavings/monthlyExpense;
+  const totalSavings = (currentSavings || 0) + emergencyFDAmount();
+  const months = totalSavings/monthlyExpense;
   const target = monthlyExpense*9;
-  const gap = Math.max(0, target-currentSavings);
+  const gap = Math.max(0, target-totalSavings);
   const status = months>=9 ? 'green' : months>=3 ? 'amber' : 'red';
   return { status, msg: `${months.toFixed(1)} months covered. Target: 9 months (₹${target.toLocaleString('en-IN')}). ${gap>0?`Need ₹${gap.toLocaleString('en-IN')} more.`:'Fully funded.'}` };
 }
@@ -237,7 +272,14 @@ function renderGoals(){
       <div class="goal-detail ${state.openCard==='ef'?'open':''}">
         <div class="row">
           <div class="field"><label>Monthly Essential Expense (₹)</label><input type="number" value="${state.emergencyFund.monthlyExpense||''}" oninput="state.emergencyFund.monthlyExpense=parseFloat(this.value)||0; save(); patchUI();"></div>
-          <div class="field"><label>Current Emergency Savings (₹)</label><input type="number" value="${state.emergencyFund.currentSavings||''}" oninput="state.emergencyFund.currentSavings=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="field"><label>Other Emergency Savings (₹)</label><input type="number" value="${state.emergencyFund.currentSavings||''}" oninput="state.emergencyFund.currentSavings=parseFloat(this.value)||0; save(); patchUI();"></div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="emergencyFD">Emergency FD from FD Tracker</label>
+            <select id="emergencyFD" onchange="selectEmergencyFD(this.value)">${emergencyFDOptions()}</select>
+            <div class="goal-msg">Selected FD principal is included in your emergency-fund total. <a href="fd-tracker.html" style="color:var(--acc);">Open FD Tracker</a></div>
+          </div>
         </div>
       </div>
     </div>
