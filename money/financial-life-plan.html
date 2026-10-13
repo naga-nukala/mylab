@@ -74,6 +74,8 @@
 <script>
 const STORAGE_KEY = 'financial_life_plan_v2';
 const FD_STORAGE_KEY = 'fd_tracker_v1';
+const DEBT_STORAGE_KEY = 'debt_dashboard_loans_v3';
+const CHILD_GOALS_STORAGE_KEY = 'childCorpus_v1';
 function safeGetItem(key){
   try { return localStorage.getItem(key); } catch(e) { return null; }
 }
@@ -89,12 +91,41 @@ let state = JSON.parse(safeGetItem(STORAGE_KEY) || 'null') || {
   childAge: 0,
   eduTarget: 1500000, eduCurrentSIP: 0,
   marriageTarget: 1000000, marriageCurrentSIP: 0,
+  eduChildAge:0, marriageChildAge:0,
+  eduTargetAge:18, marriageTargetAge:25,
+  eduInflationRate:8, marriageInflationRate:6,
+  eduReturnRate:12, marriageReturnRate:12,
+  eduAlreadySaved:0, marriageAlreadySaved:0,
   parentsHealthIns: false, parentsBudgetSet: false, parentsBudgetAmt: 0,
   retirement: { currentAge:0, targetAge:60, currentSIP:0 },
   openCard: null
 };
 
 function save(){ safeSetItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function childAgeFor(prefix){
+  const age = state[`${prefix}ChildAge`];
+  return age !== undefined && Number.isFinite(Number(age)) ? Number(age) : Number(state.childAge) || 0;
+}
+
+function childTargetAgeFor(prefix, fallback){
+  const age = state[`${prefix}TargetAge`];
+  return age !== undefined && Number.isFinite(Number(age)) ? Number(age) : fallback;
+}
+
+function childRateFor(prefix, key, fallback){
+  const rate = state[`${prefix}${key}`];
+  return rate !== undefined && Number.isFinite(Number(rate)) ? Number(rate) : fallback;
+}
+
+function readStoredArray(key){
+  try {
+    const value = JSON.parse(safeGetItem(key) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch(e) {
+    return [];
+  }
+}
 
 function emergencyFDs(){
   try {
@@ -127,6 +158,89 @@ function selectEmergencyFD(id){
   state.emergencyFund.selectedFDId = id;
   save();
   patchUI();
+}
+
+function debtDashboardLoans(){
+  return readStoredArray(DEBT_STORAGE_KEY).map(loan => {
+    const rate = Number(loan.rate);
+    let outstanding = Number(loan.manualOutstanding) || 0;
+    if(loan.kind === 'emi' && !(loan.manualOverride && outstanding > 0)){
+      const principal = Number(loan.originalAmount);
+      const tenure = Number(loan.tenureMonths);
+      const monthlyRate = rate / 1200;
+      const emi = Number(loan.customEmi) > 0 ? Number(loan.customEmi) :
+        monthlyRate === 0 ? principal / tenure :
+        principal * monthlyRate * Math.pow(1 + monthlyRate, tenure) / (Math.pow(1 + monthlyRate, tenure) - 1);
+      const start = loan.startDate ? new Date(loan.startDate) : new Date();
+      const now = new Date();
+      const elapsed = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth());
+      outstanding = principal;
+      for(let month = 0; month < elapsed && outstanding > 0.5; month++){
+        outstanding += outstanding * monthlyRate - emi;
+      }
+      outstanding = Math.max(0, outstanding);
+    }
+    return { ...loan, rate, outstanding };
+  }).filter(loan => loan.id !== undefined && Number.isFinite(loan.rate) &&
+    Number.isFinite(loan.outstanding) && loan.outstanding > 0);
+}
+
+function debtDashboardOptions(selectedId){
+  const loans = debtDashboardLoans();
+  return `<option value="">${loans.length ? 'Select a loan from Debt Dashboard' : 'No outstanding loans found'}</option>` +
+    loans.map(loan => {
+      const type = ({home:'Home',car:'Car',personal:'Personal',creditcard:'Credit Card',gold:'Gold/Bullet',other:'Other'})[loan.type] || loan.type || 'Loan';
+      const label = [loan.lender, type].filter(Boolean).join(' · ');
+      const selected = String(loan.id) === String(selectedId) ? ' selected' : '';
+      return `<option value="${escapeHtml(loan.id)}"${selected}>${escapeHtml(label)} — ₹${loan.outstanding.toLocaleString('en-IN',{maximumFractionDigits:0})} · ${loan.rate}%</option>`;
+    }).join('');
+}
+
+function selectDashboardLoan(index, id){
+  const loan = debtDashboardLoans().find(item => String(item.id) === id);
+  if(!loan) return;
+  const type = ({home:'Home',car:'Car',personal:'Personal',creditcard:'Credit Card',gold:'Gold/Bullet',other:'Other'})[loan.type] || loan.type || 'Loan';
+  state.debts[index] = {
+    ...state.debts[index],
+    dashboardLoanId: loan.id,
+    type: [loan.lender, type].filter(Boolean).join(' · '),
+    outstanding: loan.outstanding,
+    rate: loan.rate
+  };
+  save();
+  renderGoals();
+}
+
+function childPlannerGoals(type){
+  return readStoredArray(CHILD_GOALS_STORAGE_KEY).filter(goal =>
+    goal.goalType === type && goal.id !== undefined &&
+    Number.isFinite(Number(goal.currentAge)) && Number.isFinite(Number(goal.targetAge)) &&
+    Number.isFinite(Number(goal.costToday))
+  );
+}
+
+function childGoalOptions(type, selectedId){
+  const goals = childPlannerGoals(type);
+  return `<option value="">${goals.length ? 'Select a saved goal' : 'No saved goals found'}</option>` +
+    goals.map(goal => {
+      const selected = String(goal.id) === String(selectedId) ? ' selected' : '';
+      return `<option value="${escapeHtml(goal.id)}"${selected}>${escapeHtml(goal.childName)} · Age ${goal.currentAge}→${goal.targetAge} · ₹${Number(goal.costToday).toLocaleString('en-IN')}</option>`;
+    }).join('');
+}
+
+function selectChildGoal(type, id){
+  const goal = childPlannerGoals(type).find(item => String(item.id) === id);
+  if(!goal) return;
+  const prefix = type === 'Education' ? 'edu' : 'marriage';
+  state[`${prefix}ChildAge`] = Number(goal.currentAge);
+  state[`${prefix}TargetAge`] = Number(goal.targetAge);
+  state[`${prefix}Target`] = Number(goal.costToday);
+  state[`${prefix}InflationRate`] = Number(goal.inflationRate);
+  state[`${prefix}ReturnRate`] = Number(goal.returnRate);
+  state[`${prefix}AlreadySaved`] = Number(goal.alreadySaved) || 0;
+  state[`${prefix}GoalId`] = goal.id;
+  save();
+  renderGoals();
 }
 
 function saveLifeStage(isNone){
@@ -207,12 +321,13 @@ function debtStatus(){
   return { status, msg: `Close ${priority.type||'top loan'} first (${priority.rate}% — highest rate). Total outstanding: ₹${totalOutstanding.toLocaleString('en-IN')}. ${state.extraPayment>0?`Extra ₹${state.extraPayment}/mo committed.`:'No extra payment committed yet.'}` };
 }
 
-function childGoalCalc(targetToday, milestoneAge, inflationPct, currentSIP){
-  const yearsAway = Math.max(0, milestoneAge - state.childAge);
+function childGoalCalc(targetToday, milestoneAge, inflationPct, currentSIP, currentAge, alreadySaved, returnPct){
+  const yearsAway = Math.max(0, milestoneAge - currentAge);
   const futureValue = targetToday * Math.pow(1+inflationPct/100, yearsAway);
-  const requiredSIP = requiredMonthlySIP(futureValue, 12, yearsAway);
+  const savedAtGoal = alreadySaved * Math.pow(1+returnPct/100, yearsAway);
+  const requiredSIP = requiredMonthlySIP(Math.max(0, futureValue-savedAtGoal), returnPct, yearsAway);
   const status = currentSIP<=0 ? 'red' : currentSIP>=requiredSIP ? 'green' : 'amber';
-  return { yearsAway, futureValue, requiredSIP, status };
+  return { yearsAway, futureValue, savedAtGoal, requiredSIP, status };
 }
 
 function parentsStatus(){
@@ -299,7 +414,8 @@ function renderGoals(){
   if(state.lifeStage.loan){
     const debtRows = state.debts.map((d,i)=>`
       <div class="row">
-        <div class="field"><label>Type</label><input type="text" value="${d.type}" oninput="state.debts[${i}].type=this.value; save(); patchUI();"></div>
+        <div class="field"><label for="debtSource${i}">Pick from Debt Dashboard</label><select id="debtSource${i}" onchange="selectDashboardLoan(${i},this.value)">${debtDashboardOptions(d.dashboardLoanId)}</select></div>
+        <div class="field"><label>Loan</label><input type="text" value="${escapeHtml(d.type||'')}" oninput="state.debts[${i}].type=this.value; save(); patchUI();"></div>
         <div class="field"><label>Outstanding (₹)</label><input type="number" value="${d.outstanding||''}" oninput="state.debts[${i}].outstanding=parseFloat(this.value)||0; save(); patchUI();"></div>
         <div class="field"><label>Rate (%)</label><input type="number" value="${d.rate||''}" oninput="state.debts[${i}].rate=parseFloat(this.value)||0; save(); patchUI();"></div>
       </div>
@@ -310,6 +426,7 @@ function renderGoals(){
         <div class="goal-msg" id="msg-debt"></div>
         <div class="goal-detail ${state.openCard==='debt'?'open':''}">
           ${debtRows}
+          <div class="goal-msg" style="margin-bottom:8px;"><a href="debt-dashboard.html" style="color:var(--acc);">Open Debt Dashboard</a></div>
           <button class="primary" style="margin-bottom:8px;" onclick="addLoan()">+ Add Loan</button>
           <div class="field"><label>Extra Monthly Payment Committed (₹)</label><input type="number" value="${state.extraPayment||''}" oninput="state.extraPayment=parseFloat(this.value)||0; save(); patchUI();"></div>
         </div>
@@ -323,19 +440,25 @@ function renderGoals(){
         <div class="goal-head" onclick="toggleCard('children')"><span class="goal-title">🎓 Children's Goals</span><span id="badge-children"></span></div>
         <div class="goal-msg" id="msg-children"></div>
         <div class="goal-detail ${state.openCard==='children'?'open':''}">
+          <div class="subgoal-title">🎓 Education</div>
           <div class="row">
-            <div class="field"><label>Child's Current Age</label><input type="number" value="${state.childAge||''}" oninput="state.childAge=parseFloat(this.value)||0; save(); patchUI();"></div>
-          </div>
-          <div class="subgoal-title">🎓 Education (assumed age 18)</div>
-          <div class="row">
+            <div class="field"><label for="eduGoalSource">Pick Education Goal</label><select id="eduGoalSource" onchange="selectChildGoal('Education',this.value)">${childGoalOptions('Education',state.eduGoalId)}</select></div>
+            <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('edu')||''}" oninput="state.eduChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+            <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('edu',18)}" oninput="state.eduTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
             <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.eduTarget}" oninput="state.eduTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
+            <div class="field"><label>Already Saved (₹)</label><input type="number" value="${state.eduAlreadySaved||''}" oninput="state.eduAlreadySaved=parseFloat(this.value)||0; save(); patchUI();"></div>
             <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.eduCurrentSIP||''}" oninput="state.eduCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
           </div>
+          <div class="goal-msg">Selected goal details fill age, target, saved amount, and rates. Current SIP remains independently editable. <a href="children-corpus-planner.html" style="color:var(--acc);">Open Children's Corpus Planner</a></div>
           <div class="math-line" id="math-edu"></div>
 
-          <div class="subgoal-title">💍 Marriage (assumed age 25)</div>
+          <div class="subgoal-title">💍 Marriage</div>
           <div class="row">
+            <div class="field"><label for="marriageGoalSource">Pick Marriage Goal</label><select id="marriageGoalSource" onchange="selectChildGoal('Marriage',this.value)">${childGoalOptions('Marriage',state.marriageGoalId)}</select></div>
+            <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('marriage')||''}" oninput="state.marriageChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+            <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('marriage',25)}" oninput="state.marriageTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
             <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.marriageTarget}" oninput="state.marriageTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
+            <div class="field"><label>Already Saved (₹)</label><input type="number" value="${state.marriageAlreadySaved||''}" oninput="state.marriageAlreadySaved=parseFloat(this.value)||0; save(); patchUI();"></div>
             <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.marriageCurrentSIP||''}" oninput="state.marriageCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
           </div>
           <div class="math-line" id="math-marriage"></div>
@@ -404,14 +527,18 @@ function patchUI(){
   }
 
   if(state.lifeStage.children){
-    const edu = childGoalCalc(state.eduTarget, 18, 8, state.eduCurrentSIP);
-    const marriage = childGoalCalc(state.marriageTarget, 25, 6, state.marriageCurrentSIP);
+    const eduAge = childAgeFor('edu'), eduTargetAge = childTargetAgeFor('edu',18);
+    const eduInflation = childRateFor('edu','InflationRate',8), eduReturn = childRateFor('edu','ReturnRate',12);
+    const marriageAge = childAgeFor('marriage'), marriageTargetAge = childTargetAgeFor('marriage',25);
+    const marriageInflation = childRateFor('marriage','InflationRate',6), marriageReturn = childRateFor('marriage','ReturnRate',12);
+    const edu = childGoalCalc(state.eduTarget, eduTargetAge, eduInflation, state.eduCurrentSIP, eduAge, state.eduAlreadySaved||0, eduReturn);
+    const marriage = childGoalCalc(state.marriageTarget, marriageTargetAge, marriageInflation, state.marriageCurrentSIP, marriageAge, state.marriageAlreadySaved||0, marriageReturn);
     const overallStatus = (edu.status==='green' && marriage.status==='green') ? 'green' : (edu.status==='red' && marriage.status==='red') ? 'red' : 'amber';
     applicableCount++; if(overallStatus==='green') protectedCount++;
     setIfExists('badge-children', badgeHTML(overallStatus));
     setIfExists('msg-children', `Education in ${edu.yearsAway}y, Marriage in ${marriage.yearsAway}y.`, true);
-    setIfExists('math-edu', `${badgeHTML(edu.status)} In ${edu.yearsAway} years, ₹${state.eduTarget.toLocaleString('en-IN')} today = ₹${edu.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (8% education inflation). Required SIP: ₹${edu.requiredSIP.toFixed(0)}/month at 12% return.`);
-    setIfExists('math-marriage', `${badgeHTML(marriage.status)} In ${marriage.yearsAway} years, ₹${state.marriageTarget.toLocaleString('en-IN')} today = ₹${marriage.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (6% inflation). Required SIP: ₹${marriage.requiredSIP.toFixed(0)}/month at 12% return.`);
+    setIfExists('math-edu', `${badgeHTML(edu.status)} In ${edu.yearsAway} years, ₹${state.eduTarget.toLocaleString('en-IN')} today = ₹${edu.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (${eduInflation}% inflation). Saved amount grows to ₹${edu.savedAtGoal.toLocaleString('en-IN',{maximumFractionDigits:0})}. Required SIP: ₹${edu.requiredSIP.toFixed(0)}/month at ${eduReturn}% return.`);
+    setIfExists('math-marriage', `${badgeHTML(marriage.status)} In ${marriage.yearsAway} years, ₹${state.marriageTarget.toLocaleString('en-IN')} today = ₹${marriage.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (${marriageInflation}% inflation). Saved amount grows to ₹${marriage.savedAtGoal.toLocaleString('en-IN',{maximumFractionDigits:0})}. Required SIP: ₹${marriage.requiredSIP.toFixed(0)}/month at ${marriageReturn}% return.`);
   }
 
   if(state.lifeStage.parents){

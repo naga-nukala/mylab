@@ -49,6 +49,9 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-spac
 .det:not(.open) .grid2,.det:not(.open) .dethint{display:none}
 .det .grid2{margin-top:6px}
 .det.open .det-head .chev{transform:rotate(45deg)}
+.pos{color:var(--mint)}
+.elig{margin-top:10px;font-size:13px;background:rgba(167,232,197,.08);border:1px solid rgba(167,232,197,.35);border-radius:10px;padding:9px 11px}
+.elig b{font-size:16px}
 .info{margin-top:10px;font-size:12.5px;color:var(--mut);background:var(--card2);border-radius:10px;padding:8px 10px}
 .sect{margin:16px 0 8px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:space-between}
 
@@ -159,7 +162,7 @@ function newYear(k){
   }else{
     var o=openFY(k.open);fy=o!==null?o:currentFY();
   }
-  return {id:uid(),fy:String(fy),mode:'same',same:'',n:'12',months:['','','','','','','','','','','',''],interest:'',rate:rate,balance:'',collapsed:false};
+  return {id:uid(),fy:String(fy),mode:'same',same:'',n:'12',months:['','','','','','','','','','','',''],interest:'',rate:rate,balance:'',withdrawn:'',collapsed:false};
 }
 
 /* ---------- calc ---------- */
@@ -169,13 +172,42 @@ function principal(y){
   return num(y.same)*n;
 }
 function calcAcc(k){
-  var prev=num(k.opening),rows={},totP=0,totI=0;
+  var prev=num(k.opening),rows={},byFy={},totP=0,totI=0;
   sorted(k).forEach(function(y){
-    var p=principal(y),i=num(y.interest),auto=prev+p+i,eff=has(y.balance)?num(y.balance):auto;
+    var p=principal(y),i=num(y.interest),w=num(y.withdrawn),auto=prev+p+i-w,eff=has(y.balance)?num(y.balance):auto;
     rows[y.id]={p:p,i:i,auto:auto,eff:eff};
+    if(has(y.fy))byFy[parseInt(y.fy,10)]=eff;
     totP+=p;totI+=i;prev=eff;
   });
-  return {rows:rows,totP:totP,totI:totI,bal:prev};
+  return {rows:rows,byFy:byFy,totP:totP,totI:totI,bal:prev};
+}
+
+/* ---------- partial withdrawal eligibility ---------- */
+/* From the 7th FY (opening FY = 1st): up to 50% of the lower of the balance at the end of
+   the preceding year and the balance at the end of the 4th year before the withdrawal year. */
+function eligible(k,c,fy){
+  var o=openFY(k.open);
+  if(o===null)return {st:'noopen'};
+  if(fy-o+1<7)return {st:'early',from:o+6};
+  var first=null;
+  Object.keys(c.byFy).forEach(function(x){x=+x;if(first===null||x<first)first=x;});
+  function bal(f){
+    if(c.byFy[f]!==undefined)return c.byFy[f];
+    if(first!==null&&f===first-1&&has(k.opening))return num(k.opening);
+    return null;
+  }
+  var a=bal(fy-1),b=bal(fy-4),need=[];
+  if(b===null)need.push(fy-4);
+  if(a===null)need.push(fy-1);
+  if(need.length)return {st:'missing',need:need};
+  return {st:'ok',amt:Math.min(a,b)*0.5,a:a,b:b};
+}
+function eligHTML(e,fy){
+  if(e.st==='noopen')return 'Set the account open date to see withdrawal eligibility.';
+  if(e.st==='early')return 'Partial withdrawal opens from FY '+fyLabel(e.from)+' (7th FY from opening).';
+  if(e.st==='missing')return 'Add FY '+e.need.map(fyLabel).join(' and FY ')+' to see the eligible withdrawal for FY '+fyLabel(fy)+'.';
+  return 'Eligible to withdraw in FY '+fyLabel(fy)+': <b class="pos">'+inr(e.amt)+'</b>'+
+    '<div class="hint">50% of the lower of '+inr(e.a)+' (Mar '+fy+') and '+inr(e.b)+' (Mar '+(fy-3)+'). One withdrawal per FY.</div>';
 }
 
 /* ---------- render (structure) ---------- */
@@ -198,8 +230,9 @@ function yearHTML(y){
       field('FY starting Apr of','fy',y.fy,'type="number" inputmode="numeric" step="1"')+
       field('Interest credited (₹)','interest',y.interest,numAttr())+
       field('Interest rate (% p.a.)','rate',y.rate,numAttr())+
+      field('Withdrawn this FY (₹)','withdrawn',y.withdrawn,numAttr(),'0')+
       field('Mar-end balance (₹)','balance',y.balance,numAttr(),'auto')+
-    '</div><div class="hint">Leave balance blank to auto-calculate (previous balance + principal + interest). Type the passbook figure to override.</div>'+
+    '</div><div class="hint">Leave balance blank to auto-calculate (previous balance + principal + interest − withdrawal). Type the passbook figure to override.</div>'+
     '<div class="sect" style="margin-top:14px">Monthly contributions</div>'+
     '<div class="seg"><button data-act="mode" data-mode="same" class="'+(y.mode==='each'?'':'on')+'">Same every month</button>'+
     '<button data-act="mode" data-mode="each" class="'+(y.mode==='each'?'on':'')+'">Different each month</button></div>';
@@ -214,7 +247,7 @@ function yearHTML(y){
       h+='<div class="grid2">'+field('Amount per month (₹)','same',y.same,numAttr())+
         field('Months contributed','n',y.n,'type="number" inputmode="numeric" min="0" max="12" step="1"','12')+'</div>';
     }
-    h+='<div class="psum" data-role="yr-psum"></div>'+
+    h+='<div class="psum" data-role="yr-psum"></div><div class="psum" data-role="yr-elig"></div>'+
       '<div class="row"><button class="btn delyr" data-act="del-year" data-key="y'+y.id+'">Delete FY</button></div></div>';
   }
   return h+'</div>';
@@ -231,7 +264,7 @@ function accHTML(k){
       field('Bank / post office','bank',k.bank,'type="text" autocomplete="off"')+
       '<div><label>Account open date</label><input data-f="open" type="date" value="'+esc(k.open)+'"><div class="hint" data-role="open-fmt"></div></div>'+
       field('Balance carried in (₹)','opening',k.opening,numAttr(),'0')+
-    '</div><div class="hint dethint">Carried in: only needed if earlier years are not entered here. Leave blank if you add every FY from the start.</div></div><div class="info" data-role="k-info"></div>'+
+    '</div><div class="hint dethint">Carried in: only needed if earlier years are not entered here. Leave blank if you add every FY from the start.</div></div><div class="info" data-role="k-info"></div><div class="elig" data-role="k-elig"></div>'+
     '<div class="sect"><span>Financial years</span><span class="hint" style="margin:0">tap a year to expand</span></div>';
     var ys=sorted(k);
     if(!ys.length)h+='<div class="empty">No years yet. Add the first FY.</div>';
@@ -250,6 +283,7 @@ function render(){
 }
 
 /* ---------- update (in place, no rebuild) ---------- */
+function setHTML(root,role,html){var e=root.querySelector('[data-role="'+role+'"]');if(e)e.innerHTML=html;}
 function setRole(root,role,txt){var e=root.querySelector('[data-role="'+role+'"]');if(e&&e.textContent!==txt)e.textContent=txt;}
 function update(){
   var tp=0,ti=0,tb=0;
@@ -264,9 +298,17 @@ function update(){
     setRole(el,'open-fmt',od);
     var o=openFY(k.open);
     setRole(el,'k-info',o!==null?'Matures on '+fmtDate((o+16)+'-03-31')+' (15 FYs after the opening year). Can be extended in 5-year blocks.':'Set the open date to see the maturity date.');
+    var cf=currentFY();
+    setHTML(el,'k-elig',eligHTML(eligible(k,c,cf),cf));
     k.years.forEach(function(y){
       var ye=el.querySelector('[data-year="'+y.id+'"]');if(!ye)return;
       var r=c.rows[y.id];
+      if(has(y.fy)){
+        var fyn=parseInt(y.fy,10),eg=eligible(k,c,fyn),eh=eligHTML(eg,fyn),wd=num(y.withdrawn);
+        if(wd>0&&eg.st==='ok'&&wd>eg.amt)eh+='<div class="warn">Withdrawn amount is above the eligible limit.</div>';
+        if(wd>0&&eg.st==='early')eh+='<div class="warn">Partial withdrawal is not allowed this early.</div>';
+        setHTML(ye,'yr-elig',eh);
+      }
       setRole(ye,'yr-title',fyLabel(y.fy));
       setRole(ye,'yr-p',inr(r.p));
       setRole(ye,'yr-i',inr(r.i));
