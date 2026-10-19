@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Rental Yield Calculator · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#171e1b;--cell:#131a17;--line:#26302c;--text:#e8efec;--mute:#8fa19a;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{padding:max(14px,env(safe-area-inset-top)) 12px max(32px,env(safe-area-inset-bottom))}
+h1{font-size:20px;margin:6px 0 2px;color:var(--mint)}
+.sub{color:var(--mute);font-size:12.5px;margin:0 0 12px}
+.wrap{overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:12px;background:var(--card);-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0;min-width:100%}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--card)}
+td{min-width:150px;width:150px;text-align:right;background:var(--cell);border-left:1px solid var(--line)}
+tbody th{position:sticky;left:0;z-index:2;min-width:168px;width:168px;text-align:left;font-weight:500;color:var(--mute);font-size:12.5px;white-space:normal}
+thead th{position:sticky;top:0;z-index:3;padding:8px}
+thead th:first-child{left:0;z-index:5;color:var(--mint)}
+thead th:not(:first-child){min-width:150px;width:150px;border-left:1px solid var(--line)}
+tr.sec th,tr.sec td{background:#1d2824;color:var(--mint);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;border-left:0}
+tr.b th{color:var(--text);font-weight:700}
+tr.b td{font-weight:700}
+input[type=number],input[type=text]{width:100%;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:#0c110f;color:var(--text);font-size:15px;text-align:right}
+input[type=text]{text-align:left;font-weight:600}
+input:focus{outline:none;border-color:var(--mint)}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--mint)}
+.hd{display:flex;gap:6px;margin-top:6px}
+.hd button{flex:1;padding:5px 0;font-size:12px}
+button{padding:10px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--mute);font-size:14px}
+button.armed{border-color:var(--coral);color:var(--coral)}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint);color:var(--text)}}
+.pos{color:var(--mint)}.neg{color:var(--coral)}
+.cb{display:inline-block;vertical-align:middle;width:20px;height:20px;margin-left:8px;border:2px solid var(--line);border-radius:5px;text-align:center;line-height:16px;font-size:14px;color:transparent}
+.cb.on{background:var(--mint);border-color:var(--mint);color:#0b1210;font-weight:700}
+.bar{display:flex;gap:10px;margin:12px 0}
+.bar button{flex:1}
+.note{color:var(--mute);font-size:12px;line-height:1.5;margin:6px 0}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0b1210;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<h1>Rental Yield Calculator</h1>
+<p class="sub">Each column is a scenario — swipe left/right to compare. Everything stays in your browser.</p>
+
+<div class="wrap" id="wrap"><table id="tbl"></table></div>
+
+<div class="bar">
+  <button id="add" type="button">+ Add scenario</button>
+  <button id="reset" type="button">Reset all</button>
+</div>
+
+<p class="note"><b>Assumptions.</b> 80C: principal repaid in a year (EMI + prepayments) capped at ₹1,50,000, old regime, assumes no other 80C use. 24(b): interest capped at ₹2,00,000/yr. Sec 54: assumes gains fully reinvested, so capital-gains tax is nil. Tax saved = deduction × your slab. Loan interest is simulated month by month with your EMI and monthly prepayment. A generator is “met” when its value is above zero.</p>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var KEY='as_rental-yield_v1';
+  var SECS=[
+    ['Purchase',[['price','Purchase price (₹)'],['stampPct','Stamp duty + reg. (%)'],['buyBrokPct','Buy brokerage (%)'],['otherUpfront','Other upfront (₹)']]],
+    ['Loan & prepayment',[['loan','Loan amount (₹)'],['rate','Interest rate (% p.a.)'],['tenure','Loan tenure (years)'],['prepay','Prepayment (₹ / month)']]],
+    ['Rental income & costs',[['rent','Monthly rent (₹)'],['vacMonths','Vacancy (months / yr)'],['maint','Maintenance (₹ / yr)'],['ptax','Property tax (₹ / yr)'],['otherCost','Other costs (₹ / yr)']]],
+    ['Exit',[['apprec','Appreciation (% p.a.)'],['years','Holding period (years)'],['sellBrokPct','Sale brokerage (%)'],['cgtPct','Capital-gains tax (%)']]],
+    ['Tax claims',[['slab','Your tax slab (%)'],['c80','Claim 80C (principal)','chk'],['c24','Claim 24(b) (interest)','chk'],['c54','Claim Sec 54 (CG exemption)','chk']]]
+  ];
+  var DEF={name:'Option 1',price:8000000,stampPct:7,buyBrokPct:1,otherUpfront:100000,loan:4000000,rate:8.75,tenure:20,prepay:0,rent:25000,vacMonths:1,maint:24000,ptax:8000,otherCost:6000,apprec:6,years:8,sellBrokPct:1,cgtPct:12.5,slab:30,c80:'true',c24:'true',c54:'false'};
+  var OUT=[
+    {sec:'Step 1 · Net rental yield'},
+    {id:'rent',l:'Annual rent'},{id:'vac',l:'− Vacancy',c:'neg'},{id:'costs',l:'− Maint, tax, other',c:'neg'},
+    {id:'noi',l:'Net operating income',b:1},{id:'cap',l:'Total invested capital'},{id:'ny',l:'Net yield',b:1},
+    {sec:'Loan & prepayment'},
+    {id:'emi',l:'EMI (monthly)'},{id:'intYr',l:'Avg interest / yr'},{id:'prinYr',l:'Avg principal repaid / yr'},
+    {id:'saved',l:'Interest saved by prepaying'},{id:'bal',l:'Loan outstanding at exit'},
+    {sec:'All-in return'},
+    {id:'allin',l:'All-in return / yr'},{id:'allinPct',l:'All-in % on total capital',b:1},{id:'eqPct',l:'% on your own money'},
+    {sec:'Turner’s 4 wealth generators (₹ / yr)'},
+    {id:'g1',l:'1 · Cashflow (after EMI)',chk:1},{id:'g2',l:'2 · Appreciation',chk:1},
+    {id:'g3',l:'3 · Prepayment / loan paydown',chk:1},{id:'g4',l:'4 · Tax savings',chk:1},
+    {id:'met',l:'Generators met',b:1}
+  ];
+
+  var cols=load(),refs=[],armedBtn=null,armTimer;
+  var fmt=function(n){return Math.round(n).toLocaleString('en-IN');};
+  var rs=function(n){return (n<-0.5?'−':'')+'₹'+fmt(Math.abs(n));};
+  var pc=function(n){return (isFinite(n)?n.toFixed(2):'0.00')+'%';};
+  var sg=function(x){return x>0.5?'pos':(x<-0.5?'neg':'');};
+
+  function clone(o){var r={};for(var k in DEF)r[k]=(o&&o[k]!==undefined)?o[k]:DEF[k];return r;}
+  function load(){
+    try{var r=JSON.parse(localStorage.getItem(KEY));if(r&&Array.isArray(r.cols)&&r.cols.length)return r.cols.map(clone);}catch(e){}
+    return [clone()];
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({cols:cols}));}catch(e){}}
+  function g(c,k){var v=parseFloat(c[k]);return isFinite(v)&&v>0?v:0;}
+
+  function amort(loan,rate,ten,prepay,months){
+    var o={emi:0,bal:0,tI:0,tP:0,tPre:0,y:[]};
+    if(loan<=0)return o;
+    var r=rate/1200,N=Math.max(Math.round(ten*12),1);
+    var emi=r>0?loan*r/(1-Math.pow(1+r,-N)):loan/N;
+    o.emi=emi;var bal=loan;
+    for(var m=0;m<months&&bal>0.01;m++){
+      var yi=Math.floor(m/12),yb=o.y[yi]||(o.y[yi]={i:0,p:0});
+      var i=bal*r,p=Math.min(Math.max(emi-i,0),bal);bal-=p;
+      var pre=Math.min(prepay,bal);bal-=pre;
+      yb.i+=i;yb.p+=p+pre;o.tI+=i;o.tP+=p;o.tPre+=pre;
+    }
+    o.bal=bal;return o;
+  }
+
+  function calc(c){
+    var price=g(c,'price'),yrs=Math.max(g(c,'years'),1),months=Math.round(yrs*12);
+    var stamp=price*g(c,'stampPct')/100,buyBrok=price*g(c,'buyBrokPct')/100;
+    var cap=price+stamp+buyBrok+g(c,'otherUpfront'),loan=g(c,'loan'),equity=Math.max(cap-loan,0);
+    var rent=g(c,'rent')*12,vac=g(c,'rent')*g(c,'vacMonths');
+    var costs=g(c,'maint')+g(c,'ptax')+g(c,'otherCost'),noi=rent-vac-costs;
+    var A=amort(loan,g(c,'rate'),g(c,'tenure')||1,g(c,'prepay'),months);
+    var A0=amort(loan,g(c,'rate'),g(c,'tenure')||1,0,months);
+    var sale=price*Math.pow(1+g(c,'apprec')/100,yrs),gain=sale-price,sellBrok=sale*g(c,'sellBrokPct')/100;
+    var cgtFull=Math.max(sale-sellBrok-cap,0)*g(c,'cgtPct')/100;
+    var cgt=c.c54==='true'?0:cgtFull,cgtSaved=cgtFull-cgt;
+    var slab=g(c,'slab')/100,s80=0,s24=0;
+    A.y.forEach(function(yb){
+      if(c.c80==='true')s80+=Math.min(yb.p,150000)*slab;
+      if(c.c24==='true')s24+=Math.min(yb.i,200000)*slab;
+    });
+    var intYr=A.tI/yrs,prinYr=(A.tP+A.tPre)/yrs,emiYr=(A.tI+A.tP)/yrs;
+    var g1=noi-emiYr,g2=gain/yrs,g3=prinYr,g4=(s80+s24+cgtSaved)/yrs;
+    var allin=noi+g2-intYr-(stamp+buyBrok+sellBrok+cgt)/yrs+(s80+s24)/yrs;
+    var gs=[g1,g2,g3,g4],met=gs.filter(function(x){return x>0.5;}).length;
+    return {rent:rent,vac:vac,costs:costs,noi:noi,cap:cap,ny:cap>0?noi/cap*100:0,
+      emi:A.emi,intYr:intYr,prinYr:prinYr,saved:A0.tI-A.tI,bal:A.bal,
+      allin:allin,allinPct:cap>0?allin/cap*100:0,eqPct:equity>0?allin/equity*100:0,
+      g1:g1,g2:g2,g3:g3,g4:g4,met:met};
+  }
+
+  // ---- structural build (add / remove / reset only) ----
+  var tbl=document.getElementById('tbl');
+  function build(){
+    refs=[];disarm();
+    var h='<thead><tr><th>Scenario</th>';
+    cols.forEach(function(c,i){
+      h+='<th><input type="text" data-key="name" data-col="'+i+'" value="'+esc(c.name)+'" aria-label="Scenario name">'+
+         '<div class="hd"><button type="button" data-act="dup" data-col="'+i+'">Copy</button>'+
+         '<button type="button" data-act="del" data-col="'+i+'"'+(cols.length<2?' disabled style="opacity:.4"':'')+'>Delete</button></div></th>';
+    });
+    h+='</tr></thead><tbody>';
+    SECS.forEach(function(s){
+      h+='<tr class="sec"><th>'+s[0]+'</th><td colspan="'+cols.length+'" style="width:auto"></td></tr>';
+      s[1].forEach(function(f){
+        h+='<tr><th>'+f[1]+'</th>';
+        cols.forEach(function(c,i){
+          if(f[2]==='chk')h+='<td><input type="checkbox" data-key="'+f[0]+'" data-col="'+i+'"'+(c[f[0]]==='true'?' checked':'')+'></td>';
+          else h+='<td><input type="number" inputmode="decimal" step="any" min="0" data-key="'+f[0]+'" data-col="'+i+'" value="'+esc(c[f[0]])+'"></td>';
+        });
+        h+='</tr>';
+      });
+    });
+    OUT.forEach(function(o){
+      if(o.sec){h+='<tr class="sec"><th>'+o.sec+'</th><td colspan="'+cols.length+'" style="width:auto"></td></tr>';return;}
+      h+='<tr'+(o.b?' class="b"':'')+'><th>'+o.l+'</th>';
+      cols.forEach(function(c,i){
+        h+='<td><span data-out="'+o.id+'" data-col="'+i+'"></span>'+(o.chk?'<span class="cb" role="checkbox" aria-disabled="true" aria-checked="false" data-chk="'+o.id+'" data-col="'+i+'">✓</span>':'')+'</td>';
+      });
+      h+='</tr>';
+    });
+    h+='</tbody>';
+    tbl.innerHTML=h;
+    cols.forEach(function(c,i){refs[i]={};});
+    tbl.querySelectorAll('[data-out]').forEach(function(el){refs[+el.getAttribute('data-col')][el.getAttribute('data-out')]=el;});
+    tbl.querySelectorAll('[data-chk]').forEach(function(el){refs[+el.getAttribute('data-col')]['c_'+el.getAttribute('data-chk')]=el;});
+    update();
+  }
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+
+  // ---- in-place update (typing) ----
+  function put(i,id,txt,cls){var el=refs[i][id];el.textContent=txt;el.className=cls||'';}
+  function update(){
+    cols.forEach(function(c,i){
+      var o=calc(c);
+      put(i,'rent',rs(o.rent));put(i,'vac',rs(-o.vac),'neg');put(i,'costs',rs(-o.costs),'neg');
+      put(i,'noi',rs(o.noi),sg(o.noi));put(i,'cap',rs(o.cap));put(i,'ny',pc(o.ny),sg(o.ny));
+      put(i,'emi',rs(o.emi));put(i,'intYr',rs(o.intYr),o.intYr>0?'neg':'');put(i,'prinYr',rs(o.prinYr));
+      put(i,'saved',rs(o.saved),o.saved>0.5?'pos':'');put(i,'bal',rs(o.bal));
+      put(i,'allin',rs(o.allin),sg(o.allin));put(i,'allinPct',pc(o.allinPct),sg(o.allin));put(i,'eqPct',pc(o.eqPct),sg(o.allin));
+      ['g1','g2','g3','g4'].forEach(function(k){
+        put(i,k,rs(o[k]),sg(o[k]));
+        var cb=refs[i]['c_'+k],on=o[k]>0.5;
+        cb.classList.toggle('on',on);cb.setAttribute('aria-checked',on?'true':'false');
+      });
+      put(i,'met',o.met+' / 4',o.met===4?'pos':(o.met<2?'neg':''));
+    });
+  }
+
+  // ---- events (delegated) ----
+  tbl.addEventListener('input',function(e){
+    var t=e.target,k=t.getAttribute('data-key');if(!k)return;
+    cols[+t.getAttribute('data-col')][k]=t.type==='checkbox'?String(t.checked):t.value;
+    save();update();
+  });
+  tbl.addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]');if(!b)return;
+    var i=+b.getAttribute('data-col'),act=b.getAttribute('data-act');
+    if(act==='dup'){
+      var c=clone(cols[i]);c.name=cols[i].name+' (copy)';cols.splice(i+1,0,c);save();build();toast('Scenario copied');
+    }else if(act==='del'){
+      if(cols.length<2)return;
+      if(armedBtn!==b){arm(b);return;}
+      cols.splice(i,1);save();build();toast('Scenario deleted');
+    }
+  });
+  function arm(b){disarm();armedBtn=b;b.classList.add('armed');b.dataset.t=b.textContent;b.textContent='Tap again';armTimer=setTimeout(disarm,3000);}
+  function disarm(){clearTimeout(armTimer);if(armedBtn){armedBtn.classList.remove('armed');if(armedBtn.dataset.t)armedBtn.textContent=armedBtn.dataset.t;}armedBtn=null;}
+
+  document.getElementById('add').addEventListener('click',function(){
+    if(cols.length>=12){toast('Max 12 scenarios');return;}
+    var c=clone(cols[cols.length-1]);c.name='Option '+(cols.length+1);cols.push(c);save();build();
+    var w=document.getElementById('wrap');w.scrollLeft=w.scrollWidth;toast('Scenario added');
+  });
+  var rb=document.getElementById('reset'),rArmed=false,rT;
+  rb.addEventListener('click',function(){
+    if(!rArmed){rArmed=true;rb.classList.add('armed');rb.textContent='Tap again to reset';rT=setTimeout(rDis,3000);return;}
+    rDis();cols=[clone()];save();build();toast('Reset');
+  });
+  function rDis(){clearTimeout(rT);rArmed=false;rb.classList.remove('armed');rb.textContent='Reset all';}
+
+  var te=document.getElementById('toast'),tt;
+  function toast(m){te.textContent=m;te.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){te.classList.remove('show');},1800);}
+
+  build();
+})();
+</script>
+</body>
+</html>

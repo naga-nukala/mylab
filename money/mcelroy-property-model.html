@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1210">
+<title>McElroy Property Model — Little Lab</title>
+<style>
+:root{
+  --bg:#0d1210; --surface:#151c19; --surface2:#1b2420; --line:#26322d;
+  --text:#e8f1ec; --muted:#8fa399; --mint:#a7e8c5; --coral:#ff8c70; --r:14px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom));
+}
+body.lock{overflow:hidden}
+.wrap{max-width:760px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums}
+header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+header a.back{color:var(--muted);text-decoration:none;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:999px}
+h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+h2.sec{font-size:15px;margin:22px 0 10px;font-weight:650}
+
+/* Hero */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:6px}
+.hero .label{color:var(--muted);font-size:13px}
+.hero .big{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:-.02em;color:var(--mint);line-height:1.1;margin:4px 0 2px}
+.hero .short{color:var(--muted);font-size:13px;min-height:19px}
+.verdict{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:14.5px;border:1px solid var(--line);background:var(--surface2)}
+.verdict.good{border-color:var(--mint);color:var(--mint)}
+.verdict.bad{border-color:var(--coral);color:var(--coral)}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.hero-grid .k{color:var(--muted);font-size:12.5px}
+.hero-grid .v{font-size:17px;font-weight:600}
+.pos{color:var(--mint)} .neg{color:var(--coral)}
+
+/* Step cards */
+.steps{display:grid;gap:10px}
+.step{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;
+  color:var(--text);font:inherit;cursor:pointer;
+}
+.step .n{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--mint);color:var(--mint);display:grid;place-items:center;font-weight:650;font-size:14px}
+.step .body{flex:1;min-width:0}
+.step .t{display:block;font-weight:600}
+.step .s{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .m{flex:none;text-align:right}
+.step .ml{display:block;color:var(--muted);font-size:12px}
+.step .mv{display:block;font-weight:700;font-size:16px}
+.step:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+/* Buttons */
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{
+  font:inherit;font-size:14px;padding:10px 14px;border-radius:10px;cursor:pointer;
+  background:var(--surface2);color:var(--text);border:1px solid var(--line);
+}
+button.primary{background:var(--mint);color:#0d1210;border-color:var(--mint);font-weight:600}
+button.danger.armed{border-color:var(--coral);color:var(--coral)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){
+  button:hover:not(:disabled){border-color:var(--mint)}
+  button.danger:hover{border-color:var(--coral)}
+  .step:hover{border-color:var(--mint)}
+}
+
+/* Saved */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.savebar{display:flex;gap:10px}
+.savebar input{flex:1;min-width:0;padding:11px 12px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px}
+.savebar input:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+.summary{color:var(--muted);font-size:13.5px;margin:12px 0 0}
+.saves{display:grid;gap:10px;margin-top:12px}
+.save{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.save .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.save .nm{font-weight:600;word-break:break-word}
+.save .dt{color:var(--muted);font-size:12.5px;flex:none}
+.save .mt{color:var(--muted);font-size:13px;margin-top:4px}
+.save .btns{margin-top:10px}
+.save button{padding:7px 12px;font-size:13px}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.sheet{
+  width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px 18px 0 0;
+  padding:18px 18px max(18px,env(safe-area-inset-bottom));
+}
+@media(min-width:600px){.overlay{align-items:center}.sheet{border-radius:18px}}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mstep{color:var(--muted);font-size:13px}
+.sheet h2{margin:0;font-size:19px;font-weight:650}
+.x{padding:6px 10px;line-height:1}
+.mdesc{color:var(--muted);font-size:13.5px;margin:6px 0 14px}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:480px){.grid{grid-template-columns:1fr 1fr}}
+label.f{display:block;font-size:13px;color:var(--muted)}
+label.f input{
+  display:block;width:100%;margin-top:5px;padding:11px 12px;background:var(--bg);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;
+}
+label.f input:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+label.f input:disabled{opacity:.5}
+.fh{display:block;min-height:16px;margin-top:3px;font-size:12px;color:var(--mint)}
+.span2{grid-column:1/-1}
+.check{display:flex;gap:10px;align-items:center;font-size:14px;padding:6px 0}
+.check input{width:20px;height:20px;accent-color:var(--mint)}
+.grp{grid-column:1/-1;margin:8px 0 0;font-size:13.5px;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:8px 12px;font-size:13.5px}
+.seg button[aria-pressed="true"]{background:var(--mint);color:#0d1210;font-weight:600}
+.segl{font-size:13px;color:var(--muted);margin-bottom:5px}
+.rows{margin-top:16px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.row .l{color:var(--muted)}
+.row.strong .l{color:var(--text);font-weight:600}
+.row.strong .r{font-weight:700}
+.row .r{text-align:right;font-variant-numeric:tabular-nums}
+details.help{margin-top:14px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--muted)}
+details.help summary{cursor:pointer;color:var(--text);font-weight:600}
+details.help p{margin:8px 0 0}
+details.help ul{margin:8px 0 0;padding-left:18px}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.mfoot{justify-content:space-between}
+details.coll{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
+details.coll summary{cursor:pointer;color:var(--text);font-weight:600}
+details.coll .grid{margin-top:12px}
+.note ul{margin:6px 0 0;padding-left:18px}
+
+#toast{
+  position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--surface2);border:1px solid var(--mint);color:var(--text);z-index:60;
+  padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;max-width:90vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+footer{color:var(--muted);font-size:12.5px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="../index.html">Little Lab</a>
+    <h1>McElroy Property Model</h1>
+  </header>
+  <p class="sub">Five steps from rent to return. Tap a step, enter the numbers, and see its result right away. Everything stays in your browser.</p>
+
+  <div class="hero" aria-live="polite">
+    <div class="label">Income value: what the rent justifies</div>
+    <div class="big num" data-role="heroValue">—</div>
+    <div class="short" data-role="heroShort"></div>
+    <div class="verdict" data-role="verdict"></div>
+    <div class="hero-grid">
+      <div><div class="k">Highest price worth paying (after buying costs)</div><div class="v num" data-role="heroMax">—</div></div>
+      <div><div class="k">Cash-on-cash return</div><div class="v num" data-role="heroCoc">—</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">The five steps</h2>
+  <div class="steps" id="steps"></div>
+
+  <h2 class="sec">Saved evaluations</h2>
+  <div class="card">
+    <div class="savebar">
+      <input type="text" id="saveName" maxlength="60" placeholder="Name, for example Whitefield 2BHK" aria-label="Name for this evaluation" autocomplete="off">
+      <button type="button" class="primary" data-action="save">Save</button>
+    </div>
+    <p class="summary" id="saveSummary"></p>
+    <div class="saves" id="saves"></div>
+  </div>
+
+  <div class="btns"><button type="button" class="danger" data-action="reset">Reset to example</button></div>
+  <footer>Income value = net operating income ÷ cap rate. Net operating income = rent after vacancy, minus running costs, before any loan payment. Tax benefits on loan interest, rent growth and price growth are not counted.</footer>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="mhead">
+      <div><div class="mstep" id="mStep"></div><h2 id="mTitle"></h2></div>
+      <button type="button" class="x" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <p class="mdesc" id="mDesc"></p>
+    <div class="grid" id="mBody"></div>
+    <div class="rows" id="mRows"></div>
+    <div id="mHelp"></div>
+    <div class="btns mfoot">
+      <button type="button" data-action="prev" id="bPrev">Back</button>
+      <button type="button" class="primary" data-action="next" id="bNext">Next</button>
+    </div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY = 'as_mcelroy_property_model';
+  var SAVES_KEY = 'as_mcelroy_property_model_saves_v1';
+  var OLD_KEYS = ['as_mcelroy', 'as_property_evaluator'];
+  var OLD_SAVES_KEYS = ['as_mcelroy_saves_v1', 'as_property_evaluator_saves_v1'];
+  function firstStored(key, olds){
+    var v = localStorage.getItem(key);
+    for(var i = 0; !v && i < olds.length; i++) v = localStorage.getItem(olds[i]);
+    return v;
+  }
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DEFAULTS = {
+    rent:'18000', vacancy:'7',
+    maint:'2500', tax:'3000', repMode:'pct', repPct:'5', repAmt:'6500',
+    cap:'3.5', price:'6500000', offer:'',
+    c1p:'', c1r:'', c2p:'', c2r:'', c3p:'', c3r:'',
+    stamp:'5', reg:'1', broker:'1', other:'0', uc:'false', gst:'5',
+    ltv:'80', rate:'8.5', years:'20'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function copy(o){ var c = {}; for(var k in o) c[k] = o[k]; return c; }
+
+  var state = load();
+  var saves = loadSaves();
+  var last = null;          // latest calculation
+  var curStep = 0;
+
+  function load(){
+    var s = copy(DEFAULTS);
+    try{
+      var raw = firstStored(KEY, OLD_KEYS);
+      if(raw){ var o = JSON.parse(raw); for(var k in DEFAULTS) if(o && o[k] !== undefined) s[k] = String(o[k]); }
+    }catch(e){}
+    return s;
+  }
+  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  function loadSaves(){
+    try{
+      var raw = firstStored(SAVES_KEY, OLD_SAVES_KEYS);
+      var a = raw ? JSON.parse(raw) : [];
+      return Array.isArray(a) ? a : [];
+    }catch(e){ return []; }
+  }
+  function persistSaves(){ try{ localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); }catch(e){} }
+
+  /* ---------- formatting ---------- */
+  function inr(n){
+    if(!isFinite(n)) return '—';
+    var r = Math.round(n);
+    return (r < 0 ? '−' : '') + '₹' + Math.abs(r).toLocaleString('en-IN');
+  }
+  function pct(n){ return isFinite(n) ? (n * 100).toFixed(2) + '%' : '—'; }
+  function short(n){
+    if(!isFinite(n) || n === 0) return '';
+    var a = Math.abs(n), s = n < 0 ? '−' : '';
+    if(a >= 1e7) return s + '₹' + (a / 1e7).toFixed(2) + ' crore';
+    if(a >= 1e5) return s + '₹' + (a / 1e5).toFixed(2) + ' lakh';
+    return '';
+  }
+  function fmtDate(ts){
+    var d = new Date(ts);
+    return d.getDate() + 'th ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  /* ---------- calculation (pure) ---------- */
+  function emiOf(P, annualRate, years){
+    var n = Math.round(years * 12), r = annualRate / 100 / 12;
+    if(P <= 0 || n <= 0) return 0;
+    if(r === 0) return P / n;
+    var f = Math.pow(1 + r, n);
+    return P * r * f / (f - 1);
+  }
+  function calc(s){
+    function n(k){ var v = parseFloat(s[k]); return isFinite(v) && v > 0 ? v : 0; }
+    var c = {};
+    c.vac = Math.min(n('vacancy'), 100) / 100;
+    c.gross = n('rent') * 12;
+    c.vacAmt = c.gross * c.vac;
+    c.egi = c.gross - c.vacAmt;
+
+    c.maintY = n('maint') * 12;
+    c.taxY = n('tax');
+    c.pctMode = s.repMode !== 'amt';
+    c.repairs = c.pctMode ? c.gross * n('repPct') / 100 : n('repAmt');
+    c.repShare = c.gross > 0 ? c.repairs / c.gross : NaN;
+    c.opex = c.maintY + c.taxY + c.repairs;
+    c.noi = c.egi - c.opex;
+    c.margin = c.gross > 0 ? c.noi / c.gross : NaN;
+
+    var cap = n('cap') / 100;
+    c.value = cap > 0 ? c.noi / cap : NaN;
+    c.asking = n('price');
+    var offer = n('offer');
+    c.paid = offer > 0 ? offer : c.asking;
+    c.gap = c.value - c.paid;
+
+    var stampP = n('stamp') / 100, regP = n('reg') / 100, brokP = n('broker') / 100;
+    var gstP = s.uc === 'true' ? n('gst') / 100 : 0;
+    c.otherA = n('other');
+    c.stampAmt = c.paid * stampP; c.regAmt = c.paid * regP; c.brokerAmt = c.paid * brokP; c.gstAmt = c.paid * gstP;
+    c.closing = c.stampAmt + c.regAmt + c.brokerAmt + c.gstAmt + c.otherA;
+    c.allIn = c.paid + c.closing;
+    c.maxPrice = isFinite(c.value) ? Math.max(0, (c.value - c.otherA) / (1 + stampP + regP + brokP + gstP)) : NaN;
+
+    c.costRate = stampP + regP + brokP + gstP;
+    c.costDed = isFinite(c.value) ? c.value - c.maxPrice : NaN;
+
+    var ltv = Math.min(n('ltv'), 100) / 100;
+    c.ltv = ltv;
+    c.loan = c.paid * ltv; c.down = c.paid - c.loan; c.cashIn = c.down + c.closing;
+    c.emi = emiOf(c.loan, n('rate'), n('years')); c.ds = c.emi * 12;
+    c.cf = c.noi - c.ds;
+    c.coc = c.cashIn > 0 ? c.cf / c.cashIn : NaN;
+    c.dscr = c.ds > 0 ? c.noi / c.ds : NaN;
+    c.yPrice = c.paid > 0 ? c.noi / c.paid : NaN;
+    c.yAll = c.allIn > 0 ? c.noi / c.allIn : NaN;
+
+    var fixed = c.maintY + c.taxY + (c.pctMode ? 0 : n('repAmt'));
+    var denom = 1 - c.vac - (c.pctMode ? n('repPct') / 100 : 0);
+    c.beRent = denom > 0 ? (c.ds + fixed) / denom / 12 : NaN;
+
+    // comparables: scale this property's NOI-to-rent ratio to each comparable's rent
+    c.comps = []; var sum = 0, cnt = 0;
+    for(var i = 1; i <= 3; i++){
+      var p = n('c' + i + 'p'), r = n('c' + i + 'r'), cr = NaN;
+      if(p > 0 && r > 0 && isFinite(c.margin)){ cr = (r * 12 * c.margin) / p; sum += cr; cnt++; }
+      c.comps.push(cr);
+    }
+    c.compAvg = cnt ? sum / cnt : NaN;
+    return c;
+  }
+
+  /* ---------- steps config ---------- */
+  var STEPS = [
+    { title:'Gross rent', label:'Gross rent per year', metric:'gross', fmt:'inr',
+      desc:'What the property earns in a year if it is always let.',
+      fields:[{k:'rent', l:'Monthly rent (₹)', hint:1, span:1}],
+      rows:[['gross','Gross rent per year','strong']],
+      help:'<p>Use the rent you can actually get today. Check two or three similar flats listed nearby, or the current rent agreement.</p>' },
+
+    { title:'Vacancy', label:'Effective income', metric:'egi', fmt:'inr',
+      desc:'Months with no tenant, and rent that is late or lost.',
+      fields:[{k:'vacancy', l:'Vacancy allowance (%)', step:'0.1', span:1}],
+      rows:[['vacAmt','Rent lost to vacancy'],['egi','Effective income per year','strong']],
+      help:'<p>One empty month in a year is about 8%. Use a higher figure for an area with slow letting or frequent tenant changes.</p>' },
+
+    { title:'Operating expenses', label:'Net operating income', metric:'noi', fmt:'inr',
+      desc:'What the owner pays each year to keep the flat rented. Leave out loan payments and income tax.',
+      fields:[
+        {k:'maint', l:'Maintenance you pay (₹ per month)', hint:1},
+        {k:'tax', l:'Property tax (₹ per year)', hint:1},
+        {type:'note', html:'Enter 0 for maintenance if the tenant pays it. Count only costs you pay as the owner.'},
+        {type:'seg', k:'repMode', l:'Repairs: enter as', opts:[['pct','% of gross rent'],['amt','₹ per year']], span:1},
+        {k:'repPct', l:'Repairs (% of gross rent)', step:'0.5', show:['repMode','pct']},
+        {k:'repAmt', l:'Repairs (₹ per year)', hint:1, show:['repMode','amt']}
+      ],
+      rows:[['maintY','Maintenance per year'],['taxY','Property tax per year'],['repairs','Repairs per year'],
+            ['repShare','Repairs as % of gross rent'],['opex','Total operating expenses','strong'],['noi','Net operating income','strong']],
+      helpTitle:'How to set repairs',
+      help:'<ul><li>Rule of thumb: <b>5% to 10% of gross rent</b>. Use about 5% for a new or recently renovated flat, and 8% to 10% for an older building.</li>'
+          + '<li>Better: add up what you spent last year (painting between tenants, plumbing, appliances), or ask the seller for the past two years.</li>'
+          + '<li>Avoid a % of price here. With rental yields near 3%, 1% of price would be about a third of the rent.</li></ul>' },
+
+    { title:'Cap rate and value', label:'Income value', metric:'value', fmt:'inr',
+      desc:'Divide net operating income by the cap rate to get what the property is worth on its income.',
+      fields:[
+        {k:'cap', l:'Market cap rate (%)', step:'0.1', span:1},
+        {type:'collapse', l:'Find the cap rate', fields:[
+          {type:'note', html:'<b>What it is.</b> Net operating income ÷ price: the yield buyers in the area accept, with no loan involved. A lower cap rate means a higher value.<br><b>How to find it.</b><ul><li>Pick 3 similar properties nearby that sold or are listed.</li><li>For each, estimate NOI (annual rent after vacancy, minus running costs) and divide it by that property\'s price.</li><li>Average the three. The helper below does this for you.</li><li>Residential cap rates in Indian metros are often in the low single digits (roughly 2% to 4%). Check against local comparables.</li><li>Try 0.5% above and below your figure. If the verdict flips, the deal depends on that guess.</li></ul>'},
+          {type:'note', html:'<b>Comparables helper.</b> Enter up to three similar flats with their price and monthly rent. Each one gets this property\'s NOI-to-rent ratio.'},
+          {k:'c1p', l:'Comparable 1: price (₹)', hint:1},{k:'c1r', l:'Comparable 1: monthly rent (₹)', comp:1},
+          {k:'c2p', l:'Comparable 2: price (₹)', hint:1},{k:'c2r', l:'Comparable 2: monthly rent (₹)', comp:2},
+          {k:'c3p', l:'Comparable 3: price (₹)', hint:1},{k:'c3r', l:'Comparable 3: monthly rent (₹)', comp:3},
+          {type:'btn', action:'use-comp', label:'Use average as market cap rate'}
+        ]},
+        {k:'price', l:'Asking price (₹)', hint:1},
+        {k:'offer', l:'Your offer (₹, optional)', hint:1},
+        {type:'btn', action:'use-max', label:'Set offer to highest price worth paying',
+         note:'Highest price worth paying = income value minus buying costs. Buying costs are already included using the step 5 rates (stamp duty 5%, registration 1% and brokerage 1% to start), so you do not need to enter them here. Setting it as your offer shows the deal at that price in step 5. Leave the offer empty to test the asking price.'}
+      ],
+      rows:[['noi','Net operating income'],['value','Income value (NOI ÷ cap rate)','strong'],
+            ['costRate','Buying costs assumed (% of price)'],['costDed','Buying costs deducted from value'],
+            ['maxPrice','Highest price worth paying','strong'],
+            ['asking','Asking price'],['paid','Price you pay'],['gap','Income value minus price you pay'],
+            ['margin','NOI as % of gross rent'],['compAvg','Average cap rate from comparables']] },
+
+    { title:'Loan, costs and return', label:'Cash-on-cash return', metric:'coc', fmt:'pct',
+      desc:'Buying costs are paid on top of the price, so they count in the cash you put in.',
+      fields:[
+        {type:'group', l:'Buying costs'},
+        {k:'stamp', l:'Stamp duty (%)', step:'0.1'},
+        {k:'reg', l:'Registration fee (%)', step:'0.1'},
+        {k:'broker', l:'Brokerage (%)', step:'0.1'},
+        {k:'other', l:'Other upfront costs (₹)', hint:1},
+        {type:'check', k:'uc', l:'Under-construction (GST applies)', span:1},
+        {k:'gst', l:'GST, effective on price (%)', step:'0.1', show:['uc','true']},
+        {type:'group', l:'Loan'},
+        {type:'down', l:'Down payment (₹, sets loan-to-value)'},
+        {k:'ltv', l:'Loan-to-value (%)', step:'any'},
+        {k:'rate', l:'Interest rate (% per year)', step:'0.05'},
+        {k:'years', l:'Term (years)', step:'1'}
+      ],
+      rows:[['paid','Price you pay'],['stampAmt','Stamp duty'],['regAmt','Registration fee'],['brokerAmt','Brokerage'],['gstAmt','GST'],['otherA','Other upfront costs'],
+            ['closing','Total buying costs','strong'],['allIn','All-in cost','strong'],
+            ['loan','Loan amount'],['down','Down payment'],['cashIn','Cash you put in','strong'],
+            ['emi','Monthly loan payment'],['ds','Loan payments per year'],
+            ['noi','Net operating income'],['cf','Cash flow per year','strong'],['cfm','Cash flow per month'],
+            ['coc','Cash-on-cash return','strong'],['dscr','Debt coverage (NOI ÷ loan payments)'],
+            ['yPrice','Net yield on price'],['yAll','Net yield on all-in cost'],['beRent','Monthly rent to break even']],
+      helpTitle:'Notes',
+      help:'<ul><li>Paying all cash: set the down payment equal to the price you pay, or loan-to-value to 0.</li>'
+          + '<li>Paying a fixed down payment: enter it in the Down payment field and loan-to-value is set for you. Editing loan-to-value updates the down payment the same way. Formula: (1 − down payment ÷ price you pay) × 100. For example, ₹13,00,000 on ₹65,00,000 gives 80%.</li>'
+          + '<li>Buying costs are paid on top of the down payment, so they are added to the cash you put in. Stamp duty and GST rates differ by state and project, so check yours.</li></ul>' }
+  ];
+
+  /* ---------- value read-outs ---------- */
+  function readout(role, c){
+    switch(role){
+      case 'repShare': case 'costRate': case 'coc': case 'yPrice': case 'yAll': case 'margin': case 'compAvg': return pct(c[role]);
+      case 'dscr': return isFinite(c.dscr) ? c.dscr.toFixed(2) + '×' : '—';
+      case 'vacAmt': return inr(-c.vacAmt);
+      case 'cfm': return inr(c.cf / 12);
+      default: return inr(c[role]);
+    }
+  }
+  function tone(role, c){
+    var v;
+    switch(role){
+      case 'noi': v = c.noi; break;
+      case 'gap': v = c.gap; break;
+      case 'cf': case 'cfm': v = c.cf; break;
+      case 'coc': v = c.coc; break;
+      case 'dscr': v = isFinite(c.dscr) ? c.dscr - 1 : NaN; break;
+      default: return '';
+    }
+    return isFinite(v) ? (v >= 0 ? 'pos' : 'neg') : '';
+  }
+  function put(role, text, cls){
+    var list = document.querySelectorAll('[data-role="' + role + '"]');
+    for(var i = 0; i < list.length; i++){
+      list[i].textContent = text;
+      if(cls !== undefined){ list[i].classList.remove('pos','neg'); if(cls) list[i].classList.add(cls); }
+    }
+  }
+
+  /* ---------- update everything in place ---------- */
+  function update(){
+    var c = calc(state); last = c;
+
+    put('heroValue', isFinite(c.value) ? inr(c.value) : '—');
+    put('heroShort', isFinite(c.value) ? short(c.value) : 'Enter a cap rate above 0');
+    put('heroMax', isFinite(c.maxPrice) ? inr(c.maxPrice) : '—');
+    put('heroCoc', pct(c.coc), isFinite(c.coc) ? (c.coc >= 0 ? 'pos' : 'neg') : '');
+
+    var vEl = document.querySelector('[data-role="verdict"]');
+    vEl.className = 'verdict';
+    if(!isFinite(c.value) || c.paid <= 0){
+      vEl.textContent = 'Enter a price and a cap rate to see the verdict.';
+    }else if(c.noi <= 0){
+      vEl.className = 'verdict bad';
+      vEl.textContent = 'Running costs eat all the rent. The income value is zero or negative.';
+    }else if(c.paid <= c.value){
+      vEl.className = 'verdict good';
+      vEl.textContent = 'You pay ' + inr(c.paid) + ', which is ' + inr(c.value - c.paid) + ' under the income value.';
+    }else{
+      vEl.className = 'verdict bad';
+      vEl.textContent = 'You pay ' + inr(c.paid) + ', which is ' + inr(c.paid - c.value) + ' (' + ((c.paid - c.value) / c.value * 100).toFixed(1) + '%) above the income value.';
+    }
+
+    // step cards + modal rows share role names
+    var roles = {};
+    STEPS.forEach(function(st){ st.rows.forEach(function(r){ roles[r[0]] = 1; }); roles[st.metric] = 1; });
+    Object.keys(roles).forEach(function(r){
+      var text = readout(r, c);
+      put(r, text, tone(r, c));
+    });
+    put('sub1', 'Monthly rent × 12');
+    put('sub2', 'Vacancy loss ' + inr(c.vacAmt));
+    put('sub3', 'Expenses ' + inr(c.opex) + ' per year');
+    put('sub4', isFinite(c.maxPrice) ? 'Pay up to ' + inr(c.maxPrice) : 'You pay ' + inr(c.paid));
+    put('sub5', 'Cash flow ' + inr(c.cf / 12) + ' per month');
+
+    // modal-only bits
+    var hints = document.querySelectorAll('[data-hint]');
+    for(var i = 0; i < hints.length; i++){
+      var v = parseFloat(state[hints[i].getAttribute('data-hint')]);
+      hints[i].textContent = isFinite(v) ? short(v) : '';
+    }
+    put('downHint', 'Loan-to-value ' + (Math.round(c.ltv * 10000) / 100) + '%, loan ' + inr(c.loan));
+    var dIn = document.querySelector('[data-down]');
+    if(dIn && document.activeElement !== dIn) dIn.value = String(Math.round(c.down));
+    var cps = document.querySelectorAll('[data-comp]');
+    for(var j = 0; j < cps.length; j++){
+      var cr = c.comps[parseInt(cps[j].getAttribute('data-comp'), 10) - 1];
+      cps[j].textContent = isFinite(cr) ? 'Cap rate ' + pct(cr) : '';
+    }
+    var shows = document.querySelectorAll('[data-show-key]');
+    for(var s = 0; s < shows.length; s++){
+      shows[s].hidden = state[shows[s].getAttribute('data-show-key')] !== shows[s].getAttribute('data-show-val');
+    }
+    var segs = document.querySelectorAll('[data-action="set-mode"]');
+    for(var g = 0; g < segs.length; g++){
+      segs[g].setAttribute('aria-pressed', String(state[segs[g].getAttribute('data-key')] === segs[g].getAttribute('data-value')));
+    }
+  }
+
+  /* ---------- build step cards once ---------- */
+  (function(){
+    var host = $('steps');
+    STEPS.forEach(function(st, i){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'step';
+      b.setAttribute('data-action', 'open-step'); b.setAttribute('data-step', String(i));
+      var n = document.createElement('span'); n.className = 'n'; n.textContent = String(i + 1);
+      var body = document.createElement('span'); body.className = 'body';
+      var t = document.createElement('span'); t.className = 't'; t.textContent = st.title;
+      var s = document.createElement('span'); s.className = 's'; s.setAttribute('data-role', 'sub' + (i + 1));
+      body.appendChild(t); body.appendChild(s);
+      var m = document.createElement('span'); m.className = 'm';
+      var ml = document.createElement('span'); ml.className = 'ml'; ml.textContent = st.label;
+      var mv = document.createElement('span'); mv.className = 'mv num'; mv.setAttribute('data-role', st.metric);
+      m.appendChild(ml); m.appendChild(mv);
+      b.appendChild(n); b.appendChild(body); b.appendChild(m);
+      host.appendChild(b);
+    });
+  })();
+
+  /* ---------- modal ---------- */
+  var lastFocus = null;
+  function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text !== undefined) e.textContent = text; return e; }
+
+  function buildField(f){
+    var node;
+    if(f.type === 'collapse'){
+      node = el('details', 'coll span2');
+      node.appendChild(el('summary', null, f.l));
+      var inner = el('div', 'grid');
+      f.fields.forEach(function(cf){ inner.appendChild(buildField(cf)); });
+      node.appendChild(inner);
+      return node;
+    }
+    if(f.type === 'group'){ node = el('h3', 'grp', f.l); return node; }
+    if(f.type === 'note'){ node = el('p', 'note span2'); node.innerHTML = f.html; return node; }
+    if(f.type === 'btn'){
+      node = el('div', 'span2');
+      var b = el('button', null, f.label); b.type = 'button'; b.setAttribute('data-action', f.action);
+      node.appendChild(b);
+      if(f.note) node.appendChild(el('p', 'note', f.note));
+      return node;
+    }
+    if(f.type === 'seg'){
+      node = el('div', 'span2');
+      node.appendChild(el('div', 'segl', f.l));
+      var seg = el('div', 'seg');
+      f.opts.forEach(function(o){
+        var ob = el('button', null, o[1]); ob.type = 'button';
+        ob.setAttribute('data-action', 'set-mode'); ob.setAttribute('data-key', f.k); ob.setAttribute('data-value', o[0]);
+        seg.appendChild(ob);
+      });
+      node.appendChild(seg);
+      return node;
+    }
+    if(f.type === 'check'){
+      node = el('label', 'check span2');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.setAttribute('data-key', f.k); cb.checked = state[f.k] === 'true';
+      node.appendChild(cb); node.appendChild(document.createTextNode(f.l));
+      return node;
+    }
+    if(f.type === 'down'){
+      node = el('label', 'f');
+      node.appendChild(document.createTextNode(f.l));
+      var di = document.createElement('input');
+      di.type = 'number'; di.inputMode = 'decimal'; di.min = '0'; di.placeholder = '0';
+      di.setAttribute('data-down', '1');
+      di.value = String(Math.round(calc(state).down));
+      node.appendChild(di);
+      var dh = el('span', 'fh'); dh.setAttribute('data-role', 'downHint'); node.appendChild(dh);
+      return node;
+    }
+    node = el('label', 'f' + (f.span ? ' span2' : ''));
+    node.appendChild(document.createTextNode(f.l));
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.inputMode = 'decimal'; inp.min = '0'; inp.placeholder = '0';
+    if(f.step) inp.step = f.step;
+    inp.setAttribute('data-key', f.k); inp.value = state[f.k];
+    node.appendChild(inp);
+    var h = el('span', 'fh');
+    if(f.hint) h.setAttribute('data-hint', f.k);
+    if(f.comp) h.setAttribute('data-comp', String(f.comp));
+    node.appendChild(h);
+    if(f.show){ node.setAttribute('data-show-key', f.show[0]); node.setAttribute('data-show-val', f.show[1]); }
+    return node;
+  }
+
+  function openStep(i){
+    if(i < 0 || i >= STEPS.length) return;
+    curStep = i;
+    var st = STEPS[i];
+    $('mStep').textContent = 'Step ' + (i + 1) + ' of ' + STEPS.length;
+    $('mTitle').textContent = st.title;
+    $('mDesc').textContent = st.desc;
+    var body = $('mBody'); body.textContent = '';
+    st.fields.forEach(function(f){ body.appendChild(buildField(f)); });
+    var rows = $('mRows'); rows.textContent = '';
+    st.rows.forEach(function(r){
+      var d = el('div', 'row' + (r[2] ? ' strong' : ''));
+      d.appendChild(el('span', 'l', r[1]));
+      var v = el('span', 'r num'); v.setAttribute('data-role', r[0]); d.appendChild(v);
+      rows.appendChild(d);
+    });
+    var help = $('mHelp'); help.textContent = '';
+    if(st.help){
+      var d = el('details', 'help'); d.open = true;
+      d.appendChild(el('summary', null, st.helpTitle || 'Notes'));
+      var wrap = el('div'); wrap.innerHTML = st.help; d.appendChild(wrap);
+      help.appendChild(d);
+    }
+    $('bPrev').disabled = i === 0;
+    $('bNext').textContent = i === STEPS.length - 1 ? 'Done' : 'Next';
+    var ov = $('overlay');
+    if(ov.hidden){ lastFocus = document.activeElement; ov.hidden = false; document.body.classList.add('lock'); }
+    update();
+    $('mTitle').parentNode.parentNode.parentNode.scrollTop = 0;
+    var first = body.querySelector('input[type="number"]');
+    if(first) first.focus({preventScroll:true});
+  }
+  function closeModal(){
+    $('overlay').hidden = true; document.body.classList.remove('lock');
+    $('mBody').textContent = ''; $('mRows').textContent = ''; $('mHelp').textContent = '';
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  /* ---------- toast ---------- */
+  var toastT;
+  function toast(msg){
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+  }
+
+  /* ---------- saved list ---------- */
+  function renderSaves(){
+    var host = $('saves'), sum = $('saveSummary');
+    host.textContent = '';
+    if(!saves.length){
+      sum.textContent = 'Nothing saved yet. Name this evaluation and save it to compare properties.';
+      return;
+    }
+    var best = null, bestC = -Infinity;
+    var calcs = saves.map(function(it){ return calc(it.data); });
+    calcs.forEach(function(c, i){ if(isFinite(c.coc) && c.coc > bestC){ bestC = c.coc; best = saves[i]; } });
+    sum.textContent = saves.length + ' saved.' + (best ? ' Best cash-on-cash: ' + best.name + ' (' + pct(bestC) + ').' : '');
+    saves.forEach(function(it, i){
+      var c = calcs[i];
+      var card = el('div', 'save');
+      var top = el('div', 'top');
+      top.appendChild(el('span', 'nm', it.name));
+      top.appendChild(el('span', 'dt', fmtDate(it.ts)));
+      card.appendChild(top);
+      card.appendChild(el('div', 'mt num',
+        'Income value ' + (isFinite(c.value) ? inr(c.value) : '—') + '  ·  Price ' + inr(c.paid) + '  ·  Cash-on-cash ' + pct(c.coc)));
+      var btns = el('div', 'btns');
+      var e = el('button', null, 'Edit'); e.type = 'button'; e.setAttribute('data-action', 'edit'); e.setAttribute('data-id', it.id);
+      var d = el('button', 'danger', 'Delete'); d.type = 'button'; d.setAttribute('data-action', 'delete'); d.setAttribute('data-id', it.id);
+      btns.appendChild(e); btns.appendChild(d); card.appendChild(btns);
+      host.appendChild(card);
+    });
+  }
+  function findSave(id){ for(var i = 0; i < saves.length; i++) if(saves[i].id === id) return i; return -1; }
+
+  /* ---------- events (delegated) ---------- */
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if(!t.closest) return;
+    if(t.hasAttribute && t.hasAttribute('data-down')){
+      var d = parseFloat(t.value), pp = last ? last.paid : 0;
+      if(isFinite(d) && d >= 0 && pp > 0){
+        var l = Math.min(100, Math.max(0, (1 - d / pp) * 100));
+        state.ltv = String(Math.round(l * 1000000) / 1000000);
+        var li = document.querySelector('[data-key="ltv"]'); if(li) li.value = state.ltv;
+        persist(); update();
+      }
+      return;
+    }
+    var f = t.closest('[data-key]');
+    if(!f || f.tagName !== 'INPUT') return;
+    state[f.getAttribute('data-key')] = f.type === 'checkbox' ? String(f.checked) : f.value;
+    persist(); update();
+  });
+
+  var armedDel = null, armedT, resetArmed = false, resetT;
+  document.addEventListener('click', function(e){
+    var ov = $('overlay');
+    if(e.target === ov){ closeModal(); return; }
+    var b = e.target.closest ? e.target.closest('[data-action]') : null;
+    if(!b) return;
+    var a = b.getAttribute('data-action');
+
+    if(a === 'open-step'){ openStep(parseInt(b.getAttribute('data-step'), 10)); }
+    else if(a === 'close-modal'){ closeModal(); }
+    else if(a === 'prev'){ openStep(curStep - 1); }
+    else if(a === 'next'){ if(curStep >= STEPS.length - 1) closeModal(); else openStep(curStep + 1); }
+    else if(a === 'set-mode'){
+      state[b.getAttribute('data-key')] = b.getAttribute('data-value'); persist(); update();
+    }
+    else if(a === 'use-max'){
+      var m = last && last.maxPrice;
+      if(!isFinite(m) || m <= 0){ toast('Enter rent and a cap rate first'); return; }
+      var v = Math.floor(m / 1000) * 1000;
+      state.offer = String(v); persist();
+      var oi = document.querySelector('[data-key="offer"]'); if(oi) oi.value = state.offer;
+      update(); toast('Offer set to ' + inr(v));
+    }
+    else if(a === 'use-comp'){
+      var avg = last && last.compAvg;
+      if(!isFinite(avg) || avg <= 0){ toast('Enter price and rent for at least one comparable'); return; }
+      state.cap = (Math.round(avg * 10000) / 100).toString(); persist();
+      var ci = document.querySelector('[data-key="cap"]'); if(ci) ci.value = state.cap;
+      update(); toast('Market cap rate set to ' + state.cap + '%');
+    }
+    else if(a === 'save'){
+      var name = $('saveName').value.trim();
+      if(!name){ toast('Enter a name first'); $('saveName').focus(); return; }
+      var idx = -1;
+      for(var i = 0; i < saves.length; i++) if(saves[i].name.toLowerCase() === name.toLowerCase()) idx = i;
+      if(idx >= 0){ saves[idx].name = name; saves[idx].ts = Date.now(); saves[idx].data = copy(state); toast('Updated "' + name + '"'); }
+      else{
+        saves.unshift({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, ts: Date.now(), data: copy(state)});
+        toast('Saved "' + name + '"');
+      }
+      persistSaves(); renderSaves();
+    }
+    else if(a === 'edit'){
+      var ei = findSave(b.getAttribute('data-id')); if(ei < 0) return;
+      var s = copy(DEFAULTS); for(var k in DEFAULTS) if(saves[ei].data[k] !== undefined) s[k] = String(saves[ei].data[k]);
+      state = s; persist(); update();
+      $('saveName').value = saves[ei].name;
+      toast('Loaded "' + saves[ei].name + '". Open a step to change it, then Save.');
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+    else if(a === 'delete'){
+      var id = b.getAttribute('data-id');
+      if(armedDel !== id){
+        armedDel = id; b.classList.add('armed'); b.textContent = 'Tap again to delete';
+        clearTimeout(armedT);
+        armedT = setTimeout(function(){ armedDel = null; b.classList.remove('armed'); b.textContent = 'Delete'; }, 3000);
+        return;
+      }
+      clearTimeout(armedT); armedDel = null;
+      var di = findSave(id); if(di < 0) return;
+      var nm = saves[di].name; saves.splice(di, 1); persistSaves(); renderSaves(); toast('Deleted "' + nm + '"');
+    }
+    else if(a === 'reset'){
+      if(!resetArmed){
+        resetArmed = true; b.classList.add('armed'); b.textContent = 'Tap again to reset';
+        clearTimeout(resetT);
+        resetT = setTimeout(function(){ resetArmed = false; b.classList.remove('armed'); b.textContent = 'Reset to example'; }, 3000);
+        return;
+      }
+      clearTimeout(resetT); resetArmed = false; b.classList.remove('armed'); b.textContent = 'Reset to example';
+      state = copy(DEFAULTS); persist(); update(); toast('Reset to example values');
+    }
+  });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !$('overlay').hidden) closeModal();
+  });
+
+  update();
+  renderSaves();
+})();
+</script>
+</body>
+</html>

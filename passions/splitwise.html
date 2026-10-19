@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Split Expenses · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#26322c;--tx:#e8f0ec;--mu:#8fa398;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;padding-bottom:60px}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-size:20px;margin:0 0 2px;color:var(--mint)}
+.sub{color:var(--mu);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:0 0 10px}
+input,select{width:100%;background:#0f1412;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;margin-bottom:8px}
+input:focus,select:focus{outline:none;border-color:var(--mint)}
+button{background:var(--mint);color:#0f1412;border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--mu);border:1px solid var(--line);font-weight:500}
+button.small{padding:5px 10px;font-size:13px}
+button.del{background:transparent;color:var(--coral);border:1px solid var(--coral)}
+button.del.armed{background:var(--coral);color:#0f1412}
+@media (hover:hover) and (pointer:fine){button:hover{filter:brightness(1.1)}.row:hover{background:#1c2621}}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 6px;border-top:1px solid var(--line);border-radius:8px}
+.row:first-of-type{border-top:0}
+.grow{flex:1;min-width:0}
+.mu{color:var(--mu);font-size:13px}
+.inline{display:flex;gap:8px}.inline input{margin-bottom:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{display:flex;align-items:center;gap:6px;background:#0f1412;border:1px solid var(--line);border-radius:20px;padding:6px 12px;cursor:pointer;user-select:none}
+.chip input{width:auto;margin:0}
+.chip:has(input:checked){border-color:var(--mint);color:var(--mint)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:#0f1412;border-radius:10px;padding:10px;text-align:center}
+.stat b{display:block;font-size:17px;color:var(--mint)}
+.pos{color:var(--mint)}.neg{color:var(--coral)}
+.pay{padding:9px 6px;border-top:1px solid var(--line)}
+.pay:first-of-type{border-top:0}
+.arrow{color:var(--mu);margin:0 4px}
+.empty{color:var(--mu);font-size:13px;padding:4px 0}
+.actions{display:flex;gap:8px}.actions button{flex:1}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#26322c;color:var(--tx);padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:.2s;font-size:14px;z-index:9}
+#toast.show{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Split Expenses</h1>
+  <div class="sub">Add people, log who paid, see who owes whom. Saved automatically on this device.</div>
+
+  <div class="card" id="summary"></div>
+
+  <div class="card">
+    <h2>People</h2>
+    <div class="inline"><input id="uname" placeholder="Add a person's name" maxlength="30" autocomplete="off"><button data-act="addUser">Add</button></div>
+    <div id="users" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="formTitle">Add expense</h2>
+    <input id="desc" placeholder="What was it for? (e.g. Dinner)" maxlength="60" autocomplete="off">
+    <input id="amt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Amount ₹">
+    <div class="mu" style="margin-bottom:4px">Paid by</div>
+    <select id="payer"></select>
+    <div class="mu" style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+      <span>Split equally between</span>
+      <span><button class="ghost small" data-act="selAll">All</button> <button class="ghost small" data-act="selNone">None</button></span>
+    </div>
+    <div class="chips" id="split"></div>
+    <div class="actions"><button data-act="addExp" id="saveBtn">Add expense</button><button class="ghost" data-act="cancelEdit" id="cancelBtn" style="display:none">Cancel</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Expenses</h2>
+    <div id="expenses"></div>
+  </div>
+
+  <button class="del" id="wipe" data-act="wipe" style="width:100%">Delete whole list</button>
+</div>
+<div id="toast"></div>
+
+<script>
+const KEY='as_splitwise_v1';
+let S=load(), editId=null, armedKey=null, armTimer=null, toastTimer=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const money=p=>'₹'+(p/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const today=()=>{const d=new Date();return d.getDate()+'th '+MON[d.getMonth()]+' '+d.getFullYear()};
+const name=id=>{const u=S.users.find(x=>x.id===id);return u?u.name:'?'};
+
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.users)&&Array.isArray(v.expenses))return v}catch(e){}return{users:[],expenses:[]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200)}
+
+// tap-twice confirm: returns true on second tap
+function confirmTap(key,btn,msg){
+  if(armedKey===key){clearTimeout(armTimer);armedKey=null;return true}
+  armedKey=key;btn.classList.add('armed');toast(msg||'Tap again to delete');
+  clearTimeout(armTimer);armTimer=setTimeout(()=>{armedKey=null;btn.classList.remove('armed')},2500);
+  return false;
+}
+
+// split an amount (paise) among n people, remainder spread over the first ones
+function shares(total,n){const b=Math.floor(total/n),r=total-b*n;return Array.from({length:n},(_,i)=>b+(i<r?1:0))}
+
+function compute(){
+  const paid={},owed={},pair={};
+  S.users.forEach(u=>{paid[u.id]=0;owed[u.id]=0});
+  S.expenses.forEach(e=>{
+    const sp=e.split.filter(id=>owed[id]!==undefined);
+    if(!sp.length||paid[e.payer]===undefined)return;
+    const sh=shares(e.amt,sp.length);
+    paid[e.payer]+=e.amt;
+    sp.forEach((id,i)=>{
+      owed[id]+=sh[i];
+      if(id!==e.payer){const k=id+'>'+e.payer;pair[k]=(pair[k]||0)+sh[i]}
+    });
+  });
+  // net pairwise debts
+  const debts=[];
+  S.users.forEach((a,i)=>S.users.slice(i+1).forEach(b=>{
+    const d=(pair[a.id+'>'+b.id]||0)-(pair[b.id+'>'+a.id]||0);
+    if(d>0)debts.push({from:a.id,to:b.id,amt:d});else if(d<0)debts.push({from:b.id,to:a.id,amt:-d});
+  }));
+  debts.sort((x,y)=>y.amt-x.amt);
+  return{paid,owed,debts};
+}
+
+function renderSummary(){
+  const {paid,owed,debts}=compute();
+  const total=S.expenses.reduce((s,e)=>s+e.amt,0);
+  let h=`<div class="stats"><div class="stat"><b>${money(total)}</b><span class="mu">Total spent</span></div><div class="stat"><b>${S.users.length}</b><span class="mu">People</span></div><div class="stat"><b>${S.expenses.length}</b><span class="mu">Expenses</span></div></div>`;
+  h+='<h2>Who pays whom</h2>';
+  h+=debts.length?debts.map(d=>`<div class="pay"><b>${esc(name(d.from))}</b><span class="arrow">pays →</span><b>${esc(name(d.to))}</b> <span class="neg" style="float:right;font-weight:600">${money(d.amt)}</span></div>`).join(''):`<div class="empty">${S.expenses.length?'All settled up 🎉':'Nothing to settle yet.'}</div>`;
+  if(S.users.length&&S.expenses.length){
+    h+='<h2 style="margin-top:14px">Net balance</h2>';
+    h+=S.users.map(u=>{const n=paid[u.id]-owed[u.id];return `<div class="pay">${esc(u.name)}<span class="${n>=0?'pos':'neg'}" style="float:right">${n>=0?'gets back ':'owes '}${money(Math.abs(n))}</span></div>`}).join('');
+  }
+  $('#summary').innerHTML=h;
+}
+
+function renderUsers(){
+  $('#users').innerHTML=S.users.length?S.users.map(u=>`<div class="row"><span class="grow">${esc(u.name)}</span><button class="del small" data-act="delUser" data-id="${u.id}">Delete</button></div>`).join(''):'<div class="empty">No people yet — add at least two.</div>';
+}
+
+function renderForm(){
+  const curPayer=$('#payer').value;
+  const checked=new Set([...document.querySelectorAll('#split input:checked')].map(i=>i.dataset.id));
+  const known=new Set([...document.querySelectorAll('#split input')].map(i=>i.dataset.id));
+  $('#payer').innerHTML=S.users.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
+  if(S.users.some(u=>u.id===curPayer))$('#payer').value=curPayer;
+  $('#split').innerHTML=S.users.map(u=>`<label class="chip"><input type="checkbox" data-id="${u.id}" ${(!known.has(u.id)||checked.has(u.id))?'checked':''}>${esc(u.name)}</label>`).join('');
+}
+
+function renderExpenses(){
+  $('#expenses').innerHTML=S.expenses.length?[...S.expenses].reverse().map(e=>{
+    const sp=e.split.map(name).map(esc).join(', ');
+    return `<div class="row"><div class="grow"><div><b>${esc(e.desc)}</b> · ${money(e.amt)}</div><div class="mu">${esc(name(e.payer))} paid · split: ${sp} · ${esc(e.date)}</div></div><button class="ghost small" data-act="editExp" data-id="${e.id}">Edit</button><button class="del small" data-act="delExp" data-id="${e.id}">Delete</button></div>`;
+  }).join(''):'<div class="empty">No expenses yet.</div>';
+}
+
+function renderAll(){renderSummary();renderUsers();renderForm();renderExpenses()}
+
+function resetForm(){
+  editId=null;$('#desc').value='';$('#amt').value='';
+  document.querySelectorAll('#split input').forEach(i=>i.checked=true);
+  $('#formTitle').textContent='Add expense';$('#saveBtn').textContent='Add expense';$('#cancelBtn').style.display='none';
+}
+
+function addUser(){
+  const el=$('#uname'),n=el.value.trim();
+  if(!n)return toast('Enter a name');
+  if(S.users.some(u=>u.name.toLowerCase()===n.toLowerCase()))return toast('Name already added');
+  S.users.push({id:uid(),name:n});el.value='';save();renderAll();el.focus();
+}
+
+function saveExpense(){
+  const amt=Math.round(parseFloat($('#amt').value)*100);
+  const payer=$('#payer').value;
+  const split=[...document.querySelectorAll('#split input:checked')].map(i=>i.dataset.id);
+  if(S.users.length<2)return toast('Add at least two people');
+  if(!(amt>0))return toast('Enter a valid amount');
+  if(!split.length)return toast('Select who shares this expense');
+  const desc=$('#desc').value.trim()||'Expense';
+  if(editId){
+    const e=S.expenses.find(x=>x.id===editId);
+    if(e){e.desc=desc;e.amt=amt;e.payer=payer;e.split=split}
+    toast('Expense updated');
+  }else{
+    S.expenses.push({id:uid(),desc,amt,payer,split,date:today()});toast('Expense added');
+  }
+  save();resetForm();renderSummary();renderExpenses();
+}
+
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-act]');if(!b)return;
+  const act=b.dataset.act,id=b.dataset.id;
+  if(act==='addUser')addUser();
+  else if(act==='addExp')saveExpense();
+  else if(act==='cancelEdit'){resetForm()}
+  else if(act==='selAll')document.querySelectorAll('#split input').forEach(i=>i.checked=true);
+  else if(act==='selNone')document.querySelectorAll('#split input').forEach(i=>i.checked=false);
+  else if(act==='editExp'){
+    const e=S.expenses.find(x=>x.id===id);if(!e)return;
+    editId=id;$('#desc').value=e.desc;$('#amt').value=e.amt/100;$('#payer').value=e.payer;
+    document.querySelectorAll('#split input').forEach(i=>i.checked=e.split.includes(i.dataset.id));
+    $('#formTitle').textContent='Edit expense';$('#saveBtn').textContent='Update expense';$('#cancelBtn').style.display='';
+    $('#desc').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  else if(act==='delExp'){
+    if(confirmTap('e'+id,b)){S.expenses=S.expenses.filter(x=>x.id!==id);if(editId===id)resetForm();save();renderSummary();renderExpenses();toast('Expense deleted')}
+  }
+  else if(act==='delUser'){
+    if(S.expenses.some(e=>e.payer===id||e.split.includes(id)))return toast('Delete their expenses first');
+    if(confirmTap('u'+id,b)){S.users=S.users.filter(u=>u.id!==id);save();renderAll();toast('Person deleted')}
+  }
+  else if(act==='wipe'){
+    if(confirmTap('wipe',b,'Tap again to delete everything')){S={users:[],expenses:[]};save();resetForm();renderAll();toast('List deleted')}
+  }
+});
+$('#uname').addEventListener('keydown',e=>{if(e.key==='Enter')addUser()});
+renderAll();
+</script>
+</body>
+</html>

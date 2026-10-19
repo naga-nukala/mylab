@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loan vs Appreciation — Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#2a3630;--text:#e8efe9;--mute:#8fa097;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;padding-bottom:48px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 2px;color:var(--mint)}
+h2{font-size:12px;margin:0 0 10px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.sub{color:var(--mute);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mute);margin-bottom:4px}
+input{width:100%;background:#0f1412;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;font-size:16px;font-family:inherit}
+input:focus{outline:none;border-color:var(--mint)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:#0f1412;border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat .k{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:17px;font-weight:600;margin-top:2px}
+.mint{color:var(--mint)}.coral{color:var(--coral)}
+.verdict{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:14px;border:1px solid}
+.verdict.good{border-color:var(--mint);background:rgba(167,232,197,.08)}
+.verdict.bad{border-color:var(--coral);background:rgba(255,140,112,.08)}
+.verdict b{display:block;font-size:15px;margin-bottom:4px}
+.verdict ul{margin:6px 0 0;padding-left:18px;color:var(--mute)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px}
+th,td{padding:8px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mute);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;background:var(--card)}
+td input{width:110px;padding:6px 8px;font-size:14px;text-align:right}
+.yr small{display:block;color:var(--mute);font-size:11px}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge.ok{background:rgba(167,232,197,.15);color:var(--mint)}
+.badge.no{background:rgba(255,140,112,.15);color:var(--coral)}
+.badge.na{background:#222c27;color:var(--mute)}
+.note{color:var(--mute);font-size:12px;margin-top:8px}
+@media (hover:hover) and (pointer:fine){tbody tr:hover td{background:rgba(167,232,197,.04)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Loan vs Appreciation</h1>
+  <div class="sub">Is appreciation covering your loan payments, running costs and purchase costs?</div>
+
+  <div class="card">
+    <h2>Property &amp; loan</h2>
+    <div class="grid">
+      <div><label>Property value (₹)</label><input data-field="value" type="number" inputmode="decimal" placeholder="e.g. 8000000"></div>
+      <div><label>Loan amount (₹)</label><input data-field="loan" type="number" inputmode="decimal" placeholder="e.g. 6000000"></div>
+      <div><label>Interest rate (% p.a.)</label><input data-field="rate" type="number" inputmode="decimal" step="0.05" placeholder="e.g. 8.5"></div>
+      <div><label>Tenure (years)</label><input data-field="tenure" type="number" inputmode="numeric" min="1" max="40" placeholder="e.g. 20"></div>
+      <div><label>Appreciation (% p.a.)</label><input data-field="growth" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 6"></div>
+      <div><label>Loan start date (optional)</label><input data-field="start" type="date"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Purchase costs (one-time, % of property value)</h2>
+    <div class="grid">
+      <div><label>Stamp duty (%)</label><input data-field="stamp" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 5"></div>
+      <div><label>Registration fee (%)</label><input data-field="reg" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 0.5"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Running costs (year 1 amounts)</h2>
+    <div class="grid">
+      <div><label>Maintenance (₹ / month)</label><input data-field="maint" type="number" inputmode="decimal" placeholder="e.g. 3000"></div>
+      <div><label>Property tax (₹ / year)</label><input data-field="ptax" type="number" inputmode="decimal" placeholder="e.g. 12000"></div>
+      <div><label>Repairs (₹ / year)</label><input data-field="repairs" type="number" inputmode="decimal" placeholder="e.g. 20000"></div>
+      <div><label>Cost inflation (% p.a.)</label><input data-field="infl" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 5"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Rental (optional — vacancy only matters if there is rent)</h2>
+    <div class="grid">
+      <div><label>Rent (₹ / month)</label><input data-field="rent" type="number" inputmode="decimal" placeholder="e.g. 25000"></div>
+      <div><label>Rent growth (% p.a.)</label><input data-field="rentg" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 5"></div>
+      <div><label>Vacancy (months / year)</label><input data-field="vac" type="number" inputmode="decimal" step="0.5" min="0" max="12" placeholder="e.g. 1"></div>
+    </div>
+  </div>
+
+  <div class="card"><div class="sum" id="sum"></div></div>
+  <div id="verdict"></div>
+
+  <div class="card">
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Year</th><th>Property value</th><th>Appreciation</th><th>EMI paid</th>
+          <th>Pre-payment made</th><th>Interest</th><th>Running costs</th>
+          <th>Rent received</th><th>Net outflow</th><th>Loan balance</th>
+          <th>Appr. vs outflow</th><th>Cumulative</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="note">Net outflow = EMI + pre-payment + running costs − rent received (after vacancy). Appreciation compounds yearly; running costs and rent escalate at their own rates. Pre-payments apply at year-end and reduce principal (EMI stays the same, so the loan closes earlier). "Cumulative" starts with the one-time stamp duty + registration fee, then adds each year's net outflow.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='as_loanvsappreciation';
+  var FIELDS=['value','loan','rate','tenure','growth','start','stamp','reg','maint','ptax','repairs','infl','rent','rentg','vac'];
+  var state={prepay:{}};
+  FIELDS.forEach(function(f){state[f]='';});
+  var builtTenure=0;
+
+  function load(){
+    try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);for(var k in o)state[k]=o[k];}}catch(e){}
+    if(!state.prepay||typeof state.prepay!=='object')state.prepay={};
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+  function inr(n){var r=Math.round(Math.abs(n));return (n<0&&r>0?'−':'')+'₹'+r.toLocaleString('en-IN');}
+  function num(v){var n=parseFloat(v);return isFinite(n)?n:0;}
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtDate(iso,addYears){
+    var p=(iso||'').split('-');if(p.length!==3)return '';
+    return (+p[2])+'th '+MON[+p[1]-1]+' '+(+p[0]+addYears);
+  }
+
+  function compute(){
+    var value=num(state.value),loan=num(state.loan),rate=num(state.rate),
+        tenure=Math.max(0,Math.min(40,Math.floor(num(state.tenure)))),g=num(state.growth)/100,
+        infl=num(state.infl)/100,rent=num(state.rent),rg=num(state.rentg)/100,
+        vac=Math.max(0,Math.min(12,num(state.vac))),
+        baseOpex=num(state.maint)*12+num(state.ptax)+num(state.repairs),
+        upfront=value*(num(state.stamp)+num(state.reg))/100;
+    var r=rate/1200,n=tenure*12,emi=0;
+    if(loan>0&&n>0){emi=r===0?loan/n:loan*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);}
+    var bal=loan,rows=[],prevVal=value,closedYear=0;
+    var T={app:0,paid:0,int:0,opex:0,rent:0,lost:0,net:upfront};
+    for(var y=1;y<=tenure;y++){
+      var emiPaid=0,interest=0;
+      for(var m=0;m<12;m++){
+        if(bal<=0.005)break;
+        var i=bal*r,p=Math.min(emi-i,bal);if(p<0)p=0;
+        emiPaid+=i+p;interest+=i;bal-=p;
+      }
+      var pp=Math.min(num(state.prepay[y]),Math.max(bal,0));
+      bal-=pp;if(bal<0.005)bal=0;
+      if(bal===0&&!closedYear&&loan>0)closedYear=y;
+      var val=value*Math.pow(1+g,y),app=val-prevVal;prevVal=val;
+      var opex=baseOpex*Math.pow(1+infl,y-1);
+      var mRent=rent*Math.pow(1+rg,y-1);
+      var rentIn=mRent*(12-vac),lost=mRent*vac;
+      var paid=emiPaid+pp,net=paid+opex-rentIn;
+      T.app+=app;T.paid+=paid;T.int+=interest;T.opex+=opex;T.rent+=rentIn;T.lost+=lost;T.net+=net;
+      rows.push({y:y,val:val,app:app,emi:emiPaid,pp:pp,paid:paid,int:interest,opex:opex,rent:rentIn,
+                 net:net,bal:bal,cumApp:T.app,cumNet:T.net});
+    }
+    return {rows:rows,emi:emi,tenure:tenure,T:T,upfront:upfront,closedYear:closedYear,loan:loan,value:value,hasRent:rent>0};
+  }
+
+  function buildRows(tenure){
+    var h='';
+    for(var y=1;y<=tenure;y++){
+      h+='<tr data-y="'+y+'">'+
+        '<td class="yr" data-role="yr"></td>'+
+        '<td data-role="val"></td><td data-role="app" class="mint"></td><td data-role="emi"></td>'+
+        '<td><input type="number" inputmode="decimal" min="0" placeholder="0" data-pp="'+y+'"></td>'+
+        '<td data-role="int" class="coral"></td><td data-role="opex" class="coral"></td>'+
+        '<td data-role="rent" class="mint"></td><td data-role="net"></td><td data-role="bal"></td>'+
+        '<td data-role="yb"></td><td data-role="cb"></td></tr>';
+    }
+    document.getElementById('rows').innerHTML=h;
+    builtTenure=tenure;
+    var inputs=document.querySelectorAll('#rows input[data-pp]');
+    for(var k=0;k<inputs.length;k++){var yy=inputs[k].getAttribute('data-pp');inputs[k].value=state.prepay[yy]||'';}
+  }
+
+  function cell(ok,diff){
+    return '<span class="badge '+(ok?'ok':'no')+'">'+(ok?'Covered':'Short')+'</span> <span style="color:var(--mute)">'+(ok?'+':'−')+inr(Math.abs(diff)).replace('−','')+'</span>';
+  }
+
+  function update(){
+    var c=compute(),T=c.T;
+    if(c.tenure!==builtTenure)buildRows(c.tenure);
+    var trs=document.getElementById('rows').children;
+    c.rows.forEach(function(r,idx){
+      var tr=trs[idx];if(!tr)return;
+      function set(role,html){tr.querySelector('[data-role="'+role+'"]').innerHTML=html;}
+      set('yr','Yr '+r.y+(state.start?'<small>to '+fmtDate(state.start,r.y)+'</small>':''));
+      set('val',inr(r.val));set('app','+'+inr(r.app));set('emi',inr(r.emi));
+      set('int',inr(r.int));set('opex',inr(r.opex));
+      set('rent',r.rent>0?'+'+inr(r.rent):'—');
+      set('net',inr(r.net));set('bal',inr(r.bal));
+      set('yb',Math.abs(r.net)<0.5?'<span class="badge na">No outflow</span>':cell(r.app>=r.net,r.app-r.net));
+      set('cb',cell(r.cumApp>=r.cumNet,r.cumApp-r.cumNet));
+    });
+
+    var items=[
+      ['Monthly EMI',inr(c.emi),''],
+      ['Stamp duty + registration',inr(c.upfront),'coral'],
+      ['Total interest',inr(T.int),'coral'],
+      ['Total running costs',inr(T.opex),'coral']
+    ];
+    if(c.hasRent){items.push(['Rent received',inr(T.rent),'mint']);items.push(['Rent lost to vacancy',inr(T.lost),'coral']);}
+    items.push(['Total net outflow (incl. upfront)',inr(T.net),'']);
+    items.push(['Total appreciation',inr(T.app),'mint']);
+    items.push(['Loan closes',c.closedYear?('Year '+c.closedYear):(c.loan>0?'After tenure':'—'),'']);
+    document.getElementById('sum').innerHTML=items.map(function(i){
+      return '<div class="stat"><div class="k">'+i[0]+'</div><div class="v '+i[2]+'">'+i[1]+'</div></div>';}).join('');
+
+    var v=document.getElementById('verdict');
+    if(!(c.tenure>0&&c.value>0)){v.innerHTML='';return;}
+    var cover=T.app>=T.net;
+    var trueCost=T.int+T.opex+c.upfront-T.rent;
+    var coverTrue=T.app>=trueCost;
+    var paying=c.rows.filter(function(r){return Math.abs(r.net)>=0.5;});
+    var yc=paying.filter(function(r){return r.app>=r.net;}).length;
+    var be=null;for(var i=0;i<c.rows.length;i++){if(c.rows[i].cumApp>=c.rows[i].cumNet){be=c.rows[i].y;break;}}
+    var title=cover?'Appreciation covers all your outflow':(coverTrue?'Appreciation covers the true cost, not the full cash outflow':'Appreciation does not cover your costs');
+    var li=[
+      '<b style="display:inline;font-size:inherit">Full cash outflow</b> (EMI + pre-pay + running costs + purchase costs − rent): appreciation '+inr(T.app)+' vs '+inr(T.net)+' — '+(cover?'surplus ':'gap ')+inr(Math.abs(T.app-T.net)),
+      '<b style="display:inline;font-size:inherit">True cost</b> (interest + running costs + purchase costs − rent; principal excluded since it builds your equity): '+inr(trueCost)+' — '+(coverTrue?'covered, surplus ':'short by ')+inr(Math.abs(T.app-trueCost)),
+      'Yearly appreciation beats that year\'s net outflow in '+yc+' of '+paying.length+' years',
+      be?'Cumulative appreciation overtakes cumulative outflow in year '+be:'Cumulative appreciation never overtakes cumulative outflow within the tenure'
+    ];
+    if(c.hasRent&&T.lost>0)li.push('Vacancy costs you '+inr(T.lost)+' of rent over the tenure');
+    v.innerHTML='<div class="verdict '+(cover?'good':'bad')+'"><b>'+title+'</b><ul>'+li.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul></div>';
+  }
+
+  document.addEventListener('input',function(e){
+    var t=e.target;
+    var f=t.getAttribute&&t.getAttribute('data-field');
+    if(f){state[f]=t.value;save();update();return;}
+    var y=t.getAttribute&&t.getAttribute('data-pp');
+    if(y){state.prepay[y]=t.value;save();update();}
+  });
+
+  load();
+  FIELDS.forEach(function(f){var el=document.querySelector('[data-field="'+f+'"]');if(el)el.value=state[f]||'';});
+  update();
+})();
+</script>
+</body>
+</html>

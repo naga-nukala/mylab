@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1210">
+<title>Keller Millionaire Investor Roadmap — Little Lab</title>
+<style>
+:root{
+  --bg:#0d1210; --surface:#151c19; --surface2:#1b2420; --line:#26322d;
+  --text:#e8f1ec; --muted:#8fa399; --mint:#a7e8c5; --coral:#ff8c70; --r:14px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom));
+}
+body.lock{overflow:hidden}
+.wrap{max-width:760px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums}
+header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+header a.back{color:var(--muted);text-decoration:none;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;flex:none}
+h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+h2.sec{font-size:15px;margin:22px 0 10px;font-weight:650}
+.pos{color:var(--mint)} .neg{color:var(--coral)}
+
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:6px}
+.hero .label{color:var(--muted);font-size:13px}
+.hero .big{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:-.02em;color:var(--mint);line-height:1.1;margin:4px 0 2px}
+.hero .short{color:var(--muted);font-size:13px;min-height:19px}
+.verdict{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:14.5px;border:1px solid var(--line);background:var(--surface2)}
+.verdict.good{border-color:var(--mint);color:var(--mint)}
+.verdict.bad{border-color:var(--coral);color:var(--coral)}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.hero-grid .k{color:var(--muted);font-size:12.5px}
+.hero-grid .v{font-size:17px;font-weight:600}
+
+.steps{display:grid;gap:10px}
+.step{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;
+  color:var(--text);font:inherit;cursor:pointer;
+}
+.step .n{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--mint);color:var(--mint);display:grid;place-items:center;font-weight:650;font-size:14px}
+.step .body{flex:1;min-width:0}
+.step .t{display:block;font-weight:600}
+.step .s{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .m{flex:none;text-align:right;max-width:46%}
+.step .ml{display:block;color:var(--muted);font-size:12px}
+.step .mv{display:block;font-weight:700;font-size:15px}
+.step:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{
+  font:inherit;font-size:14px;padding:10px 14px;border-radius:10px;cursor:pointer;
+  background:var(--surface2);color:var(--text);border:1px solid var(--line);
+}
+button.primary{background:var(--mint);color:#0d1210;border-color:var(--mint);font-weight:600}
+button.danger.armed{border-color:var(--coral);color:var(--coral)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){
+  button:hover:not(:disabled){border-color:var(--mint)}
+  button.danger:hover{border-color:var(--coral)}
+  .step:hover{border-color:var(--mint)}
+}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:460px}
+th{color:var(--muted);font-weight:500;font-size:12.5px;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+
+.savebar{display:flex;gap:10px}
+.savebar input{flex:1;min-width:0;padding:11px 12px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px}
+.savebar input:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+.summary{color:var(--muted);font-size:13.5px;margin:12px 0 0}
+.saves{display:grid;gap:10px;margin-top:12px}
+.save{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.save .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.save .nm{font-weight:600;word-break:break-word}
+.save .dt{color:var(--muted);font-size:12.5px;flex:none}
+.save .mt{color:var(--muted);font-size:13px;margin-top:4px}
+.save .btns{margin-top:10px}
+.save button{padding:7px 12px;font-size:13px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.sheet{
+  width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px 18px 0 0;
+  padding:18px 18px max(18px,env(safe-area-inset-bottom));
+}
+@media(min-width:600px){.overlay{align-items:center}.sheet{border-radius:18px}}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mstep{color:var(--muted);font-size:13px}
+.sheet h2{margin:0;font-size:19px;font-weight:650}
+.x{padding:6px 10px;line-height:1}
+.mdesc{color:var(--muted);font-size:13.5px;margin:6px 0 14px}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:480px){.grid{grid-template-columns:1fr 1fr}}
+label.f{display:block;font-size:13px;color:var(--muted)}
+label.f input{
+  display:block;width:100%;margin-top:5px;padding:11px 12px;background:var(--bg);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;
+}
+label.f input:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+.fh{display:block;min-height:16px;margin-top:3px;font-size:12px;color:var(--mint)}
+.span2{grid-column:1/-1}
+.check{display:flex;gap:10px;align-items:center;font-size:14px;padding:6px 0}
+.check input{width:20px;height:20px;accent-color:var(--mint)}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.note ul{margin:6px 0 0;padding-left:18px}
+.rows{margin-top:16px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.row .l{color:var(--muted)}
+.row.strong .l{color:var(--text);font-weight:600}
+.row.strong .r{font-weight:700}
+.row .r{text-align:right;font-variant-numeric:tabular-nums}
+details.help{margin-top:14px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--muted)}
+details.help summary{cursor:pointer;color:var(--text);font-weight:600}
+details.help p{margin:8px 0 0}
+details.help ul{margin:8px 0 0;padding-left:18px}
+.mfoot{justify-content:space-between}
+
+#toast{
+  position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--surface2);border:1px solid var(--mint);color:var(--text);z-index:60;
+  padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;max-width:90vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+footer{color:var(--muted);font-size:12.5px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="../index.html">Little Lab</a>
+    <h1>Keller Millionaire Investor Roadmap</h1>
+  </header>
+  <p class="sub">Four stages from net worth to passive income, in rupees. Tap a stage, enter your numbers, and see when you reach it. Everything stays in your browser.</p>
+
+  <div class="hero" aria-live="polite">
+    <div class="label" data-role="heroLabel">Time until your passive income target</div>
+    <div class="big num" data-role="heroBig">—</div>
+    <div class="short" data-role="heroShort"></div>
+    <div class="verdict" data-role="verdict"></div>
+    <div class="hero-grid">
+      <div><div class="k">Net worth today</div><div class="v num" data-role="heroNw">—</div></div>
+      <div><div class="k">Cash flow from rentals today, per year</div><div class="v num" data-role="heroCf">—</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">The four stages</h2>
+  <div class="steps" id="steps"></div>
+
+  <h2 class="sec">Projection</h2>
+  <div class="card scroll">
+    <table>
+      <thead><tr><th>Year</th><th>Portfolio value</th><th>Loans</th><th>Net worth</th><th>Income per year</th></tr></thead>
+      <tbody id="proj"></tbody>
+    </table>
+  </div>
+
+  <h2 class="sec">Saved roadmaps</h2>
+  <div class="card">
+    <div class="savebar">
+      <input type="text" id="saveName" maxlength="60" placeholder="Name, for example Plan with 40% loans" aria-label="Name for this roadmap" autocomplete="off">
+      <button type="button" class="primary" data-action="save">Save</button>
+    </div>
+    <p class="summary" id="saveSummary"></p>
+    <div class="saves" id="saves"></div>
+  </div>
+
+  <div class="btns"><button type="button" class="danger" data-action="reset">Reset to example</button></div>
+  <footer>The four stages follow The Millionaire Real Estate Investor by Gary Keller: think a million, buy a million, own a million, receive a million. The targets here are in rupees and are yours to set. The yearly projection uses simple assumptions of my own, not Keller's worksheets, so treat the years as a guide, not a forecast.</footer>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="mhead">
+      <div><div class="mstep" id="mStep"></div><h2 id="mTitle"></h2></div>
+      <button type="button" class="x" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <p class="mdesc" id="mDesc"></p>
+    <div class="grid" id="mBody"></div>
+    <div class="rows" id="mRows"></div>
+    <div id="mHelp"></div>
+    <div class="btns mfoot">
+      <button type="button" data-action="prev" id="bPrev">Back</button>
+      <button type="button" class="primary" data-action="next" id="bNext">Next</button>
+    </div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY = 'as_keller_millionaire_investor_roadmap';
+  var SAVES_KEY = 'as_keller_millionaire_investor_roadmap_saves_v1';
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var HORIZON = 40, BASE = new Date().getFullYear();
+  var PROJ_YEARS = [0, 1, 2, 3, 5, 7, 10, 15, 20, 25, 30, 40];
+  var DEFAULTS = {
+    p0:'6500000', l0:'4500000', a0:'500000', o0:'0',
+    tBuy:'50000000', save:'800000', reinvest:'true', ltv:'60', cost:'7',
+    tOwn:'25000000', appr:'6', repay:'4', rate:'8.5',
+    tInc:'2400000', yld:'3.5'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function copy(o){ var c = {}; for(var k in o) c[k] = o[k]; return c; }
+  function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text !== undefined) e.textContent = text; return e; }
+
+  var state = load();
+  var saves = loadSaves();
+  var last = null, curStep = 0, lastFocus = null;
+
+  function load(){
+    var s = copy(DEFAULTS);
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){ var o = JSON.parse(raw); for(var k in DEFAULTS) if(o && o[k] !== undefined) s[k] = String(o[k]); }
+    }catch(e){}
+    return s;
+  }
+  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  function loadSaves(){
+    try{ var raw = localStorage.getItem(SAVES_KEY); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  function persistSaves(){ try{ localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); }catch(e){} }
+
+  /* ---------- formatting ---------- */
+  function inr(n){
+    if(!isFinite(n)) return '—';
+    var r = Math.round(n);
+    return (r < 0 ? '−' : '') + '₹' + Math.abs(r).toLocaleString('en-IN');
+  }
+  function short(n){
+    if(!isFinite(n) || n === 0) return '';
+    var a = Math.abs(n), s = n < 0 ? '−' : '';
+    if(a >= 1e7) return s + '₹' + (a / 1e7).toFixed(2) + ' crore';
+    if(a >= 1e5) return s + '₹' + (a / 1e5).toFixed(2) + ' lakh';
+    return '';
+  }
+  function pct1(x){ return isFinite(x) ? (x * 100).toFixed(1) + '%' : '—'; }
+  function yearText(y){
+    if(!(y >= 0)) return 'Not within ' + HORIZON + ' years';
+    if(y === 0) return 'Already reached';
+    return (BASE + y) + ' (in ' + y + (y === 1 ? ' year' : ' years') + ')';
+  }
+  function yearShort(y){ return y >= 0 ? String(BASE + y) : 'not reached'; }
+  function fmtDate(ts){ var d = new Date(ts); return d.getDate() + 'th ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+
+  /* ---------- projection (pure) ---------- */
+  function calc(s){
+    function n(k){ var v = parseFloat(s[k]); return isFinite(v) && v > 0 ? v : 0; }
+    var c = {};
+    var V = n('p0'), L = n('l0'), A = n('a0'), O = n('o0');
+    var ltv = Math.min(n('ltv'), 100) / 100, cost = n('cost') / 100, appr = n('appr') / 100;
+    var repay = Math.min(n('repay'), 100) / 100, rate = n('rate') / 100, yld = n('yld') / 100;
+    var save = n('save'), reinvest = s.reinvest === 'true';
+    var tBuy = n('tBuy'), tOwn = n('tOwn'), tInc = n('tInc');
+    var perUnit = (1 - ltv) + cost;
+
+    function snap(y){ return {y:y, V:V, L:L, nw:V + A - L - O, inc:yld * V - (rate + repay) * L}; }
+    var rows = [snap(0)];
+    for(var y = 1; y <= HORIZON; y++){
+      var cf = yld * V - L * rate - L * repay;
+      L -= L * repay;
+      V *= 1 + appr;
+      var avail;
+      if(reinvest){ avail = save + cf; }
+      else{ avail = save + Math.min(cf, 0); A += Math.max(cf, 0); }
+      if(avail < 0){ A += avail; avail = 0; }
+      if(perUnit > 0 && avail > 0){ var P = avail / perUnit; V += P; L += P * ltv; }
+      rows.push(snap(y));
+    }
+    function first(fn){ for(var i = 0; i < rows.length; i++) if(fn(rows[i])) return i; return -1; }
+
+    c.rows = rows;
+    c.assets0 = rows[0].V + n('a0');
+    c.liab0 = n('l0') + n('o0');
+    c.nw0 = rows[0].nw;
+    c.ltv0 = rows[0].V > 0 ? n('l0') / rows[0].V : NaN;
+    c.cf0 = rows[0].inc;
+    c.v0 = rows[0].V;
+    c.buyGap = Math.max(0, tBuy - rows[0].V);
+    c.buyYear = first(function(r){ return r.V >= tBuy; });
+    c.v10 = rows[10].V;
+    c.perLakh = perUnit * 100000;
+    c.ownYear = first(function(r){ return r.nw >= tOwn; });
+    c.nw10 = rows[10].nw; c.nw20 = rows[20].nw;
+    c.incYear = first(function(r){ return r.inc >= tInc; });
+    c.inc10 = rows[10].inc; c.inc20 = rows[20].inc;
+    c.beLtv = (rate + repay) > 0 ? yld / (rate + repay) : NaN;
+    c.ltvNew = ltv;
+    c.tInc = tInc; c.tBuy = tBuy; c.tOwn = tOwn; c.yld = yld; c.loanCost = rate + repay;
+    return c;
+  }
+
+  /* ---------- stages ---------- */
+  var STEPS = [
+    { title:'Think a million', label:'Net worth today', metric:'nw0',
+      desc:'Start by knowing where you stand. Net worth is what you own minus what you owe.',
+      fields:[
+        {k:'p0', l:'Property value today (₹)', hint:1},
+        {k:'l0', l:'Loans on those properties (₹)', hint:1},
+        {k:'a0', l:'Savings and other investments (₹)', hint:1},
+        {k:'o0', l:'Other loans and dues (₹)', hint:1}
+      ],
+      rows:[['assets0','Assets (property + other)'],['liab0','Liabilities (loans + dues)'],['nw0','Net worth today','strong'],['ltv0','Loans as % of property value']],
+      help:'<ul><li>Use what the properties would sell for today, not what you paid.</li><li>Keller\'s first stage is mindset and financial literacy. Tracking net worth is the habit that makes the later stages measurable.</li><li>Enter 0 for property and loans if you have not bought yet.</li></ul>' },
+
+    { title:'Buy a million', label:'Portfolio target reached', metric:'buyYear',
+      desc:'Build a portfolio with a market value that matches your target. Your yearly savings become down payments.',
+      fields:[
+        {k:'tBuy', l:'Portfolio value target (₹)', hint:1},
+        {k:'save', l:'Savings you invest each year (₹)', hint:1},
+        {k:'ltv', l:'Loan share on new purchases (%)', step:'any'},
+        {k:'cost', l:'Buying costs on new purchases (%)', step:'any'},
+        {type:'check', k:'reinvest', l:'Reinvest rental cash flow into new properties', span:1}
+      ],
+      rows:[['v0','Portfolio value today'],['buyGap','Still to build'],['buyYear','Portfolio target reached','strong'],['v10','Portfolio value in 10 years'],['perLakh','Own money needed per ₹1 lakh of property']],
+      help:'<ul><li>Own money needed per ₹1,00,000 of property = loan-free share plus buying costs (stamp duty, registration, brokerage).</li><li>A higher loan share buys faster but raises the loan payments in stage 4.</li><li>If rental cash flow is negative, the shortfall is taken from your yearly savings.</li></ul>' },
+
+    { title:'Own a million', label:'Net worth target reached', metric:'ownYear',
+      desc:'Net worth grows from price growth, loan paydown and new savings. This stage balances cash flow against equity.',
+      fields:[
+        {k:'tOwn', l:'Net worth target (₹)', hint:1},
+        {k:'appr', l:'Property price growth (% per year)', step:'any'},
+        {k:'repay', l:'Loan paid down each year (% of balance)', step:'any'},
+        {k:'rate', l:'Loan interest rate (% per year)', step:'any'}
+      ],
+      rows:[['nw0','Net worth today'],['ownYear','Net worth target reached','strong'],['nw10','Net worth in 10 years'],['nw20','Net worth in 20 years']],
+      help:'<ul><li>Use a growth rate you would be comfortable defending, and test a lower one.</li><li>Paying down 4% of the balance each year is roughly what a 20-year loan does on average, but check your own schedule.</li></ul>' },
+
+    { title:'Receive a million', label:'Income target reached', metric:'incYear',
+      desc:'Passive income is rent after running costs, minus loan interest and loan repayment.',
+      fields:[
+        {k:'tInc', l:'Passive income target (₹ per year)', hint:1},
+        {k:'yld', l:'Net rental yield on value (% per year)', step:'any'}
+      ],
+      rows:[['cf0','Cash flow today (per year)'],['incYear','Income target reached','strong'],['inc10','Cash flow in 10 years (per year)'],['inc20','Cash flow in 20 years (per year)'],['ltvNew','Loan share on new purchases'],['beLtv','Loan share where rent covers loan costs','strong']],
+      help:'<ul><li>Net rental yield = yearly rent after vacancy and running costs ÷ property value. It is the same idea as the cap rate in your McElroy Property Model.</li><li>Rent covers loan costs only when the loan share is below net yield ÷ (interest rate + yearly paydown). Rental yields in Indian metros are often below loan rates, so heavily borrowed flats usually run at a loss until the loans shrink.</li><li>Lowering the loan share in stage 2 is the fastest way to see income turn positive.</li></ul>' }
+  ];
+
+  /* ---------- read-outs ---------- */
+  var YEAR_ROLES = {buyYear:1, ownYear:1, incYear:1};
+  var PCT_ROLES = {ltv0:1, ltvNew:1, beLtv:1};
+  function readout(role, c){
+    if(YEAR_ROLES[role]) return yearText(c[role]);
+    if(PCT_ROLES[role]) return pct1(c[role]);
+    return inr(c[role]);
+  }
+  function tone(role, c){
+    var signed = {nw0:1, cf0:1, inc10:1, inc20:1, nw10:1, nw20:1};
+    if(signed[role]) return isFinite(c[role]) ? (c[role] >= 0 ? 'pos' : 'neg') : '';
+    if(YEAR_ROLES[role]) return c[role] >= 0 ? 'pos' : 'neg';
+    return '';
+  }
+  function put(role, text, cls){
+    var list = document.querySelectorAll('[data-role="' + role + '"]');
+    for(var i = 0; i < list.length; i++){
+      list[i].textContent = text;
+      if(cls !== undefined){ list[i].classList.remove('pos','neg'); if(cls) list[i].classList.add(cls); }
+    }
+  }
+
+  /* ---------- static builds ---------- */
+  (function(){
+    var host = $('steps');
+    STEPS.forEach(function(st, i){
+      var b = el('button', 'step'); b.type = 'button';
+      b.setAttribute('data-action', 'open-step'); b.setAttribute('data-step', String(i));
+      var body = el('span', 'body');
+      body.appendChild(el('span', 't', st.title));
+      var s = el('span', 's'); s.setAttribute('data-role', 'sub' + (i + 1)); body.appendChild(s);
+      var m = el('span', 'm');
+      m.appendChild(el('span', 'ml', st.label));
+      var mv = el('span', 'mv num'); mv.setAttribute('data-role', st.metric); m.appendChild(mv);
+      b.appendChild(el('span', 'n', String(i + 1))); b.appendChild(body); b.appendChild(m);
+      host.appendChild(b);
+    });
+    var tb = $('proj');
+    PROJ_YEARS.forEach(function(y){
+      var tr = document.createElement('tr'); tr.setAttribute('data-y', String(y));
+      for(var k = 0; k < 5; k++) tr.appendChild(el('td'));
+      tb.appendChild(tr);
+    });
+  })();
+
+  /* ---------- update in place ---------- */
+  function update(){
+    var c = calc(state); last = c;
+
+    // hero
+    put('heroLabel', 'Time until you receive ' + inr(c.tInc) + ' a year');
+    if(c.incYear > 0){ put('heroBig', c.incYear + (c.incYear === 1 ? ' year' : ' years')); put('heroShort', 'Around ' + (BASE + c.incYear)); }
+    else if(c.incYear === 0){ put('heroBig', 'Now'); put('heroShort', 'Your cash flow already meets the target'); }
+    else{ put('heroBig', HORIZON + '+ years'); put('heroShort', 'Not reached within ' + HORIZON + ' years with these numbers'); }
+    put('heroNw', inr(c.nw0), c.nw0 >= 0 ? 'pos' : 'neg');
+    put('heroCf', inr(c.cf0), c.cf0 >= 0 ? 'pos' : 'neg');
+
+    var vEl = document.querySelector('[data-role="verdict"]');
+    vEl.className = 'verdict';
+    if(!isFinite(c.beLtv) || c.yld <= 0){
+      vEl.textContent = 'Enter a net rental yield above 0 to see how loans affect your income.';
+    }else if(c.ltvNew > c.beLtv){
+      vEl.className = 'verdict bad';
+      vEl.textContent = 'New purchases use ' + pct1(c.ltvNew) + ' loans. Rent covers loan costs only up to ' + pct1(c.beLtv) + ', so each new property adds to the monthly shortfall.';
+    }else{
+      vEl.className = 'verdict good';
+      vEl.textContent = 'New purchases use ' + pct1(c.ltvNew) + ' loans, within the ' + pct1(c.beLtv) + ' where rent covers loan costs.';
+    }
+
+    // cards and modal rows share role names
+    var roles = {};
+    STEPS.forEach(function(st){ st.rows.forEach(function(r){ roles[r[0]] = 1; }); roles[st.metric] = 1; });
+    Object.keys(roles).forEach(function(r){ put(r, readout(r, c), tone(r, c)); });
+    put('sub1', 'Assets ' + inr(c.assets0) + ', liabilities ' + inr(c.liab0));
+    put('sub2', 'Target ' + inr(c.tBuy));
+    put('sub3', 'Target ' + inr(c.tOwn));
+    put('sub4', 'Target ' + inr(c.tInc) + ' per year');
+
+    // projection table
+    var trs = $('proj').children;
+    for(var i = 0; i < trs.length; i++){
+      var y = parseInt(trs[i].getAttribute('data-y'), 10), r = c.rows[y], tds = trs[i].children;
+      tds[0].textContent = y === 0 ? 'Today' : (BASE + y) + ' (' + y + ')';
+      tds[1].textContent = inr(r.V); tds[2].textContent = inr(r.L);
+      tds[3].textContent = inr(r.nw); tds[3].className = r.nw >= 0 ? '' : 'neg';
+      tds[4].textContent = inr(r.inc); tds[4].className = r.inc >= 0 ? 'pos' : 'neg';
+    }
+
+    // modal-only bits
+    var hints = document.querySelectorAll('[data-hint]');
+    for(var h = 0; h < hints.length; h++){
+      var v = parseFloat(state[hints[h].getAttribute('data-hint')]);
+      hints[h].textContent = isFinite(v) ? short(v) : '';
+    }
+  }
+
+  /* ---------- modal ---------- */
+  function buildField(f){
+    var node;
+    if(f.type === 'note'){ node = el('p', 'note span2'); node.innerHTML = f.html; return node; }
+    if(f.type === 'check'){
+      node = el('label', 'check span2');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.setAttribute('data-key', f.k); cb.checked = state[f.k] === 'true';
+      node.appendChild(cb); node.appendChild(document.createTextNode(f.l));
+      return node;
+    }
+    node = el('label', 'f' + (f.span ? ' span2' : ''));
+    node.appendChild(document.createTextNode(f.l));
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.inputMode = 'decimal'; inp.min = '0'; inp.placeholder = '0';
+    if(f.step) inp.step = f.step;
+    inp.setAttribute('data-key', f.k); inp.value = state[f.k];
+    node.appendChild(inp);
+    var hs = el('span', 'fh'); if(f.hint) hs.setAttribute('data-hint', f.k);
+    node.appendChild(hs);
+    return node;
+  }
+
+  function openStep(i){
+    if(i < 0 || i >= STEPS.length) return;
+    curStep = i;
+    var st = STEPS[i];
+    $('mStep').textContent = 'Stage ' + (i + 1) + ' of ' + STEPS.length;
+    $('mTitle').textContent = st.title;
+    $('mDesc').textContent = st.desc;
+    var body = $('mBody'); body.textContent = '';
+    st.fields.forEach(function(f){ body.appendChild(buildField(f)); });
+    var rows = $('mRows'); rows.textContent = '';
+    st.rows.forEach(function(r){
+      var d = el('div', 'row' + (r[2] ? ' strong' : ''));
+      d.appendChild(el('span', 'l', r[1]));
+      var v = el('span', 'r num'); v.setAttribute('data-role', r[0]); d.appendChild(v);
+      rows.appendChild(d);
+    });
+    var help = $('mHelp'); help.textContent = '';
+    if(st.help){
+      var d = el('details', 'help'); d.open = true;
+      d.appendChild(el('summary', null, 'Notes'));
+      var wrap = el('div'); wrap.innerHTML = st.help; d.appendChild(wrap);
+      help.appendChild(d);
+    }
+    $('bPrev').disabled = i === 0;
+    $('bNext').textContent = i === STEPS.length - 1 ? 'Done' : 'Next';
+    var ov = $('overlay');
+    if(ov.hidden){ lastFocus = document.activeElement; ov.hidden = false; document.body.classList.add('lock'); }
+    update();
+    ov.firstElementChild.scrollTop = 0;
+    var first = body.querySelector('input[type="number"]');
+    if(first) first.focus({preventScroll:true});
+  }
+  function closeModal(){
+    $('overlay').hidden = true; document.body.classList.remove('lock');
+    $('mBody').textContent = ''; $('mRows').textContent = ''; $('mHelp').textContent = '';
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  var toastT;
+  function toast(msg){
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+  }
+
+  /* ---------- saved list ---------- */
+  function renderSaves(){
+    var host = $('saves'), sum = $('saveSummary');
+    host.textContent = '';
+    if(!saves.length){ sum.textContent = 'Nothing saved yet. Name this roadmap and save it to compare plans.'; return; }
+    var calcs = saves.map(function(it){ return calc(it.data); });
+    var best = null, bestY = Infinity;
+    calcs.forEach(function(c, i){ if(c.incYear >= 0 && c.incYear < bestY){ bestY = c.incYear; best = saves[i]; } });
+    sum.textContent = saves.length + ' saved.' + (best ? ' Fastest to the income target: ' + best.name + ' (' + yearShort(bestY) + ').' : ' None reaches the income target yet.');
+    saves.forEach(function(it, i){
+      var c = calcs[i];
+      var card = el('div', 'save');
+      var top = el('div', 'top');
+      top.appendChild(el('span', 'nm', it.name));
+      top.appendChild(el('span', 'dt', fmtDate(it.ts)));
+      card.appendChild(top);
+      card.appendChild(el('div', 'mt num', 'Buy ' + yearShort(c.buyYear) + '  ·  Own ' + yearShort(c.ownYear) + '  ·  Receive ' + yearShort(c.incYear)));
+      var btns = el('div', 'btns');
+      var e = el('button', null, 'Edit'); e.type = 'button'; e.setAttribute('data-action', 'edit'); e.setAttribute('data-id', it.id);
+      var d = el('button', 'danger', 'Delete'); d.type = 'button'; d.setAttribute('data-action', 'delete'); d.setAttribute('data-id', it.id);
+      btns.appendChild(e); btns.appendChild(d); card.appendChild(btns);
+      host.appendChild(card);
+    });
+  }
+  function findSave(id){ for(var i = 0; i < saves.length; i++) if(saves[i].id === id) return i; return -1; }
+
+  /* ---------- events (delegated) ---------- */
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if(!t.closest) return;
+    var f = t.closest('[data-key]');
+    if(!f || f.tagName !== 'INPUT') return;
+    state[f.getAttribute('data-key')] = f.type === 'checkbox' ? String(f.checked) : f.value;
+    persist(); update();
+  });
+
+  var armedDel = null, armedT, resetArmed = false, resetT;
+  document.addEventListener('click', function(e){
+    if(e.target === $('overlay')){ closeModal(); return; }
+    var b = e.target.closest ? e.target.closest('[data-action]') : null;
+    if(!b) return;
+    var a = b.getAttribute('data-action');
+
+    if(a === 'open-step'){ openStep(parseInt(b.getAttribute('data-step'), 10)); }
+    else if(a === 'close-modal'){ closeModal(); }
+    else if(a === 'prev'){ openStep(curStep - 1); }
+    else if(a === 'next'){ if(curStep >= STEPS.length - 1) closeModal(); else openStep(curStep + 1); }
+    else if(a === 'save'){
+      var name = $('saveName').value.trim();
+      if(!name){ toast('Enter a name first'); $('saveName').focus(); return; }
+      var idx = -1;
+      for(var i = 0; i < saves.length; i++) if(saves[i].name.toLowerCase() === name.toLowerCase()) idx = i;
+      if(idx >= 0){ saves[idx].name = name; saves[idx].ts = Date.now(); saves[idx].data = copy(state); toast('Updated "' + name + '"'); }
+      else{
+        saves.unshift({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, ts: Date.now(), data: copy(state)});
+        toast('Saved "' + name + '"');
+      }
+      persistSaves(); renderSaves();
+    }
+    else if(a === 'edit'){
+      var ei = findSave(b.getAttribute('data-id')); if(ei < 0) return;
+      var s = copy(DEFAULTS); for(var k in DEFAULTS) if(saves[ei].data[k] !== undefined) s[k] = String(saves[ei].data[k]);
+      state = s; persist(); update();
+      $('saveName').value = saves[ei].name;
+      toast('Loaded "' + saves[ei].name + '". Open a stage to change it, then Save.');
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+    else if(a === 'delete'){
+      var id = b.getAttribute('data-id');
+      if(armedDel !== id){
+        armedDel = id; b.classList.add('armed'); b.textContent = 'Tap again to delete';
+        clearTimeout(armedT);
+        armedT = setTimeout(function(){ armedDel = null; b.classList.remove('armed'); b.textContent = 'Delete'; }, 3000);
+        return;
+      }
+      clearTimeout(armedT); armedDel = null;
+      var di = findSave(id); if(di < 0) return;
+      var nm = saves[di].name; saves.splice(di, 1); persistSaves(); renderSaves(); toast('Deleted "' + nm + '"');
+    }
+    else if(a === 'reset'){
+      if(!resetArmed){
+        resetArmed = true; b.classList.add('armed'); b.textContent = 'Tap again to reset';
+        clearTimeout(resetT);
+        resetT = setTimeout(function(){ resetArmed = false; b.classList.remove('armed'); b.textContent = 'Reset to example'; }, 3000);
+        return;
+      }
+      clearTimeout(resetT); resetArmed = false; b.classList.remove('armed'); b.textContent = 'Reset to example';
+      state = copy(DEFAULTS); persist(); update(); toast('Reset to example values');
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !$('overlay').hidden) closeModal();
+  });
+
+  update();
+  renderSaves();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1210">
+<title>Turner Rental Deal Analyzer — Little Lab</title>
+<style>
+:root{
+  --bg:#0d1210; --surface:#151c19; --surface2:#1b2420; --line:#26322d;
+  --text:#e8f1ec; --muted:#8fa399; --mint:#a7e8c5; --coral:#ff8c70; --r:14px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom));
+}
+body.lock{overflow:hidden}
+.wrap{max-width:760px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums}
+header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+header a.back{color:var(--muted);text-decoration:none;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;flex:none}
+h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+h2.sec{font-size:15px;margin:22px 0 10px;font-weight:650}
+.pos{color:var(--mint)} .neg{color:var(--coral)}
+
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:6px}
+.hero .label{color:var(--muted);font-size:13px}
+.hero .big{font-size:clamp(30px,8vw,44px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:4px 0 2px}
+.hero .short{color:var(--muted);font-size:13px;min-height:19px}
+.verdict{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:14.5px;border:1px solid var(--line);background:var(--surface2)}
+.verdict.good{border-color:var(--mint);color:var(--mint)}
+.verdict.bad{border-color:var(--coral);color:var(--coral)}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.hero-grid .k{color:var(--muted);font-size:12.5px}
+.hero-grid .v{font-size:17px;font-weight:600}
+
+.steps{display:grid;gap:10px}
+.step{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;
+  color:var(--text);font:inherit;cursor:pointer;
+}
+.step .n{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--mint);color:var(--mint);display:grid;place-items:center;font-weight:650;font-size:14px}
+.step .body{flex:1;min-width:0}
+.step .t{display:block;font-weight:600}
+.step .s{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .m{flex:none;text-align:right;max-width:46%}
+.step .ml{display:block;color:var(--muted);font-size:12px}
+.step .mv{display:block;font-weight:700;font-size:15px}
+.step:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{
+  font:inherit;font-size:14px;padding:10px 14px;border-radius:10px;cursor:pointer;
+  background:var(--surface2);color:var(--text);border:1px solid var(--line);
+}
+button.primary{background:var(--mint);color:#0d1210;border-color:var(--mint);font-weight:600}
+button.danger.armed{border-color:var(--coral);color:var(--coral)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){
+  button:hover:not(:disabled){border-color:var(--mint)}
+  button.danger:hover{border-color:var(--coral)}
+  .step:hover{border-color:var(--mint)}
+}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.savebar{display:flex;gap:10px}
+.savebar input{flex:1;min-width:0;padding:11px 12px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px}
+.savebar input:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+.summary{color:var(--muted);font-size:13.5px;margin:12px 0 0}
+.saves{display:grid;gap:10px;margin-top:12px}
+.save{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.save .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.save .nm{font-weight:600;word-break:break-word}
+.save .dt{color:var(--muted);font-size:12.5px;flex:none}
+.save .mt{color:var(--muted);font-size:13px;margin-top:4px}
+.save .btns{margin-top:10px}
+.save button{padding:7px 12px;font-size:13px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.sheet{
+  width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px 18px 0 0;
+  padding:18px 18px max(18px,env(safe-area-inset-bottom));
+}
+@media(min-width:600px){.overlay{align-items:center}.sheet{border-radius:18px}}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mstep{color:var(--muted);font-size:13px}
+.sheet h2{margin:0;font-size:19px;font-weight:650}
+.x{padding:6px 10px;line-height:1}
+.mdesc{color:var(--muted);font-size:13.5px;margin:6px 0 14px}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:480px){.grid{grid-template-columns:1fr 1fr}}
+label.f{display:block;font-size:13px;color:var(--muted)}
+label.f input{
+  display:block;width:100%;margin-top:5px;padding:11px 12px;background:var(--bg);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;
+}
+label.f input:focus{outline:2px solid var(--mint);outline-offset:1px;border-color:transparent}
+.fh{display:block;min-height:16px;margin-top:3px;font-size:12px;color:var(--mint)}
+.span2{grid-column:1/-1}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.rows{margin-top:16px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.row .l{color:var(--muted)}
+.row.strong .l{color:var(--text);font-weight:600}
+.row.strong .r{font-weight:700}
+.row .r{text-align:right;font-variant-numeric:tabular-nums}
+.rowhead{padding:14px 0 4px;font-size:13px;font-weight:600;color:var(--text);border-bottom:1px solid var(--line)}
+details.help{margin-top:14px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--muted)}
+details.help summary{cursor:pointer;color:var(--text);font-weight:600}
+details.help ul{margin:8px 0 0;padding-left:18px}
+.mfoot{justify-content:space-between}
+
+#toast{
+  position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--surface2);border:1px solid var(--mint);color:var(--text);z-index:60;
+  padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;max-width:90vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+footer{color:var(--muted);font-size:12.5px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="../index.html">Little Lab</a>
+    <h1>Turner Rental Deal Analyzer</h1>
+  </header>
+  <p class="sub">Check a rental the way The Book on Rental Property Investing does: real expenses, cash-on-cash return, the four wealth generators and the quick rules. Everything stays in your browser.</p>
+
+  <div class="hero" aria-live="polite">
+    <div class="label">Cash-on-cash return: yearly cash flow ÷ cash you invest</div>
+    <div class="big num" data-role="heroBig">—</div>
+    <div class="short" data-role="heroShort"></div>
+    <div class="verdict" data-role="verdict"></div>
+    <div class="hero-grid">
+      <div><div class="k">Total return in year one (all four wealth generators)</div><div class="v num" data-role="heroTotal">—</div></div>
+      <div><div class="k">Monthly rent needed for your target return</div><div class="v num" data-role="heroTarget">—</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">The five steps</h2>
+  <div class="steps" id="steps"></div>
+
+  <h2 class="sec">Saved deals</h2>
+  <div class="card">
+    <div class="savebar">
+      <input type="text" id="saveName" maxlength="60" placeholder="Name, for example Whitefield 2BHK" aria-label="Name for this deal" autocomplete="off">
+      <button type="button" class="primary" data-action="save">Save</button>
+    </div>
+    <p class="summary" id="saveSummary"></p>
+    <div class="saves" id="saves"></div>
+  </div>
+
+  <div class="btns"><button type="button" class="danger" data-action="reset">Reset to example</button></div>
+  <footer>Cash-on-cash return = total yearly cash flow ÷ total cash invested. Net operating income = rent after vacancy, minus running costs, before loan payments. The rules of thumb are quick screens, not verdicts, and were written for US markets. Tax benefits are counted only if you enter an estimate.</footer>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="mhead">
+      <div><div class="mstep" id="mStep"></div><h2 id="mTitle"></h2></div>
+      <button type="button" class="x" data-action="close-modal" aria-label="Close">✕</button>
+    </div>
+    <p class="mdesc" id="mDesc"></p>
+    <div class="grid" id="mBody"></div>
+    <div class="rows" id="mRows"></div>
+    <div id="mHelp"></div>
+    <div class="btns mfoot">
+      <button type="button" data-action="prev" id="bPrev">Back</button>
+      <button type="button" class="primary" data-action="next" id="bNext">Next</button>
+    </div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY = 'as_turner_rental_deal_analyzer';
+  var SAVES_KEY = 'as_turner_rental_deal_analyzer_saves_v1';
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DEFAULTS = {
+    rent:'18000', vacancy:'7',
+    tax:'3000', ins:'1500', maint:'0', rep:'5', capex:'5', mgmt:'0',
+    price:'6500000', cost:'7', rehab:'0', ltv:'80',
+    rate:'8.5', years:'20',
+    appr:'5', taxBen:'0', target:'8'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function copy(o){ var c = {}; for(var k in o) c[k] = o[k]; return c; }
+  function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text !== undefined) e.textContent = text; return e; }
+
+  var state = load();
+  var saves = loadSaves();
+  var last = null, curStep = 0, lastFocus = null;
+
+  function load(){
+    var s = copy(DEFAULTS);
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){ var o = JSON.parse(raw); for(var k in DEFAULTS) if(o && o[k] !== undefined) s[k] = String(o[k]); }
+    }catch(e){}
+    return s;
+  }
+  function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  function loadSaves(){
+    try{ var raw = localStorage.getItem(SAVES_KEY); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  function persistSaves(){ try{ localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); }catch(e){} }
+
+  /* ---------- formatting ---------- */
+  function inr(n){
+    if(!isFinite(n)) return '—';
+    var r = Math.round(n);
+    return (r < 0 ? '−' : '') + '₹' + Math.abs(r).toLocaleString('en-IN');
+  }
+  function pct(x){ return isFinite(x) ? (x * 100).toFixed(2) + '%' : '—'; }
+  function short(n){
+    if(!isFinite(n) || n === 0) return '';
+    var a = Math.abs(n), s = n < 0 ? '−' : '';
+    if(a >= 1e7) return s + '₹' + (a / 1e7).toFixed(2) + ' crore';
+    if(a >= 1e5) return s + '₹' + (a / 1e5).toFixed(2) + ' lakh';
+    return '';
+  }
+  function fmtDate(ts){ var d = new Date(ts); return d.getDate() + 'th ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+
+  /* ---------- calculation (pure) ---------- */
+  function calc(s){
+    function n(k){ var v = parseFloat(s[k]); return isFinite(v) && v > 0 ? v : 0; }
+    var c = {};
+    var vac = Math.min(n('vacancy'), 100) / 100;
+    c.gross = n('rent') * 12;
+    c.vacAmt = c.gross * vac;
+    c.egi = c.gross - c.vacAmt;
+
+    var pctCosts = (n('rep') + n('capex') + n('mgmt')) / 100;
+    c.fixedY = n('tax') + n('ins') + n('maint') * 12;
+    c.pctY = c.gross * pctCosts;
+    c.opex = c.fixedY + c.pctY;
+    c.noi = c.egi - c.opex;
+    c.expRatio = c.gross > 0 ? (c.gross - c.noi) / c.gross : NaN;   // costs incl. vacancy, as in the 50% rule
+
+    c.price = n('price');
+    c.buyCosts = c.price * n('cost') / 100;
+    c.rehab = n('rehab');
+    var ltv = Math.min(n('ltv'), 100) / 100;
+    c.loan = c.price * ltv;
+    c.down = c.price - c.loan;
+    c.cashIn = c.down + c.buyCosts + c.rehab;
+
+    var months = Math.round(n('years') * 12), mr = n('rate') / 100 / 12;
+    var emi = 0;
+    if(c.loan > 0 && months > 0) emi = mr === 0 ? c.loan / months : c.loan * mr * Math.pow(1 + mr, months) / (Math.pow(1 + mr, months) - 1);
+    c.emi = emi; c.ds = emi * 12;
+    var bal = c.loan, int1 = 0, prin1 = 0;
+    for(var m = 0; m < Math.min(12, months); m++){ var i = bal * mr, p = emi - i; int1 += i; prin1 += p; bal -= p; }
+    c.int1 = int1; c.prin1 = prin1;
+
+    c.cf = c.noi - c.ds;
+    c.cfm = c.cf / 12;
+    c.coc = c.cashIn > 0 ? c.cf / c.cashIn : NaN;
+    c.capRate = c.price > 0 ? c.noi / c.price : NaN;
+
+    c.appr1 = c.price * n('appr') / 100;
+    c.taxBen = n('taxBen');
+    c.total = c.cf + c.appr1 + c.prin1 + c.taxBen;
+    c.totalPct = c.cashIn > 0 ? c.total / c.cashIn : NaN;
+
+    c.rentPct = c.price > 0 ? n('rent') / c.price : NaN;
+    c.ok1 = c.rentPct >= 0.01; c.ok2 = c.rentPct >= 0.02; c.ok50 = c.expRatio <= 0.5;
+    c.rule1 = isFinite(c.rentPct) ? (c.ok1 ? 'Passes' : 'Fails') + ': rent is ' + pct(c.rentPct) + ' of price' : '—';
+    c.rule2 = isFinite(c.rentPct) ? (c.ok2 ? 'Passes' : 'Fails') + ': needs 2.00%' : '—';
+    c.rule50 = isFinite(c.expRatio) ? 'Your costs are ' + (c.expRatio * 100).toFixed(1) + '% of rent (rule says about 50%)' : '—';
+
+    // rent needed so that cash flow equals a target: NOI = debt service + target return on cash
+    var share = 1 - vac - pctCosts;
+    var targetCoc = n('target') / 100;
+    c.beRent = share > 0 ? (c.ds + c.fixedY) / share / 12 : NaN;
+    c.targetRent = share > 0 ? (c.ds + c.fixedY + targetCoc * c.cashIn) / share / 12 : NaN;
+    c.targetCoc = targetCoc;
+    c.rent = n('rent');
+    return c;
+  }
+
+  /* ---------- steps ---------- */
+  var STEPS = [
+    { title:'Rent and vacancy', label:'Rent you collect per year', metric:'egi',
+      desc:'What the property brings in, after months it sits empty.',
+      fields:[
+        {k:'rent', l:'Monthly rent (₹)', hint:1},
+        {k:'vacancy', l:'Vacancy allowance (%)', step:'any'}
+      ],
+      rows:[['gross','Gross rent per year'],['vacAmt','Rent lost to vacancy'],['egi','Rent you collect per year','strong']],
+      help:'<ul><li>Use what similar flats nearby actually rent for, not the seller\'s figure.</li><li>Turner\'s approach to vacancy: ask a local property manager for the usual vacancy rate for this kind of home and apply it to the rent. About 5% to 10% is common.</li></ul>' },
+
+    { title:'Operating expenses', label:'Net operating income', metric:'noi',
+      desc:'The costs beginners miss are repairs, big replacements (CapEx) and management. Enter them as a share of rent.',
+      fields:[
+        {k:'tax', l:'Property tax (₹ per year)', hint:1},
+        {k:'ins', l:'Insurance (₹ per year)', hint:1},
+        {k:'maint', l:'Maintenance you pay (₹ per month)', hint:1},
+        {k:'rep', l:'Repairs (% of gross rent)', step:'any'},
+        {k:'capex', l:'CapEx reserve (% of gross rent)', step:'any'},
+        {k:'mgmt', l:'Property management (% of gross rent)', step:'any'},
+        {type:'note', html:'Enter 0 for maintenance if the tenant pays it. CapEx means big items that wear out, such as the roof, water heaters, flooring and appliances.'}
+      ],
+      rows:[['fixedY','Tax, insurance and maintenance per year'],['pctY','Repairs, CapEx and management per year'],['opex','Total operating expenses','strong'],['noi','Net operating income','strong'],['expRatio','All costs incl. vacancy as % of gross rent']],
+      help:'<ul><li>Raise repairs and CapEx for an older building, and use real quotes when you have them.</li><li>Management firms often charge about 8% to 10% of gross rent. Enter 0 only if you will manage it yourself, and remember your time has a cost.</li></ul>' },
+
+    { title:'Purchase and cash invested', label:'Cash you invest', metric:'cashIn',
+      desc:'Cash-on-cash return divides by everything you put in, not just the price.',
+      fields:[
+        {k:'price', l:'Purchase price (₹)', hint:1},
+        {k:'cost', l:'Buying costs (% of price)', step:'any'},
+        {k:'rehab', l:'Repairs before renting (₹)', hint:1},
+        {k:'ltv', l:'Loan share (% of price)', step:'any'}
+      ],
+      rows:[['price','Purchase price'],['buyCosts','Buying costs'],['rehab','Repairs before renting'],['down','Down payment'],['cashIn','Total cash invested','strong']],
+      help:'<ul><li>Buying costs include stamp duty, registration, brokerage and GST if the property is under construction. They differ by state.</li><li>Total cash invested = down payment + buying costs + repairs before renting.</li></ul>' },
+
+    { title:'Loan', label:'Monthly loan payment', metric:'emi',
+      desc:'The payment comes out of cash flow, and the principal part is one of your four wealth generators.',
+      fields:[
+        {k:'rate', l:'Interest rate (% per year)', step:'any'},
+        {k:'years', l:'Term (years)', step:'any'}
+      ],
+      rows:[['loan','Loan amount'],['emi','Monthly loan payment','strong'],['ds','Loan payments per year'],['int1','Interest paid in year one'],['prin1','Loan paid down in year one','strong']],
+      help:'<ul><li>Loan paydown is the part of each payment that reduces what you owe. It builds your equity even when cash flow is thin.</li><li>For an all-cash purchase, set the loan share in step 3 to 0.</li></ul>' },
+
+    { title:'Returns and rules', label:'Cash-on-cash return', metric:'coc',
+      desc:'Cash flow is only one of four ways a rental pays you. The quick rules help you screen deals before the full math.',
+      fields:[
+        {k:'appr', l:'Price growth (% per year)', step:'any'},
+        {k:'taxBen', l:'Tax saving (₹ per year, optional)', hint:1},
+        {k:'target', l:'Your target cash-on-cash return (%)', step:'any', span:1}
+      ],
+      rows:[
+        ['','Cash flow and return','head'],
+        ['cf','Cash flow per year','strong'],['cfm','Cash flow per month'],['coc','Cash-on-cash return','strong'],['capRate','Cap rate (NOI ÷ price)'],
+        ['','Four wealth generators in year one','head'],
+        ['cf','Cash flow'],['appr1','Appreciation (price growth)'],['prin1','Loan paydown'],['taxBen','Tax benefits'],
+        ['total','Total return in year one','strong'],['totalPct','Total return on cash invested','strong'],
+        ['','Rent needed','head'],
+        ['beRent','Monthly rent to break even'],['targetRent','Monthly rent for your target return','strong'],
+        ['','Quick rules','head'],
+        ['rule1','1% rule: monthly rent ≥ 1% of price'],['rule2','2% rule: monthly rent ≥ 2% of price'],['rule50','50% rule: costs ≈ half of rent']
+      ],
+      help:'<ul><li>Turner\'s four wealth generators: cash flow, appreciation, loan paydown and tax benefits. Appreciation is a guess, so test a low growth rate.</li><li>The rules of thumb are for quick screening. They were written for US markets, where rent is often 1% of price or more. Rents in Indian metros are usually far below 1% of price, so most deals will fail them even when they work in other ways.</li><li>India has its own tax rules for let-out property. Enter a tax saving only if your CA has estimated one.</li></ul>' }
+  ];
+
+  var PCT_ROLES = {coc:1, capRate:1, totalPct:1, expRatio:1};
+  var TEXT_ROLES = {rule1:1, rule2:1, rule50:1};
+  function readout(role, c){
+    if(PCT_ROLES[role]) return pct(c[role]);
+    if(TEXT_ROLES[role]) return c[role];
+    return inr(c[role]);
+  }
+  function tone(role, c){
+    var signed = {cf:1, cfm:1, coc:1, total:1, totalPct:1, noi:1};
+    if(signed[role]) return isFinite(c[role]) ? (c[role] >= 0 ? 'pos' : 'neg') : '';
+    if(role === 'rule1') return isFinite(c.rentPct) ? (c.ok1 ? 'pos' : 'neg') : '';
+    if(role === 'rule2') return isFinite(c.rentPct) ? (c.ok2 ? 'pos' : 'neg') : '';
+    if(role === 'rule50') return isFinite(c.expRatio) ? (c.ok50 ? 'pos' : 'neg') : '';
+    return '';
+  }
+  function put(role, text, cls){
+    var list = document.querySelectorAll('[data-role="' + role + '"]');
+    for(var i = 0; i < list.length; i++){
+      list[i].textContent = text;
+      if(cls !== undefined){ list[i].classList.remove('pos','neg'); if(cls) list[i].classList.add(cls); }
+    }
+  }
+
+  (function(){
+    var host = $('steps');
+    STEPS.forEach(function(st, i){
+      var b = el('button', 'step'); b.type = 'button';
+      b.setAttribute('data-action', 'open-step'); b.setAttribute('data-step', String(i));
+      var body = el('span', 'body');
+      body.appendChild(el('span', 't', st.title));
+      var s = el('span', 's'); s.setAttribute('data-role', 'sub' + (i + 1)); body.appendChild(s);
+      var m = el('span', 'm');
+      m.appendChild(el('span', 'ml', st.label));
+      var mv = el('span', 'mv num'); mv.setAttribute('data-role', st.metric); m.appendChild(mv);
+      b.appendChild(el('span', 'n', String(i + 1))); b.appendChild(body); b.appendChild(m);
+      host.appendChild(b);
+    });
+  })();
+
+  /* ---------- update in place ---------- */
+  function update(){
+    var c = calc(state); last = c;
+
+    put('heroBig', pct(c.coc), isFinite(c.coc) ? (c.coc >= 0 ? 'pos' : 'neg') : '');
+    put('heroShort', 'Cash flow ' + inr(c.cfm) + ' per month on ' + inr(c.cashIn) + ' invested');
+    put('heroTotal', isFinite(c.totalPct) ? inr(c.total) + ' (' + pct(c.totalPct) + ')' : '—', isFinite(c.total) ? (c.total >= 0 ? 'pos' : 'neg') : '');
+    put('heroTarget', isFinite(c.targetRent) ? inr(c.targetRent) : '—');
+
+    var vEl = document.querySelector('[data-role="verdict"]');
+    vEl.className = 'verdict';
+    if(c.price <= 0 || c.rent <= 0 || !isFinite(c.coc)){
+      vEl.textContent = 'Enter a price, a rent and a loan share to see the verdict.';
+    }else if(c.cf < 0){
+      vEl.className = 'verdict bad';
+      vEl.textContent = 'Rent does not cover costs and loan payments. You are ' + inr(-c.cfm) + ' short each month. Break-even rent is ' + inr(c.beRent) + ' per month.';
+    }else if(c.coc >= c.targetCoc){
+      vEl.className = 'verdict good';
+      vEl.textContent = 'Cash flow is ' + inr(c.cfm) + ' per month, a ' + pct(c.coc) + ' return. That meets your ' + (c.targetCoc * 100).toFixed(1) + '% target.';
+    }else{
+      vEl.className = 'verdict bad';
+      vEl.textContent = 'Cash flow is positive but the ' + pct(c.coc) + ' return is below your ' + (c.targetCoc * 100).toFixed(1) + '% target. Rent of ' + inr(c.targetRent) + ' per month would meet it.';
+    }
+
+    var roles = {};
+    STEPS.forEach(function(st){ st.rows.forEach(function(r){ if(r[0]) roles[r[0]] = 1; }); roles[st.metric] = 1; });
+    Object.keys(roles).forEach(function(r){ put(r, readout(r, c), tone(r, c)); });
+    put('sub1', 'Rent ' + inr(c.rent) + ' per month');
+    put('sub2', 'Costs ' + inr(c.opex) + ' per year');
+    put('sub3', 'Price ' + inr(c.price));
+    put('sub4', 'Loan ' + inr(c.loan));
+    put('sub5', 'Total return in year one ' + inr(c.total));
+
+    var hints = document.querySelectorAll('[data-hint]');
+    for(var h = 0; h < hints.length; h++){
+      var v = parseFloat(state[hints[h].getAttribute('data-hint')]);
+      hints[h].textContent = isFinite(v) ? short(v) : '';
+    }
+  }
+
+  /* ---------- modal ---------- */
+  function buildField(f){
+    var node;
+    if(f.type === 'note'){ node = el('p', 'note span2'); node.textContent = f.html.replace(/<[^>]+>/g, ''); return node; }
+    node = el('label', 'f' + (f.span ? ' span2' : ''));
+    node.appendChild(document.createTextNode(f.l));
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.inputMode = 'decimal'; inp.min = '0'; inp.placeholder = '0';
+    if(f.step) inp.step = f.step;
+    inp.setAttribute('data-key', f.k); inp.value = state[f.k];
+    node.appendChild(inp);
+    var hs = el('span', 'fh'); if(f.hint) hs.setAttribute('data-hint', f.k);
+    node.appendChild(hs);
+    return node;
+  }
+
+  function openStep(i){
+    if(i < 0 || i >= STEPS.length) return;
+    curStep = i;
+    var st = STEPS[i];
+    $('mStep').textContent = 'Step ' + (i + 1) + ' of ' + STEPS.length;
+    $('mTitle').textContent = st.title;
+    $('mDesc').textContent = st.desc;
+    var body = $('mBody'); body.textContent = '';
+    st.fields.forEach(function(f){ body.appendChild(buildField(f)); });
+    var rows = $('mRows'); rows.textContent = '';
+    st.rows.forEach(function(r){
+      if(r[2] === 'head'){ rows.appendChild(el('div', 'rowhead', r[1])); return; }
+      var d = el('div', 'row' + (r[2] ? ' strong' : ''));
+      d.appendChild(el('span', 'l', r[1]));
+      var v = el('span', 'r num'); v.setAttribute('data-role', r[0]); d.appendChild(v);
+      rows.appendChild(d);
+    });
+    var help = $('mHelp'); help.textContent = '';
+    if(st.help){
+      var d = el('details', 'help'); d.open = true;
+      d.appendChild(el('summary', null, 'Notes'));
+      var wrap = el('div'); wrap.innerHTML = st.help; d.appendChild(wrap);
+      help.appendChild(d);
+    }
+    $('bPrev').disabled = i === 0;
+    $('bNext').textContent = i === STEPS.length - 1 ? 'Done' : 'Next';
+    var ov = $('overlay');
+    if(ov.hidden){ lastFocus = document.activeElement; ov.hidden = false; document.body.classList.add('lock'); }
+    update();
+    ov.firstElementChild.scrollTop = 0;
+    var first = body.querySelector('input[type="number"]');
+    if(first) first.focus({preventScroll:true});
+  }
+  function closeModal(){
+    $('overlay').hidden = true; document.body.classList.remove('lock');
+    $('mBody').textContent = ''; $('mRows').textContent = ''; $('mHelp').textContent = '';
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  var toastT;
+  function toast(msg){
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+  }
+
+  /* ---------- saved list ---------- */
+  function renderSaves(){
+    var host = $('saves'), sum = $('saveSummary');
+    host.textContent = '';
+    if(!saves.length){ sum.textContent = 'Nothing saved yet. Name this deal and save it to compare properties.'; return; }
+    var calcs = saves.map(function(it){ return calc(it.data); });
+    var best = null, bestV = -Infinity;
+    calcs.forEach(function(c, i){ if(isFinite(c.coc) && c.coc > bestV){ bestV = c.coc; best = saves[i]; } });
+    sum.textContent = saves.length + ' saved.' + (best ? ' Best cash-on-cash: ' + best.name + ' (' + pct(bestV) + ').' : '');
+    saves.forEach(function(it, i){
+      var c = calcs[i];
+      var card = el('div', 'save');
+      var top = el('div', 'top');
+      top.appendChild(el('span', 'nm', it.name));
+      top.appendChild(el('span', 'dt', fmtDate(it.ts)));
+      card.appendChild(top);
+      card.appendChild(el('div', 'mt num', 'Cash-on-cash ' + pct(c.coc) + '  ·  Cash flow ' + inr(c.cfm) + ' per month  ·  Year-one total return ' + pct(c.totalPct)));
+      var btns = el('div', 'btns');
+      var e = el('button', null, 'Edit'); e.type = 'button'; e.setAttribute('data-action', 'edit'); e.setAttribute('data-id', it.id);
+      var d = el('button', 'danger', 'Delete'); d.type = 'button'; d.setAttribute('data-action', 'delete'); d.setAttribute('data-id', it.id);
+      btns.appendChild(e); btns.appendChild(d); card.appendChild(btns);
+      host.appendChild(card);
+    });
+  }
+  function findSave(id){ for(var i = 0; i < saves.length; i++) if(saves[i].id === id) return i; return -1; }
+
+  /* ---------- events (delegated) ---------- */
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if(!t.closest) return;
+    var f = t.closest('[data-key]');
+    if(!f || f.tagName !== 'INPUT') return;
+    state[f.getAttribute('data-key')] = f.value;
+    persist(); update();
+  });
+
+  var armedDel = null, armedT, resetArmed = false, resetT;
+  document.addEventListener('click', function(e){
+    if(e.target === $('overlay')){ closeModal(); return; }
+    var b = e.target.closest ? e.target.closest('[data-action]') : null;
+    if(!b) return;
+    var a = b.getAttribute('data-action');
+
+    if(a === 'open-step'){ openStep(parseInt(b.getAttribute('data-step'), 10)); }
+    else if(a === 'close-modal'){ closeModal(); }
+    else if(a === 'prev'){ openStep(curStep - 1); }
+    else if(a === 'next'){ if(curStep >= STEPS.length - 1) closeModal(); else openStep(curStep + 1); }
+    else if(a === 'save'){
+      var name = $('saveName').value.trim();
+      if(!name){ toast('Enter a name first'); $('saveName').focus(); return; }
+      var idx = -1;
+      for(var i = 0; i < saves.length; i++) if(saves[i].name.toLowerCase() === name.toLowerCase()) idx = i;
+      if(idx >= 0){ saves[idx].name = name; saves[idx].ts = Date.now(); saves[idx].data = copy(state); toast('Updated "' + name + '"'); }
+      else{
+        saves.unshift({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, ts: Date.now(), data: copy(state)});
+        toast('Saved "' + name + '"');
+      }
+      persistSaves(); renderSaves();
+    }
+    else if(a === 'edit'){
+      var ei = findSave(b.getAttribute('data-id')); if(ei < 0) return;
+      var s = copy(DEFAULTS); for(var k in DEFAULTS) if(saves[ei].data[k] !== undefined) s[k] = String(saves[ei].data[k]);
+      state = s; persist(); update();
+      $('saveName').value = saves[ei].name;
+      toast('Loaded "' + saves[ei].name + '". Open a step to change it, then Save.');
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+    else if(a === 'delete'){
+      var id = b.getAttribute('data-id');
+      if(armedDel !== id){
+        armedDel = id; b.classList.add('armed'); b.textContent = 'Tap again to delete';
+        clearTimeout(armedT);
+        armedT = setTimeout(function(){ armedDel = null; b.classList.remove('armed'); b.textContent = 'Delete'; }, 3000);
+        return;
+      }
+      clearTimeout(armedT); armedDel = null;
+      var di = findSave(id); if(di < 0) return;
+      var nm = saves[di].name; saves.splice(di, 1); persistSaves(); renderSaves(); toast('Deleted "' + nm + '"');
+    }
+    else if(a === 'reset'){
+      if(!resetArmed){
+        resetArmed = true; b.classList.add('armed'); b.textContent = 'Tap again to reset';
+        clearTimeout(resetT);
+        resetT = setTimeout(function(){ resetArmed = false; b.classList.remove('armed'); b.textContent = 'Reset to example'; }, 3000);
+        return;
+      }
+      clearTimeout(resetT); resetArmed = false; b.classList.remove('armed'); b.textContent = 'Reset to example';
+      state = copy(DEFAULTS); persist(); update(); toast('Reset to example values');
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !$('overlay').hidden) closeModal();
+  });
+
+  update();
+  renderSaves();
+})();
+</script>
+</body>
+</html>
