@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1412">
+<title>Card Cycle Planner · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--panel:#18201c;--line:#2a352f;--text:#e8efe9;--mute:#8fa097;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:var(--mute);margin:0 0 18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--mint)}
+.best{border-color:var(--mint)}
+.bestname{font-size:26px;font-weight:700;display:flex;align-items:center;gap:10px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.fact{background:#121916;border-radius:10px;padding:10px}
+.fact b{display:block;font-size:17px}
+.fact span{color:var(--mute);font-size:12.5px}
+.switch{margin-top:12px;color:var(--coral)}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+input{width:100%;background:#121916;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px;font:inherit}
+input:focus,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+.row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+@media(max-width:480px){.row{grid-template-columns:1fr 1fr}.row>:first-child{grid-column:1/-1}}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;background:var(--mint);color:#0f1412;font-weight:600}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button.warn{background:var(--coral);color:#0f1412}
+.actions{display:flex;gap:8px;margin-top:12px}
+@media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.1)}}
+.item{border-top:1px solid var(--line);padding:12px 0}
+.item:first-of-type{border-top:0}
+.itop{display:flex;align-items:center;gap:10px}
+.iname{font-weight:600;flex:1}
+.meta{color:var(--mute);font-size:13px;margin:2px 0 8px 22px}
+.btns{display:flex;gap:8px;margin-left:22px}
+.btns button{padding:6px 12px;font-size:13px}
+.bar{display:grid;grid-template-columns:repeat(31,1fr);gap:2px;margin:6px 0}
+.bar i{height:22px;border-radius:3px}
+.scale{display:flex;justify-content:space-between;color:var(--mute);font-size:12px}
+.cmp{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.cmp:first-child{border-top:0}
+.empty{color:var(--mute)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:#0f1412;padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Card Cycle Planner</h1>
+  <p class="sub">Use each card right after its billing date, so spends reach the bill as late as possible.</p>
+
+  <div class="card best" id="summary"></div>
+
+  <div class="card">
+    <h2>Check another date</h2>
+    <input type="date" id="chk" aria-label="Purchase date">
+  </div>
+
+  <div class="card" id="timelineCard">
+    <h2>Which card, which days</h2>
+    <div class="bar" id="bar"></div>
+    <div class="scale"><span>1st</span><span>8th</span><span>15th</span><span>22nd</span><span>31st</span></div>
+  </div>
+
+  <div class="card">
+    <h2 id="formTitle">Add a card</h2>
+    <div class="row">
+      <div><label for="name">Card name</label><input id="name" maxlength="30" placeholder="e.g. HDFC Regalia" autocomplete="off"></div>
+      <div><label for="day">Billing date (1–31)</label><input id="day" type="number" min="1" max="31" inputmode="numeric" placeholder="8"></div>
+      <div><label for="due">Due days after bill</label><input id="due" type="number" min="0" max="90" inputmode="numeric" value="20"></div>
+    </div>
+    <div class="actions">
+      <button id="save">Add card</button>
+      <button id="cancel" class="ghost" hidden>Cancel edit</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Your cards</h2>
+    <div id="list"></div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY='as_cardcycle_v1';
+  var COLORS=['#a7e8c5','#ff8c70','#8ecbff','#f5d77a','#c9a7ff','#ffb3d1'];
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var cards=[], editId=null, armedId=null, armTimer=null, custom=false;
+  var $=function(id){return document.getElementById(id)};
+
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.cards))cards=s.cards}catch(e){}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({cards:cards}))}catch(e){}}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('on')},2200)}
+  function ord(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+  function fmt(d){return d.getDate()+'th '+MON[d.getMonth()]+' '+d.getFullYear()}
+  function midnight(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+  function dim(y,m){return new Date(y,m+1,0).getDate()}
+  function stmt(c,y,m){var p=new Date(y,m,1);return new Date(p.getFullYear(),p.getMonth(),Math.min(c.day,dim(p.getFullYear(),p.getMonth())))}
+  function lastStmt(c,D){var s=stmt(c,D.getFullYear(),D.getMonth());return s<=D?s:stmt(c,D.getFullYear(),D.getMonth()-1)}
+  function nextStmt(c,D){var s=stmt(c,D.getFullYear(),D.getMonth());return s>D?s:stmt(c,D.getFullYear(),D.getMonth()+1)}
+  function diff(a,b){return Math.round((a-b)/864e5)}
+  function color(id){return COLORS[cards.findIndex(function(c){return c.id===id})%COLORS.length]}
+  function sorted(){return cards.slice().sort(function(a,b){return a.day-b.day})}
+
+  function analyze(D){
+    var best=null,bl=null;
+    cards.forEach(function(c){var l=lastStmt(c,D);if(!bl||l>bl){bl=l;best=c}});
+    var rows=cards.map(function(c){var n=nextStmt(c,D);return{c:c,next:n,due:new Date(n.getFullYear(),n.getMonth(),n.getDate()+c.due),days:diff(n,D)+c.due}});
+    var sw=null;
+    cards.forEach(function(c){if(c===best)return;var n=nextStmt(c,D);if(!sw||n<sw.date)sw={date:n,card:c}});
+    return{best:best,rows:rows,sw:sw};
+  }
+
+  function renderSummary(){
+    var el=$('summary');
+    if(!cards.length){el.innerHTML='<h2>Best card for the date</h2><div class="empty">Add your cards below to see which one to swipe.</div>';return}
+    var D=midnight($('chk').value?new Date($('chk').value+'T00:00:00'):new Date());
+    var a=analyze(D),r=a.rows.filter(function(x){return x.c===a.best})[0];
+    var h='<h2>Best card on '+fmt(D)+'</h2><div class="bestname"><span class="dot" style="background:'+color(a.best.id)+'"></span>'+esc(a.best.name)+'</div>';
+    h+='<div class="facts"><div class="fact"><b>'+fmt(r.next)+'</b><span>Bill generated</span></div><div class="fact"><b>'+r.days+' days</b><span>Interest-free, due '+fmt(r.due)+'</span></div></div>';
+    if(a.sw){h+='<div class="switch">Switch to '+esc(a.sw.card.name)+' on '+fmt(a.sw.date)+' ('+diff(a.sw.date,D)+' days from this date).</div>'}
+    else{h+='<div class="switch">Add a second card to start rotating.</div>'}
+    if(cards.length>1){h+='<div style="margin-top:12px">';r=a.rows.slice().sort(function(x,y){return y.days-x.days});
+      r.forEach(function(x){h+='<div class="cmp"><span><span class="dot" style="background:'+color(x.c.id)+';display:inline-block;margin-right:8px"></span>'+esc(x.c.name)+'</span><span>'+x.days+' days</span></div>'});
+      h+='</div>'}
+    el.innerHTML=h;
+  }
+
+  function renderBar(){
+    var card=$('timelineCard');card.hidden=cards.length<2;
+    var s=sorted(),h='';
+    for(var d=1;d<=31;d++){
+      var b=null;s.forEach(function(c){if(c.day<=d)b=c});if(!b)b=s[s.length-1];
+      h+='<i style="background:'+color(b.id)+'" title="'+ord(d)+': '+esc(b.name)+'"></i>';
+    }
+    $('bar').innerHTML=h;
+  }
+
+  function renderList(){
+    var el=$('list');
+    if(!cards.length){el.innerHTML='<div class="empty">No cards yet.</div>';return}
+    var s=sorted(),h='';
+    cards.forEach(function(c){
+      var i=s.indexOf(c),win=s.length>1?'Use '+ord(c.day)+' → '+ord(s[(i+1)%s.length].day):'Only card, no rotation';
+      h+='<div class="item"><div class="itop"><span class="dot" style="background:'+color(c.id)+'"></span><span class="iname">'+esc(c.name)+'</span></div>'
+        +'<div class="meta">Bills on '+ord(c.day)+' · due '+c.due+' days later · '+win+'</div>'
+        +'<div class="btns"><button class="ghost" data-act="edit" data-id="'+c.id+'">Edit</button>'
+        +'<button class="'+(armedId===c.id?'warn':'ghost')+'" data-act="del" data-id="'+c.id+'">'+(armedId===c.id?'Tap again':'Delete')+'</button></div></div>';
+    });
+    el.innerHTML=h;
+  }
+
+  function renderAll(){renderSummary();renderBar();renderList()}
+
+  function resetForm(){editId=null;$('name').value='';$('day').value='';$('due').value='20';$('save').textContent='Add card';$('formTitle').textContent='Add a card';$('cancel').hidden=true}
+
+  $('save').addEventListener('click',function(){
+    var name=$('name').value.trim(),day=parseInt($('day').value,10),due=parseInt($('due').value,10);
+    if(!name){toast('Enter a card name');return}
+    if(!(day>=1&&day<=31)){toast('Billing date must be 1 to 31');return}
+    if(isNaN(due)||due<0||due>90)due=20;
+    if(editId){cards.forEach(function(c){if(c.id===editId){c.name=name;c.day=day;c.due=due}});toast('Card updated')}
+    else{cards.push({id:'c'+Date.now(),name:name,day:day,due:due});toast('Card added')}
+    save();resetForm();renderAll();
+  });
+  $('cancel').addEventListener('click',resetForm);
+
+  $('list').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-act]');if(!b)return;
+    var id=b.getAttribute('data-id'),act=b.getAttribute('data-act');
+    if(act==='edit'){
+      var c=cards.filter(function(x){return x.id===id})[0];if(!c)return;
+      editId=id;$('name').value=c.name;$('day').value=c.day;$('due').value=c.due;
+      $('save').textContent='Update card';$('formTitle').textContent='Edit card';$('cancel').hidden=false;
+      $('name').focus();window.scrollTo({top:$('name').getBoundingClientRect().top+scrollY-120,behavior:'smooth'});
+    }else if(act==='del'){
+      if(armedId===id){
+        clearTimeout(armTimer);armedId=null;cards=cards.filter(function(x){return x.id!==id});
+        if(editId===id)resetForm();save();renderAll();toast('Card deleted');
+      }else{
+        armedId=id;renderList();toast('Tap Delete again to confirm');
+        clearTimeout(armTimer);armTimer=setTimeout(function(){armedId=null;renderList()},3000);
+      }
+    }
+  });
+
+  function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  $('chk').addEventListener('input',function(){custom=true;renderSummary()});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&!custom){$('chk').value=todayStr();renderSummary()}});
+
+  load();$('chk').value=todayStr();renderAll();
+})();
+</script>
+</body>
+</html>
