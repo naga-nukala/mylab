@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1412">
+<title>EPF Balance Tracker · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#171e1b;--line:#26312c;--tx:#e8efe9;--mut:#8fa196;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:760px;margin-inline:auto}
+h1{font-size:20px;margin:4px 0 14px;color:var(--mint)}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.sum{border-color:var(--mint)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.big{font-size:26px;font-weight:700;color:var(--mint)}
+.big.c{color:var(--coral)}
+.lbl{font-size:12px;color:var(--mut)}
+.sub{font-size:12px;color:var(--mut);margin-top:2px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+input{width:100%;background:#0f1412;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+input:focus{outline:none;border-color:var(--mint)}
+.f{margin-bottom:10px}
+.row{display:flex;gap:8px}
+button{background:var(--mint);color:#0f1412;border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--tx);border:1px solid var(--line)}
+button.del{background:transparent;color:var(--coral);border:1px solid var(--coral)}
+button.del.armed{background:var(--coral);color:#0f1412}
+button.sm{padding:6px 10px;font-size:13px}
+.item{border-top:1px solid var(--line);padding:12px 0}
+.item:first-child{border-top:0}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.nm{font-weight:600}
+.bal{color:var(--mint);font-weight:700;white-space:nowrap}
+.meta{font-size:12px;color:var(--mut);margin:2px 0 8px;word-break:break-all}
+.empty{color:var(--mut);text-align:center;padding:14px 0}
+.split{display:flex;height:8px;border-radius:6px;overflow:hidden;margin:10px 0 4px;background:var(--line)}
+.split i{display:block;height:100%}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);border:1px solid var(--mint);padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+@media (hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}button.ghost:hover{border-color:var(--mint)}}
+</style>
+</head>
+<body>
+<h1>EPF Balance Tracker</h1>
+
+<div class="card sum">
+  <div class="grid">
+    <div><div class="lbl">Current total balance</div><div class="big" id="sTotal">₹0</div><div class="sub" id="sTotalW"></div></div>
+    <div><div class="lbl">Companies / EPF accounts</div><div class="big" id="sCount">0</div></div>
+  </div>
+  <div class="sub" id="sBreak" style="margin-top:6px"></div>
+  <div class="split"><i id="bExist" style="background:var(--mint)"></i><i id="bFut" style="background:var(--coral)"></i></div>
+  <div class="sub"><span style="color:var(--mint)">●</span> existing balance grown &nbsp; <span style="color:var(--coral)">●</span> future contributions</div>
+  <div class="grid" style="margin-top:14px">
+    <div><div class="lbl">Corpus at retirement (<span id="sYrs">0</span> yrs)</div><div class="big" id="sCorpus">₹0</div><div class="sub" id="sCorpusW"></div></div>
+    <div><div class="lbl">Monthly available after retirement</div><div class="big c" id="sMonthly">₹0</div><div class="sub" id="sReal"></div></div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div><div class="lbl">EPS pension / month</div><div class="big" id="sPension">₹0</div><div class="sub" id="sPenNote"></div></div>
+    <div><div class="lbl">Total monthly income</div><div class="big c" id="sAll">₹0</div><div class="sub">corpus payout + pension</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Projection assumptions</h2>
+  <div class="f"><label>UAN (optional)</label><input data-set="uan" inputmode="numeric" placeholder="12-digit UAN"></div>
+  <div class="grid">
+    <div class="f"><label>Current age</label><input data-set="age" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Retirement age</label><input data-set="retire" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Monthly employee share ₹</label><input data-set="cEmp" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Monthly employer EPF share ₹</label><input data-set="cEr" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Monthly employer pension (EPS) ₹</label><input data-set="cEps" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Pensionable salary ₹ (max 15,000)</label><input data-set="penSal" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Pension service so far (years)</label><input data-set="penSvc" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Yearly step-up % (employee/employer EPF)</label><input data-set="step" type="number" inputmode="decimal"></div>
+    <div class="f"><label>EPF interest rate % p.a.</label><input data-set="rate" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Inflation % p.a.</label><input data-set="infl" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Payout period (years)</label><input data-set="payYears" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Return after retirement % p.a.</label><input data-set="postRate" type="number" inputmode="decimal"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 id="formTitle">Add company</h2>
+  <div class="f"><label>Company</label><input id="fCo" placeholder="e.g. Infosys"></div>
+  <div class="f"><label>EPF member no.</label><input id="fNo" placeholder="e.g. HYDPT00123450000012345"></div>
+  <div class="grid">
+    <div class="f"><label>Employee share ₹</label><input id="fEmp" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Employer share ₹</label><input id="fEr" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Pension (EPS) ₹</label><input id="fEps" type="number" inputmode="decimal"></div>
+    <div class="f"><label>Balance as of</label><input id="fDate" type="date"></div>
+  </div>
+  <div class="row"><button id="fSave">Add</button><button id="fCancel" class="ghost" hidden>Cancel edit</button></div>
+</div>
+
+<div class="card">
+  <h2>Companies</h2>
+  <div id="list"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+const KEY='as_epf_tracker_v1';
+const DEF={age:30,retire:58,cEmp:0,cEr:0,cEps:0,step:5,rate:8.25,infl:6,payYears:25,postRate:7,penSal:15000,penSvc:0,uan:''};
+let state={set:{...DEF},items:[]};
+let editId=null,armed=null,armT=null,toastT=null;
+const $=s=>document.querySelector(s);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s){state.set={...DEF,...(s.set||{})};state.items=Array.isArray(s.items)?s.items:[];}}catch(e){}
+if(state.set.contrib&&!state.set.cEmp)state.set.cEmp=+state.set.contrib||0;
+state.items.forEach(i=>{if(i.emp===undefined){i.emp=+i.balance||0;i.er=0;i.eps=0;}});
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+function words(n){n=Math.round(n);if(n>=1e7)return (n/1e7).toFixed(2)+' Cr';if(n>=1e5)return (n/1e5).toFixed(2)+' Lakh';return '';}
+function fmtDate(iso){if(!iso)return '';const p=iso.split('-');if(p.length<3)return '';return (+p[2])+'th '+MON[+p[1]-1]+' '+p[0];}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1800);}
+const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+
+function updateSummary(){
+  const s=state.set,it=state.items,sum=k=>it.reduce((a,i)=>a+(+i[k]||0),0);
+  const emp=sum('emp'),er=sum('er'),eps=sum('eps'),total=emp+er;
+  const n=Math.max(0,(+s.retire||0)-(+s.age||0)),r=(+s.rate||0)/100,g=(+s.step||0)/100,c=((+s.cEmp||0)+(+s.cEr||0))*12;
+  const exist=total*Math.pow(1+r,n);
+  let fut=0;for(let i=0;i<n;i++)fut=fut*(1+r)+c*Math.pow(1+g,i);
+  const corpus=exist+fut,m=(+s.postRate||0)/1200,N=Math.max(1,(+s.payYears||0)*12);
+  const pmt=m?corpus*m/(1-Math.pow(1+m,-N)):corpus/N;
+  const infl=Math.pow(1+(+s.infl||0)/100,n);
+  const svc=(+s.penSvc||0)+n,sal=Math.min(+s.penSal||0,15000),pen=svc>=10?sal*svc/70:0;
+  const epsAt=eps+(+s.cEps||0)*12*n;
+  $('#sTotal').textContent=inr(total);$('#sTotalW').textContent=words(total);
+  $('#sCount').textContent=it.length;$('#sYrs').textContent=n;
+  $('#sBreak').textContent='Employee '+inr(emp)+' · Employer '+inr(er)+' · Pension (EPS) '+inr(eps);
+  $('#sCorpus').textContent=inr(corpus);$('#sCorpusW').textContent=words(corpus);
+  $('#sMonthly').textContent=inr(pmt);
+  $('#sReal').textContent='≈ '+inr(pmt/infl)+'/mo in today\'s money';
+  $('#sPension').textContent=inr(pen);
+  $('#sPenNote').textContent=svc>=10?(svc.toFixed(1)+' yrs service · EPS paid in ≈ '+inr(epsAt)):'Needs 10+ yrs service';
+  $('#sAll').textContent=inr(pmt+pen);
+  $('#bExist').style.width=corpus?(exist/corpus*100)+'%':'0';
+  $('#bFut').style.width=corpus?(fut/corpus*100)+'%':'0';
+}
+
+function renderList(){
+  const el=$('#list');
+  if(!state.items.length){el.innerHTML='<div class="empty">No companies yet — add your first EPF account above.</div>';return;}
+  el.innerHTML=state.items.map(i=>`<div class="item">
+    <div class="top"><span class="nm">${esc(i.company)}</span><span class="bal">${inr((+i.emp||0)+(+i.er||0))}</span></div>
+    <div class="meta">${i.epfNo?esc(i.epfNo):'No EPF no.'}${i.asOf?' · as of '+fmtDate(i.asOf):''}<br>Employee ${inr(i.emp)} · Employer ${inr(i.er)} · Pension (EPS) ${inr(i.eps)}</div>
+    <div class="row"><button class="ghost sm" data-act="edit" data-id="${i.id}">Edit</button><button class="del sm" data-act="del" data-id="${i.id}">Delete</button></div>
+  </div>`).join('');
+}
+
+function resetForm(){editId=null;['#fCo','#fNo','#fEmp','#fEr','#fEps'].forEach(s=>$(s).value='');$('#fDate').value=todayISO();
+  $('#fSave').textContent='Add';$('#formTitle').textContent='Add company';$('#fCancel').hidden=true;}
+
+$('#fSave').addEventListener('click',()=>{
+  const company=$('#fCo').value.trim();
+  const v=s=>{const x=parseFloat($(s).value);return isNaN(x)?0:x;};
+  const emp=v('#fEmp'),er=v('#fEr'),eps=v('#fEps');
+  if(!company){toast('Enter company name');return;}
+  if(emp<0||er<0||eps<0){toast('Amounts cannot be negative');return;}
+  const rec={company,epfNo:$('#fNo').value.trim(),emp,er,eps,asOf:$('#fDate').value};
+  if(editId){const i=state.items.find(x=>x.id===editId);if(i)Object.assign(i,rec);toast('Updated');}
+  else{state.items.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),...rec});toast('Added');}
+  save();resetForm();renderList();updateSummary();
+});
+$('#fCancel').addEventListener('click',resetForm);
+
+$('#list').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');if(!b)return;
+  const id=b.dataset.id;
+  if(b.dataset.act==='edit'){
+    const i=state.items.find(x=>x.id===id);if(!i)return;
+    editId=id;$('#fCo').value=i.company;$('#fNo').value=i.epfNo||'';$('#fEmp').value=i.emp;$('#fEr').value=i.er;$('#fEps').value=i.eps;$('#fDate').value=i.asOf||todayISO();
+    $('#fSave').textContent='Update';$('#formTitle').textContent='Edit company';$('#fCancel').hidden=false;
+    $('#fCo').scrollIntoView({behavior:'smooth',block:'center'});$('#fCo').focus();
+  }else{
+    if(armed===id){
+      state.items=state.items.filter(x=>x.id!==id);armed=null;clearTimeout(armT);
+      if(editId===id)resetForm();
+      save();renderList();updateSummary();toast('Deleted');
+    }else{
+      document.querySelectorAll('button.del.armed').forEach(x=>{x.classList.remove('armed');x.textContent='Delete';});
+      armed=id;b.classList.add('armed');b.textContent='Tap again';toast('Tap again to delete');
+      clearTimeout(armT);armT=setTimeout(()=>{armed=null;b.classList.remove('armed');b.textContent='Delete';},3000);
+    }
+  }
+});
+
+document.querySelectorAll('[data-set]').forEach(inp=>{
+  const k=inp.dataset.set;inp.value=state.set[k]??'';
+  inp.addEventListener('input',()=>{
+    state.set[k]=k==='uan'?inp.value.trim():(inp.value===''?'':parseFloat(inp.value));
+    save();updateSummary();
+  });
+});
+
+resetForm();renderList();updateSummary();
+</script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f1412">
+<title>Parents Coverage — Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#171f1b;--line:#26332d;--tx:#e8f1ec;--mu:#8da197;--mint:#a7e8c5;--coral:#ff8c70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:760px;margin-inline:auto}
+h1{font-size:1.35rem;margin:4px 0 2px}
+.sub{color:var(--mu);margin:0 0 14px;font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+.stat{background:#10171400;border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:1.1rem}
+.stat span{color:var(--mu);font-size:.78rem}
+.mint{color:var(--mint)}.coral{color:var(--coral)}
+label{display:block;font-size:.8rem;color:var(--mu);margin:10px 0 4px}
+input,select,textarea{width:100%;background:#0c110f;color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tabs{display:flex;gap:6px;margin-bottom:6px}
+.tabs button{flex:1;padding:10px 4px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--mu);font:inherit;cursor:pointer}
+.tabs button.on{background:var(--mint);color:#0b1510;border-color:var(--mint);font-weight:600}
+.btn{border:0;border-radius:9px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer;background:var(--mint);color:#0b1510}
+.btn.ghost{background:transparent;color:var(--mu);border:1px solid var(--line);font-weight:400}
+.actions{display:flex;gap:8px;margin-top:14px}
+.hide{display:none!important}
+h2{font-size:1rem;margin:0 0 8px}
+.item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item .t{font-weight:600}
+.item .m{color:var(--mu);font-size:.8rem}
+.item .a{text-align:right;white-space:nowrap}
+.mini{display:inline-block;margin:4px 0 0 8px;background:transparent;border:1px solid var(--line);color:var(--mu);border-radius:7px;padding:3px 9px;font:inherit;font-size:.78rem;cursor:pointer}
+.mini.armed{border-color:var(--coral);color:var(--coral)}
+@media(hover:hover) and (pointer:fine){.mini:hover{border-color:var(--mint);color:var(--mint)}.mini.armed:hover{border-color:var(--coral);color:var(--coral)}.tabs button:not(.on):hover{color:var(--tx)}}
+.empty{color:var(--mu);font-size:.88rem;margin:0}
+.chk{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--mu);font-size:.85rem}
+.chk input{width:auto}
+.due{display:flex;justify-content:space-between;gap:8px;padding:6px 0;font-size:.88rem}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--mint);color:#0b1510;padding:9px 16px;border-radius:9px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+@media(prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<h1>Parents coverage</h1>
+<p class="sub">Insurance, monthly income and savings for their retirement. Stays on this device.</p>
+
+<div class="card" id="summary">
+  <div class="grid">
+    <div class="stat"><span>Monthly income</span><b id="s-inc">—</b></div>
+    <div class="stat"><span>Monthly expenses</span><b id="s-exp">—</b></div>
+    <div class="stat"><span id="s-gl">Surplus / gap</span><b id="s-gap">—</b></div>
+    <div class="stat"><span>Total savings</span><b id="s-sav">—</b></div>
+    <div class="stat"><span>Insurance cover</span><b id="s-cov">—</b></div>
+    <div class="stat"><span>Health cover</span><b id="s-hc">—</b></div>
+    <div class="stat"><span>Premiums / year</span><b id="s-prem">—</b></div>
+    <div class="stat"><span>Savings last</span><b id="s-run">—</b></div>
+    <div class="stat"><span>Est. interest / month</span><b id="s-int">—</b></div>
+  </div>
+  <label for="exp">Their monthly expenses (₹)</label>
+  <input id="exp" type="number" inputmode="decimal" min="0" placeholder="Household, medicines, help, utilities">
+  <label class="chk"><input id="incl" type="checkbox"> Count savings interest as monthly income</label>
+</div>
+
+<div class="card" id="dueCard">
+  <h2>Coming up (next 60 days)</h2>
+  <div id="due"></div>
+</div>
+
+<div class="card">
+  <h2 id="formTitle">Add entry</h2>
+  <div class="tabs" id="tabs">
+    <button type="button" data-type="ins" class="on">Insurance</button>
+    <button type="button" data-type="inc">Income</button>
+    <button type="button" data-type="sav">Savings</button>
+  </div>
+  <div class="row">
+    <div><label for="holder">Whose</label>
+      <select id="holder"><option>Father</option><option>Mother</option><option>Both</option></select></div>
+    <div><label for="kind">Type</label><select id="kind"></select></div>
+  </div>
+  <label for="name" id="nameL">Name</label>
+  <input id="name" type="text" autocomplete="off">
+  <label for="org" data-t="ins sav" id="orgL">Institution</label>
+  <input id="org" data-t="ins sav" type="text" autocomplete="off">
+  <div class="row">
+    <div><label for="amt" id="amtL">Amount (₹)</label><input id="amt" type="number" inputmode="decimal" min="0"></div>
+    <div data-t="ins"><label for="prem">Premium / year (₹)</label><input id="prem" type="number" inputmode="decimal" min="0"></div>
+    <div data-t="sav"><label for="rate">Interest rate (% p.a.)</label><input id="rate" type="number" inputmode="decimal" min="0" step="0.01"></div>
+  </div>
+  <div class="row">
+    <div data-t="ins sav"><label for="date" id="dateL">Date</label><input id="date" type="date"></div>
+    <div data-t="ins sav"><label for="nom">Nominee</label><input id="nom" type="text" autocomplete="off"></div>
+  </div>
+  <label for="note">Notes</label>
+  <textarea id="note" rows="2" placeholder="Policy / account no. (last 4 digits), where documents are kept, agent contact"></textarea>
+  <div class="actions">
+    <button class="btn" id="save" type="button">Add</button>
+    <button class="btn ghost hide" id="cancel" type="button">Cancel edit</button>
+  </div>
+</div>
+
+<div id="lists"></div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+const KEY='as_parents_coverage_v1';
+let S={expenses:'',incl:'false',items:[]};
+try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);S.expenses=p.expenses||'';S.incl=p.incl==='true'?'true':'false';S.items=Array.isArray(p.items)?p.items:[];}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const $=s=>document.querySelector(s);
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fd=s=>{if(!s)return '';const p=s.split('-');return p[2]+'th '+MON[+p[1]-1]+' '+p[0];};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KINDS={
+ ins:['Health','Term life','Life / endowment','Critical illness','Personal accident','Other'],
+ inc:['Pension','EPF / EPS','Rent','Annuity','Interest payout','Dividends','Other'],
+ sav:['Fixed deposit','Senior Citizens Savings Scheme','Recurring deposit','Savings account','PPF','Mutual funds','Gold','Other']
+};
+const LBL={
+ ins:{title:'Insurance',amt:'Sum assured (₹)',date:'Next renewal date',org:'Insurer',name:'Policy name'},
+ inc:{title:'Monthly income',amt:'Amount per month (₹)',name:'Source (e.g. company pension)'},
+ sav:{title:'Savings & deposits',amt:'Balance (₹)',date:'Maturity date',org:'Bank / institution',name:'Account / scheme name'}
+};
+let type='ins',editId=null;
+const F=['holder','kind','name','org','amt','prem','rate','date','nom','note'];
+
+function setType(t){
+  type=t;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.type===t));
+  const k=$('#kind');k.innerHTML=KINDS[t].map(x=>'<option>'+esc(x)+'</option>').join('');
+  const L=LBL[t];
+  $('#amtL').textContent=L.amt;$('#nameL').textContent=L.name;
+  if(L.date)$('#dateL').textContent=L.date;
+  if(L.org)$('#orgL').textContent=L.org;
+  document.querySelectorAll('[data-t]').forEach(e=>e.classList.toggle('hide',e.dataset.t.split(' ').indexOf(t)<0));
+}
+function clearForm(){
+  editId=null;
+  ['name','org','amt','prem','rate','date','nom','note'].forEach(f=>$('#'+f).value='');
+  $('#save').textContent='Add';$('#cancel').classList.add('hide');$('#formTitle').textContent='Add entry';
+}
+let tt;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1800);}
+
+function days(s){const p=s.split('-');const d=new Date(+p[0],+p[1]-1,+p[2]);const n=new Date();n.setHours(0,0,0,0);return Math.round((d-n)/864e5);}
+const num=v=>parseFloat(v)||0;
+
+function updateSummary(){
+  const it=S.items,sum=(t,f)=>it.filter(i=>i.type===t).reduce((a,i)=>a+num(i[f]),0);
+  const intr=it.filter(i=>i.type==='sav').reduce((a,i)=>a+num(i.amt)*num(i.rate)/1200,0);
+  const inc=sum('inc','amt')+(S.incl==='true'?intr:0);
+  const exp=num(S.expenses),gap=inc-exp,sav=sum('sav','amt');
+  $('#s-inc').textContent=inr(inc);
+  $('#s-exp').textContent=inr(exp);
+  $('#s-gl').textContent=gap<0?'Monthly gap':'Monthly surplus';
+  const g=$('#s-gap');g.textContent=inr(Math.abs(gap));g.className=gap<0?'coral':'mint';
+  $('#s-sav').textContent=inr(sav);
+  $('#s-cov').textContent=inr(sum('ins','amt'));
+  $('#s-hc').textContent=inr(it.filter(i=>i.type==='ins'&&i.kind==='Health').reduce((a,i)=>a+num(i.amt),0));
+  $('#s-prem').textContent=inr(sum('ins','prem'));
+  $('#s-int').textContent=inr(intr);
+  const r=$('#s-run');
+  if(gap>=0){r.textContent=exp>0?'Sustainable':'—';r.className=exp>0?'mint':'';}
+  else{const m=sav/-gap;r.textContent=m>=12?(m/12).toFixed(1)+' yrs':Math.floor(m)+' mo';r.className=m<60?'coral':'';}
+}
+function renderDue(){
+  const rows=S.items.filter(i=>(i.type==='ins'||i.type==='sav')&&i.date).map(i=>({i,d:days(i.date)})).filter(x=>x.d<=60).sort((a,b)=>a.d-b.d);
+  $('#due').innerHTML=rows.length?rows.map(x=>{
+    const w=x.i.type==='ins'?'Renewal':'Matures';
+    const tag=x.d<0?'overdue':(x.d===0?'today':'in '+x.d+' days');
+    return '<div class="due"><span>'+w+': '+esc(x.i.name||x.i.kind)+' ('+esc(x.i.holder)+')</span><span class="'+(x.d<=7?'coral':'mint')+'">'+fd(x.i.date)+' · '+tag+'</span></div>';
+  }).join(''):'<p class="empty">No renewals or maturities in the next 60 days.</p>';
+}
+function renderLists(){
+  const out=['ins','inc','sav'].map(t=>{
+    const rows=S.items.filter(i=>i.type===t);
+    const body=rows.length?rows.map(i=>{
+      let m=[i.holder,i.kind];
+      if(i.org)m.push(i.org);
+      if(t==='ins'&&num(i.prem))m.push('Premium '+inr(num(i.prem))+'/yr');
+      if(t==='sav'&&num(i.rate))m.push(i.rate+'% p.a. · ~'+inr(num(i.amt)*num(i.rate)/1200)+'/mo');
+      if(i.date)m.push((t==='ins'?'Renews ':'Matures ')+fd(i.date));
+      if(i.nom)m.push('Nominee: '+i.nom);
+      if(i.note)m.push(i.note);
+      return '<div class="item"><div><div class="t">'+esc(i.name||i.kind)+'</div><div class="m">'+m.map(esc).join(' · ')+'</div></div>'+
+        '<div class="a"><div class="t">'+inr(num(i.amt))+(t==='inc'?'/mo':'')+'</div>'+
+        '<button class="mini" type="button" data-act="edit" data-id="'+i.id+'">Edit</button>'+
+        '<button class="mini" type="button" data-act="del" data-id="'+i.id+'">Delete</button></div></div>';
+    }).join(''):'<p class="empty">Nothing added yet.</p>';
+    return '<div class="card"><h2>'+LBL[t].title+'</h2>'+body+'</div>';
+  });
+  $('#lists').innerHTML=out.join('');
+}
+function refresh(){updateSummary();renderDue();renderLists();}
+
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-type]');if(!b)return;clearForm();setType(b.dataset.type);});
+$('#save').addEventListener('click',()=>{
+  const o={type:type};F.forEach(f=>o[f]=$('#'+f).value.trim());
+  if(!o.name&&!o.amt){toast('Enter a name or an amount');return;}
+  if(editId){const i=S.items.findIndex(x=>x.id===editId);if(i>=0){o.id=editId;S.items[i]=o;}}
+  else{o.id='i'+Date.now();S.items.push(o);}
+  const was=editId;editId=null;save();clearForm();refresh();toast(was?'Updated':'Added');
+});
+$('#cancel').addEventListener('click',()=>{clearForm();});
+$('#exp').addEventListener('input',e=>{S.expenses=e.target.value;save();updateSummary();});
+$('#incl').addEventListener('change',e=>{S.incl=e.target.checked?'true':'false';save();updateSummary();});
+$('#lists').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');if(!b)return;
+  const id=b.dataset.id;
+  if(b.dataset.act==='edit'){
+    const i=S.items.find(x=>x.id===id);if(!i)return;
+    setType(i.type);F.forEach(f=>$('#'+f).value=i[f]||'');
+    editId=id;$('#save').textContent='Save changes';$('#cancel').classList.remove('hide');$('#formTitle').textContent='Edit entry';
+    window.scrollTo({top:$('#formTitle').offsetTop-20,behavior:'smooth'});
+  }else{
+    if(b.classList.contains('armed')){
+      S.items=S.items.filter(x=>x.id!==id);if(editId===id)clearForm();save();refresh();toast('Deleted');
+    }else{
+      b.classList.add('armed');b.textContent='Tap again';toast('Tap Delete again to confirm');
+      setTimeout(()=>{if(b.isConnected){b.classList.remove('armed');b.textContent='Delete';}},3000);
+    }
+  }
+});
+
+$('#exp').value=S.expenses;$('#incl').checked=S.incl==='true';
+setType('ins');refresh();
+})();
+</script>
+</body>
+</html>
