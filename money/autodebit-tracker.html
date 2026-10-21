@@ -122,6 +122,21 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="calendar-head">
+      <button class="calendar-nav" id="previousMonth" aria-label="Previous month">‹</button>
+      <h2 id="calendarMonth"></h2>
+      <button class="calendar-nav" id="nextMonth" aria-label="Next month">›</button>
+    </div>
+    <div class="calendar-grid" id="paymentsCalendar"></div>
+    <div class="calendar-details" id="calendarDetails" aria-live="polite"></div>
+    <div class="calendar-legend">
+      <span><i class="legend-dot" style="background:var(--acc);"></i>Paid</span>
+      <span><i class="legend-dot" style="background:var(--warn);"></i>Pending</span>
+      <span><i class="legend-dot" style="background:#60a5fa;"></i>Statement closes</span>
+    </div>
+  </div>
+
   <details class="card">
     <summary>Monthly by Bank</summary>
     <div class="details-content">
@@ -183,21 +198,6 @@
   <div class="card">
     <label style="font-size:14px;color:var(--txt);font-weight:700;">Your Auto-Debits</label>
     <div id="paymentsList"></div>
-  </div>
-
-  <div class="card">
-    <div class="calendar-head">
-      <button class="calendar-nav" id="previousMonth" aria-label="Previous month">‹</button>
-      <h2 id="calendarMonth"></h2>
-      <button class="calendar-nav" id="nextMonth" aria-label="Next month">›</button>
-    </div>
-    <div class="calendar-grid" id="paymentsCalendar"></div>
-    <div class="calendar-details" id="calendarDetails" aria-live="polite"></div>
-    <div class="calendar-legend">
-      <span><i class="legend-dot" style="background:var(--acc);"></i>Paid</span>
-      <span><i class="legend-dot" style="background:var(--warn);"></i>Pending</span>
-      <span><i class="legend-dot" style="background:#60a5fa;"></i>Statement closes</span>
-    </div>
   </div>
 </div>
 
