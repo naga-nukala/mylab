@@ -8,7 +8,7 @@
 <script src="pwa.js" defer></script>
 <title>Income, Savings & Investments Dashboard</title>
 <style>
-  :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  :root{--bg:#0f172a;--card:#1e293b;--mint:#a7e8c5;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;--blue:#60a5fa;--purple:#c084fc;--teal:#2dd4bf;--pink:#f472b6;--orange:#fb923c;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
   a{color:var(--mint);}
@@ -19,12 +19,33 @@
   .sub,.note{color:var(--sub);font-size:12px;line-height:1.5;margin:0;}
   .nav{margin:0 0 14px;font-size:13px;}
   .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;}
-  .stat,.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .stat,.card{background:linear-gradient(145deg,rgba(30,41,59,.98),rgba(15,23,42,.96));border:1px solid var(--line);border-radius:14px;padding:14px;}
   .stat{text-align:center;min-width:0;}
-  .stat strong{display:block;font-size:19px;overflow-wrap:anywhere;}
+  .stat strong{display:block;font-size:19px;overflow-wrap:anywhere;color:var(--mint);}
+  .stat:nth-child(2) strong{color:var(--blue);}
+  .stat:nth-child(3) strong{color:var(--orange);}
   .stat span{color:var(--sub);font-size:11px;}
   .card{margin-bottom:12px;}
   .source{font-size:11px;color:var(--sub);margin:-5px 0 10px;}
+  .card[data-page="fd-tracker.html"]{border-left:3px solid var(--mint);}
+  .card[data-page="investment-appreciation-tracker.html"]{border-left:3px solid var(--blue);}
+  .card[data-page="ppf-contributions.html"]{border-left:3px solid var(--purple);}
+  .card[data-page="ssy-contributions.html"]{border-left:3px solid var(--pink);}
+  .card[data-page="nps-contributions.html"]{border-left:3px solid var(--teal);}
+  .card[data-page="bonds.html"]{border-left:3px solid var(--orange);}
+  .card[data-page="rd-tracker.html"]{border-left:3px solid var(--warn);}
+  .card[data-page="epf-tracker.html"]{border-left:3px solid var(--bad);}
+  .filter{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--sub);font-size:12px;}
+  .filter select{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--txt);font:inherit;}
+  .chart{margin-bottom:12px;}
+  .chart-row{display:grid;grid-template-columns:minmax(90px,1fr) minmax(80px,3fr) auto;gap:8px;align-items:center;margin:10px 0;font-size:11px;}
+  .chart-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sub);}
+  .bar-track{height:10px;background:#0b1220;border-radius:99px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:99px;background:var(--bar-color,var(--mint));}
+  .chart-value{font-weight:700;text-align:right;white-space:nowrap;}
+  .details{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;}
+  .details summary{cursor:pointer;color:var(--mint);font-size:12px;font-weight:700;}
+  .details summary:focus-visible{outline:2px solid var(--mint);outline-offset:3px;}
   .row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
   .row:last-child{border-bottom:0;}
   .row span:first-child{color:var(--sub);}
@@ -55,6 +76,23 @@
     <div class="stat"><strong id="monthlyContributions">₹0</strong><span>Scheduled monthly contributions</span></div>
     <div class="stat"><strong id="incomeEstimate">₹0</strong><span>Recorded + estimated annual income</span></div>
   </section>
+  <label class="filter" for="pageFilter">Show tracker
+    <select id="pageFilter">
+      <option value="all">All trackers</option>
+      <option value="fd-tracker.html">FD Tracker</option>
+      <option value="investment-appreciation-tracker.html">Investment Appreciation Tracker</option>
+      <option value="ppf-contributions.html">PPF Contributions</option>
+      <option value="ssy-contributions.html">SSY Contributions</option>
+      <option value="nps-contributions.html">NPS Contributions</option>
+      <option value="bonds.html">Bonds</option>
+      <option value="rd-tracker.html">RD Tracker</option>
+      <option value="epf-tracker.html">EPF Tracker</option>
+    </select>
+  </label>
+  <section class="card chart">
+    <h2>Portfolio by tracker</h2>
+    <div id="portfolioChart" role="img" aria-label="Portfolio value comparison by tracker"></div>
+  </section>
   <div id="errors" aria-live="polite"></div>
   <div id="sections"></div>
   <section class="card">
@@ -62,13 +100,12 @@
     <div class="links">
       <a href="fd-tracker.html">FD Tracker</a>
       <a href="investment-appreciation-tracker.html">Investment Appreciation</a>
+      <a href="epf-tracker.html">EPF</a>
       <a href="ppf-contributions.html">PPF</a>
       <a href="ssy-contributions.html">SSY</a>
       <a href="nps-contributions.html">NPS</a>
       <a href="bonds.html">Bonds</a>
       <a href="rd-tracker.html">RD Tracker</a>
-      <a href="micro-investment-tracker.html">Micro-Investment Tracker</a>
-      <a href="goal-savings-planner.html">Goal Savings Planner</a>
       <a href="net-worth-tracker.html">Net Worth Tracker</a>
     </div>
     <p class="note">Values are calculated from locally saved tracker entries. The total may double-count a holding if it is entered in more than one tracker. FD, RD and contribution projections are estimates, not bank or scheme statements.</p>
@@ -84,8 +121,7 @@ const KEYS = {
   nps:'nps_contributions_v1',
   bonds:'bonds_contributions_v1',
   rds:'as_rdtracker_v1',
-  microSavings:'micro_invest_entries',
-  microInvestments:'micro_invest_destinations'
+  epf:'as_epf_tracker_v1'
 };
 const $ = id => document.getElementById(id);
 
@@ -152,8 +188,11 @@ function esc(value){
   })[character]);
 }
 
-function card(title, source, content){
-  return `<section class="card"><h2>${esc(title)}</h2><p class="source">${esc(source)}</p>${content}</section>`;
+function card(title, source, page, summary, details, detailLabel){
+  const detailBlock = details
+    ? `<details class="details"><summary>${esc(detailLabel || 'Show breakdown')}</summary>${details}</details>`
+    : '';
+  return `<section class="card" data-page="${esc(page)}"><h2>${esc(title)}</h2><p class="source">${esc(source)}</p>${summary}${detailBlock}</section>`;
 }
 
 function metric(label, value){
@@ -176,8 +215,10 @@ function records(key, label, errors){
 function accountTotals(data, memberKey, includeEmployer){
   const members = Array.isArray(data[memberKey]) ? data[memberKey] : [];
   let balance = 0, contributions = 0, interest = 0;
+  const accounts = [];
   members.forEach(member=>{
     let previous = amount(member.opening);
+    let accountContributions = 0, accountInterest = 0;
     const years = Array.isArray(member.years) ? [...member.years] : [];
     years.sort((a,b)=>Number(a.fy || 0) - Number(b.fy || 0)).forEach(year=>{
       const own = year.mode === 'each'
@@ -189,11 +230,15 @@ function accountTotals(data, memberKey, includeEmployer){
       const hasBalance = year.balance !== '' && year.balance != null && Number.isFinite(Number(year.balance));
       previous = hasBalance ? amount(year.balance) : automatic;
       contributions += contributed;
-      interest += includeEmployer && hasBalance ? previous - (automatic - earned) : earned;
+      const yearInterest = includeEmployer && hasBalance ? previous - (automatic - earned) : earned;
+      interest += yearInterest;
+      accountContributions += contributed;
+      accountInterest += yearInterest;
     });
     balance += previous;
+    accounts.push(entry(member.name || member.bank || 'Account', fmt(previous), `Contributions ${fmt(accountContributions)} · Returns ${fmt(accountInterest)}`));
   });
-  return {balance, contributions, interest, count:members.length};
+  return {balance, contributions, interest, count:members.length, accounts};
 }
 
 function calcFD(fd){
@@ -234,10 +279,10 @@ function fdSection(fds, today, errors){
     }
   });
   if(fds.readError) errors.push(fds.readError);
-  const body = metric('Active principal', fmt(principal)) + metric('Projected maturity value', fmt(value)) +
-    metric('Estimated annual FD payouts', fmt(income)) +
-    (maturities.join('') || '<p class="empty">No active FD maturities found.</p>');
-  return {html:card('Fixed deposits','FD Tracker · active deposits and projected maturity',body), value, income};
+  const summary = metric('Active principal', fmt(principal)) + metric('Projected maturity value', fmt(value)) +
+    metric('Estimated annual FD payouts', fmt(income));
+  const details = maturities.join('') || '<p class="empty">No active FD maturities found.</p>';
+  return {page:'fd-tracker.html', label:'FD Tracker', html:card('Fixed deposits','FD Tracker · active deposits and projected maturity','fd-tracker.html',summary,details,'Show FD list'), value, monthly:0, income};
 }
 
 function investmentSection(investments, today, errors){
@@ -265,23 +310,22 @@ function investmentSection(investments, today, errors){
     rows.push(entry(item.name || 'Investment', fmt(currentValue), `${item.type || 'Investment'} · Invested ${fmt(principal)} · Gain/loss ${fmt(currentValue - principal)}`));
   });
   if(investments.readError) errors.push(investments.readError);
-  const body = metric('Invested', fmt(invested)) + metric('Current value', fmt(current)) +
-    metric('Gain / loss', fmt(current - invested)) + metric('Ongoing SIPs / month', fmt(monthly)) +
-    (rows.join('') || '<p class="empty">No investments tracked yet.</p>');
-  return {html:card('Investments','Investment Appreciation Tracker · current values and SIPs',body), value:current, monthly};
+  const summary = metric('Invested', fmt(invested)) + metric('Current value', fmt(current)) +
+    metric('Gain / loss', fmt(current - invested)) + metric('Ongoing SIPs / month', fmt(monthly));
+  return {page:'investment-appreciation-tracker.html', label:'Investment Appreciation', html:card('Investments','Investment Appreciation Tracker · current values and SIPs','investment-appreciation-tracker.html',summary,rows.join('') || '<p class="empty">No investments tracked yet.</p>','Show investments'), value:current, monthly, income:0};
 }
 
-function contributionSection(title, data, memberKey, includeEmployer, link, errors){
+function contributionSection(title, data, memberKey, includeEmployer, link, page, errors){
   if(data.readError){
     errors.push(data.readError);
-    return {html:card(title,link,'<p class="empty">Saved data could not be read.</p>'), value:0, interest:0};
+    return {page,label:title,html:card(title,link,page,'<p class="empty">Saved data could not be read.</p>',''),value:0,monthly:0,income:0};
   }
   const result = accountTotals(data, memberKey, includeEmployer);
-  const body = metric('Accounts', String(result.count)) +
+  const summary = metric('Accounts', String(result.count)) +
     metric('Total contributions tracked', fmt(result.contributions)) +
     metric('Interest / returns entered', fmt(result.interest)) +
     metric('Current corpus / balance', fmt(result.balance));
-  return {html:card(title,link,body), value:result.balance, interest:result.interest};
+  return {page, label:title, html:card(title,link,page,summary,result.accounts.join('') || '<p class="empty">No accounts tracked yet.</p>','Show accounts'), value:result.balance, monthly:0, income:result.interest};
 }
 
 function bondSection(bonds, errors){
@@ -309,9 +353,9 @@ function bondSection(bonds, errors){
     rows.push(entry(bond.name || 'Bond', fmt(previous), `Current value · Maturity ${bond.maturity || 'not set'}`));
   });
   if(bonds.readError) errors.push(bonds.readError);
-  const body = metric('Purchases tracked', fmt(invested)) + metric('Interest / returns entered', fmt(interest)) +
-    metric('Current value', fmt(balance)) + (rows.join('') || '<p class="empty">No bonds tracked yet.</p>');
-  return {html:card('Bonds','Bonds tracker · purchases, returns and current value',body), value:balance, interest};
+  const summary = metric('Purchases tracked', fmt(invested)) + metric('Interest / returns entered', fmt(interest)) +
+    metric('Current value', fmt(balance));
+  return {page:'bonds.html', label:'Bonds', html:card('Bonds','Bonds tracker · purchases, returns and current value','bonds.html',summary,rows.join('') || '<p class="empty">No bonds tracked yet.</p>','Show bonds'), value:balance, monthly:0, income:interest};
 }
 
 function rdMaturity(principal, rate, months, extraDays){
@@ -344,20 +388,23 @@ function rdSection(rds, today, errors){
     rows.push(entry(rd.name || 'Recurring deposit', fmt(maturity), `${paid}/${tenure} installments · ${completed ? 'Completed' : `Next installment ${fmtDate(dueDate)}`} · Matures ${fmtDate(maturityDate)}`));
   });
   if(rds.readError) errors.push(rds.readError);
-  const body = metric('Ongoing monthly deposits', fmt(monthly)) + metric('Deposited so far', fmt(invested)) +
-    metric('Projected maturity value', fmt(value)) +
-    (rows.join('') || '<p class="empty">No recurring deposits tracked yet.</p>');
-  return {html:card('Recurring deposits','RD Tracker · current installments and projected maturity',body), value, monthly};
+  const summary = metric('Ongoing monthly deposits', fmt(monthly)) + metric('Deposited so far', fmt(invested)) +
+    metric('Projected maturity value', fmt(value));
+  return {page:'rd-tracker.html', label:'RD Tracker', html:card('Recurring deposits','RD Tracker · current installments and projected maturity','rd-tracker.html',summary,rows.join('') || '<p class="empty">No recurring deposits tracked yet.</p>','Show RDs'), value, monthly, income:0};
 }
 
-function microSection(savings, destinations, errors){
-  if(savings.readError) errors.push(savings.readError);
-  if(destinations.readError) errors.push(destinations.readError);
-  const saved = Array.isArray(savings) ? savings.reduce((sum,item)=>sum + amount(item.amount),0) : 0;
-  const invested = Array.isArray(destinations) ? destinations.reduce((sum,item)=>sum + amount(item.amount),0) : 0;
-  const body = metric('Savings logged', fmt(saved)) + metric('Redirected to investments', fmt(invested)) +
-    '<p class="note">Shown separately because redirected amounts may already be included in another investment tracker.</p>';
-  return card('Micro-investment flow','Micro-Investment Redirect Tracker · excluded from portfolio total',body);
+function epfSection(data, errors){
+  if(data.readError){
+    errors.push(data.readError);
+    return {page:'epf-tracker.html',label:'EPF Tracker',html:card('EPF','EPF Balance Tracker','epf-tracker.html','<p class="empty">Saved data could not be read.</p>',''),value:0,monthly:0,income:0};
+  }
+  const items = Array.isArray(data.items) ? data.items : [];
+  const balance = items.reduce((sum,item)=>sum + amount(item.emp) + amount(item.er),0);
+  const monthly = amount(data.set && data.set.cEmp) + amount(data.set && data.set.cEr);
+  const details = items.map(item=>entry(item.company || 'EPF account',fmt(amount(item.emp) + amount(item.er)),`Employee ${fmt(amount(item.emp))} · Employer ${fmt(amount(item.er))} · EPS ${fmt(amount(item.eps))}${item.asOf ? ` · As of ${item.asOf}` : ''}`));
+  const summary = metric('Current employee + employer balance',fmt(balance)) + metric('Monthly EPF contributions',fmt(monthly)) +
+    metric('Current EPS balance (not included in corpus)',fmt(items.reduce((sum,item)=>sum + amount(item.eps),0)));
+  return {page:'epf-tracker.html',label:'EPF Tracker',html:card('EPF','EPF Balance Tracker · current balances and contribution assumptions','epf-tracker.html',summary,details.join('') || '<p class="empty">No EPF accounts tracked yet.</p>','Show EPF accounts'),value:balance,monthly,income:0};
 }
 
 function render(){
@@ -371,27 +418,40 @@ function render(){
   const nps = readSaved(KEYS.nps,'NPS tracker','object');
   const bonds = readSaved(KEYS.bonds,'Bonds tracker','object');
   const rds = records(KEYS.rds,'RD Tracker',errors);
-  const microSavings = records(KEYS.microSavings,'Micro-Investment Tracker savings',errors);
-  const microInvestments = records(KEYS.microInvestments,'Micro-Investment Tracker destinations',errors);
+  const epf = readSaved(KEYS.epf,'EPF Tracker','object');
 
   const fd = fdSection(fds,today,errors);
   const investment = investmentSection(investments,today,errors);
-  const ppfData = contributionSection('PPF',ppf,'accs',false,'PPF Contributions',errors);
-  const ssyData = contributionSection('SSY',ssy,'kids',false,'SSY Contributions',errors);
-  const npsData = contributionSection('NPS',nps,'accs',true,'NPS Contributions',errors);
+  const ppfData = contributionSection('PPF',ppf,'accs',false,'PPF Contributions','ppf-contributions.html',errors);
+  const ssyData = contributionSection('SSY',ssy,'kids',false,'SSY Contributions','ssy-contributions.html',errors);
+  const npsData = contributionSection('NPS',nps,'accs',true,'NPS Contributions','nps-contributions.html',errors);
   const bond = bondSection(bonds,errors);
   const rd = rdSection(rds,today,errors);
+  const epfData = epfSection(epf,errors);
+  const portfolios = [fd,investment,ppfData,ssyData,npsData,bond,rd,epfData];
+  const selectedPage = $('pageFilter').value;
+  const visible = selectedPage === 'all' ? portfolios : portfolios.filter(item=>item.page === selectedPage);
+  const tracked = visible.reduce((sum,item)=>sum + item.value,0);
+  const monthly = visible.reduce((sum,item)=>sum + item.monthly,0);
+  const income = visible.reduce((sum,item)=>sum + item.income,0);
 
-  $('trackedValue').textContent = fmt(fd.value + investment.value + ppfData.value + ssyData.value + npsData.value + bond.value + rd.value);
-  $('monthlyContributions').textContent = fmt(investment.monthly + rd.monthly);
-  $('incomeEstimate').textContent = fmt(fd.income + ppfData.interest + ssyData.interest + npsData.interest + bond.interest);
-  $('sections').innerHTML = [
-    fd.html, investment.html, ppfData.html, ssyData.html, npsData.html, bond.html, rd.html,
-    microSection(microSavings,microInvestments,errors)
-  ].join('');
+  $('trackedValue').textContent = fmt(tracked);
+  $('monthlyContributions').textContent = fmt(monthly);
+  $('incomeEstimate').textContent = fmt(income);
+  $('sections').innerHTML = visible.map(item=>item.html).join('') || '<p class="empty">No tracker selected.</p>';
+
+  const maxValue = Math.max(0,...visible.map(item=>item.value));
+  const colors = ['var(--mint)','var(--blue)','var(--purple)','var(--pink)','var(--teal)','var(--orange)','var(--warn)','var(--bad)'];
+  $('portfolioChart').innerHTML = visible.length
+    ? visible.map((item,index)=>{
+      const width = maxValue > 0 ? item.value / maxValue * 100 : 0;
+      return `<div class="chart-row"><span class="chart-label">${esc(item.label)}</span><div class="bar-track"><div class="bar-fill" style="width:${width}%;--bar-color:${colors[index]}"></div></div><span class="chart-value">${fmt(item.value)}</span></div>`;
+    }).join('')
+    : '<p class="empty">No tracker data to chart.</p>';
   $('errors').innerHTML = errors.map(message=>`<p class="message error">${esc(message)}</p>`).join('');
 }
 
+ $('pageFilter').addEventListener('change',render);
 render();
 </script>
 </body>

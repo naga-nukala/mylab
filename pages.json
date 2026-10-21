@@ -1,6 +1,7 @@
 {
   "money": [
     { "name": "Income, Savings & Investments Dashboard", "file": "income-savings-investments-dashboard.html" },
+    { "name": "EPF Balance Tracker", "file": "epf-tracker.html" },
     { "name": "Upcoming Bills Dashboard", "file": "upcoming-bills-dashboard.html" },
     { "name": "Per Day Cost", "file": "perday-cost-calculator.html" },
 	  { "name": "Emergency Fund Calculator", "file": "emergency-fund-calculator.html" },

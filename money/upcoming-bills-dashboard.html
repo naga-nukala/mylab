@@ -24,6 +24,8 @@
   .stat span{color:var(--sub);font-size:11px;}
   .card{margin-bottom:12px;}
   .card h2{font-size:15px;margin:0 0 10px;}
+  .filter-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:var(--sub);font-size:12px;}
+  .filter-row select{flex:1;min-width:0;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font:inherit;}
   .bill{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:11px 0;border-bottom:1px solid var(--line);}
   .bill:last-child{border-bottom:0;padding-bottom:0;}
   .bill-name{font-size:14px;font-weight:700;overflow-wrap:anywhere;}
@@ -56,8 +58,16 @@
 
   <section class="card">
     <h2>Due items</h2>
+    <label class="filter-row" for="sourceFilter">Show
+      <select id="sourceFilter">
+        <option value="all">All trackers</option>
+        <option value="SIM Tracker">SIM Tracker</option>
+        <option value="Auto-Debit Tracker">Auto-Debit Tracker</option>
+        <option value="Debt Planner">Debt Planner</option>
+      </select>
+    </label>
     <div id="billsList" aria-live="polite"></div>
-    <p class="note">Loan amounts and dates are estimates based on your Debt Planner entries. Loan amounts can differ from lender statements; SIM renewal dates use recharge date plus plan validity.</p>
+    <p class="note">Loan amounts and dates are estimates based on your Debt Planner entries; gold-loan interest is not included because it is not paid monthly. Loan amounts can differ from lender statements. SIM renewal dates use recharge date plus plan validity.</p>
   </section>
 
   <section class="card">
@@ -176,7 +186,7 @@ function loadBills(today){
 
   sources.forEach(([source, entries])=>{
     if(!Array.isArray(entries)){
-      errors.push(entries.error);
+      errors.push({tracker:source, message:entries.error});
       return;
     }
     if(source === 'SIM Tracker'){
@@ -188,36 +198,33 @@ function loadBills(today){
         const dueDate = new Date(lastRecharge);
         dueDate.setDate(dueDate.getDate() + validity);
         const number = sim.numLast4 ? ` (•${escapeHTML(sim.numLast4)})` : '';
-        bills.push({name:`${sim.member || 'SIM'} — ${sim.carrier || 'Recharge'}${number}`, source:'SIM recharge', date:dueDate, amount});
+        bills.push({name:`${sim.member || 'SIM'} — ${sim.carrier || 'Recharge'}${number}`, source:'SIM recharge', tracker:source, date:dueDate, amount});
       });
     } else if(source === 'Auto-Debit Tracker'){
       entries.forEach(payment=>{
         const date = parseDate(payment.dueDate);
         const amount = validAmount(payment.amount);
         if(!date || !amount) return;
-        bills.push({name:payment.name || 'Auto-debit', source:payment.type || 'Auto-debit', date, amount});
+        bills.push({name:payment.name || 'Auto-debit', source:payment.type || 'Auto-debit', tracker:source, date, amount});
       });
     } else {
       entries.forEach(loan=>{
         const startDate = parseDate(loan.startDate);
         const outstanding = loanOutstanding(loan);
-        const rate = Number(loan.rate);
-        if(!startDate || outstanding === null || outstanding <= 0 || !Number.isFinite(rate) || rate < 0) return;
+        if(!startDate || outstanding === null || outstanding <= 0) return;
 
         if(loan.kind === 'emi'){
           const amount = monthlyEMI(loan);
-          if(amount) bills.push({name:`${loan.lender || 'Loan'} EMI`, source:'Loan payment', date:nextMonthlyDate(startDate, today), amount});
+          if(amount) bills.push({name:`${loan.lender || 'Loan'} EMI`, source:'Loan payment', tracker:source, date:nextMonthlyDate(startDate, today), amount});
         } else if(loan.kind === 'bullet'){
           const maturity = addMonths(startDate, Math.max(0, Number(loan.tenureMonths) || 0));
-          const interestDate = nextMonthlyDate(startDate, today);
-          if(maturity >= today && interestDate <= maturity){
-            bills.push({name:`${loan.lender || 'Gold loan'} interest`, source:'Estimated monthly interest', date:interestDate, amount:outstanding * rate / 1200});
-          }
-          bills.push({name:`${loan.lender || 'Gold loan'} maturity`, source:'Estimated principal due', date:maturity, amount:outstanding});
+          if(maturity >= today) bills.push({name:`${loan.lender || 'Gold loan'} maturity`, source:'Estimated principal due', tracker:source, date:maturity, amount:outstanding});
         } else if(loan.kind === 'revolving'){
+          const rate = Number(loan.rate);
+          if(!Number.isFinite(rate) || rate < 0) return;
           const minPct = Number(loan.minPct);
           if(Number.isFinite(minPct) && minPct > 0){
-            bills.push({name:`${loan.lender || 'Credit account'} minimum payment`, source:'Estimated loan payment', date:nextMonthlyDate(startDate, today), amount:outstanding * minPct / 100});
+            bills.push({name:`${loan.lender || 'Credit account'} minimum payment`, source:'Estimated loan payment', tracker:source, date:nextMonthlyDate(startDate, today), amount:outstanding * minPct / 100});
           }
         }
       });
@@ -238,19 +245,23 @@ function render(){
   const today = new Date();
   today.setHours(0,0,0,0);
   const {bills, errors} = loadBills(today);
-  bills.sort((a,b)=>a.date-b.date || a.name.localeCompare(b.name));
-  const upcoming = bills.filter(bill=>{
+  const selectedSource = $('sourceFilter').value;
+  const filteredBills = selectedSource === 'all' ? bills : bills.filter(bill=>bill.tracker === selectedSource);
+  filteredBills.sort((a,b)=>a.date-b.date || a.name.localeCompare(b.name));
+  const upcoming = filteredBills.filter(bill=>{
     const days = daysBetween(bill.date, today);
     return days >= 0 && days <= 30;
   });
-  const overdue = bills.filter(bill=>daysBetween(bill.date, today) < 0);
+  const overdue = filteredBills.filter(bill=>daysBetween(bill.date, today) < 0);
 
   $('dueSoon').textContent = upcoming.length;
   $('overdue').textContent = overdue.length;
   $('totalAmount').textContent = money(upcoming.reduce((total, bill)=>total + bill.amount, 0));
 
-  const messages = errors.map(error=>`<p class="message error">${escapeHTML(error)}</p>`).join('');
-  const rows = bills.map(bill=>{
+  const messages = errors
+    .filter(error=>selectedSource === 'all' || error.tracker === selectedSource)
+    .map(error=>`<p class="message error">${escapeHTML(error.message)}</p>`).join('');
+  const rows = filteredBills.map(bill=>{
     const due = formatDue(bill.date, today);
     return `<article class="bill">
       <span class="bill-name">${escapeHTML(bill.name)}</span>
@@ -259,9 +270,13 @@ function render(){
       <span class="bill-date ${due.className}">${escapeHTML(due.text)}</span>
     </article>`;
   }).join('');
-  $('billsList').innerHTML = messages + (rows || '<p class="empty">No upcoming or overdue bills found. Add entries in one of the trackers below.</p>');
+  const emptyMessage = selectedSource === 'all'
+    ? 'No upcoming or overdue bills found. Add entries in one of the trackers below.'
+    : `No upcoming or overdue items found in ${escapeHTML(selectedSource)}.`;
+  $('billsList').innerHTML = messages + (rows || `<p class="empty">${emptyMessage}</p>`);
 }
 
+$('sourceFilter').addEventListener('change', render);
 render();
 </script>
 </body>

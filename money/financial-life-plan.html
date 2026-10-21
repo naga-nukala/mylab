@@ -76,6 +76,12 @@ const STORAGE_KEY = 'financial_life_plan_v2';
 const FD_STORAGE_KEY = 'fd_tracker_v1';
 const DEBT_STORAGE_KEY = 'debt_dashboard_loans_v3';
 const CHILD_GOALS_STORAGE_KEY = 'childCorpus_v1';
+const EMERGENCY_CALCULATOR_KEY = 'emergencyFundCalculator_draft_v1';
+const EMERGENCY_FUND_DASHBOARD_KEY = 'as_emergencyfund_v1';
+const RD_STORAGE_KEY = 'as_rdtracker_v1';
+const INVESTMENT_STORAGE_KEY = 'investment_appreciation_entries';
+const INSURANCE_CHECKER_KEY = 'as_insurancechecker';
+const RETIREMENT_CALCULATOR_KEY = 'as_retirementcorpus';
 function safeGetItem(key){
   try { return localStorage.getItem(key); } catch(e) { return null; }
 }
@@ -127,6 +133,101 @@ function readStoredArray(key){
   }
 }
 
+function readStoredObject(key){
+  try {
+    const value = JSON.parse(safeGetItem(key) || '{}');
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch(e) {
+    return {};
+  }
+}
+
+function emergencyCalculatorData(){
+  const data = readStoredObject(EMERGENCY_CALCULATOR_KEY);
+  const monthlyExpense = Number(data.monthlyExp);
+  let currentSavings = Number(data.current);
+  const hasSplitData = ['cur_savings','cur_cash','cur_liquid','cur_fd','cur_rd','cur_other']
+    .some(key => data[key] !== undefined && data[key] !== '');
+  if(hasSplitData){
+    currentSavings = ['cur_savings','cur_cash','cur_liquid','cur_fd','cur_rd','cur_other']
+      .reduce((total,key) => total + (Number(data[key]) || 0), 0);
+    const fdIds = Array.isArray(data.fdAssetIds) ? data.fdAssetIds.map(String) :
+      data.cur_fd_tracker ? [String(data.cur_fd_tracker)] : [];
+    const rdIds = Array.isArray(data.rdAssetIds) ? data.rdAssetIds.map(String) : [];
+    const liquidIds = Array.isArray(data.liquidAssetIds) ? data.liquidAssetIds.map(String) : [];
+    if(fdIds.length){
+      const fds = readStoredArray(FD_STORAGE_KEY);
+      currentSavings += fds.filter(fd => fd && fd.status === 'Active' && fdIds.includes(String(fd.id)))
+        .reduce((sum,fd) => sum + (Number(fd.investedAmount) || 0), 0) - (Number(data.cur_fd) || 0);
+    }
+    if(rdIds.length){
+      const rds = readStoredArray(RD_STORAGE_KEY);
+      currentSavings += rds.filter(rd => rd && rdIds.includes(String(rd.id)) && Number(rd.ten) > Number(rd.paid))
+        .reduce((sum,rd) => sum + (Number(rd.amt) || 0) * (Number(rd.paid) || 0), 0) - (Number(data.cur_rd) || 0);
+    }
+    if(liquidIds.length){
+      const investments = readStoredArray(INVESTMENT_STORAGE_KEY);
+      const emergencyData = readStoredObject(EMERGENCY_FUND_DASHBOARD_KEY);
+      const emergencyFunds = Array.isArray(emergencyData.funds) ? emergencyData.funds : [];
+      const emergencyAssets = emergencyFunds.filter(fund => fund && fund.type === 'MF' && liquidIds.includes(`emergency-${fund.id}`))
+        .map(fund => ({id:`emergency-${fund.id}`, amount:Number(fund.amount) || 0}));
+      const emergencyNames = new Set(emergencyFunds.filter(fund => fund && fund.type === 'MF')
+        .map(fund => String(fund.name || '').trim().toLowerCase()));
+      const trackedAssets = investments.filter(item => item && liquidIds.includes(`investment-${item.id}`) &&
+          /liquid/i.test(String(item.name || '')) && /mutual fund|liquid/i.test(String(item.type || '')))
+        .filter(item => !emergencyNames.has(String(item.name || '').trim().toLowerCase()))
+        .map(item => ({id:`investment-${item.id}`, amount:Number(item.current) || 0}));
+      const liveLiquid = emergencyAssets.concat(trackedAssets)
+        .filter(item => liquidIds.includes(item.id))
+        .reduce((sum,item) => sum + item.amount, 0);
+      currentSavings += liveLiquid - (Number(data.cur_liquid) || 0);
+    }
+  }
+  return Number.isFinite(monthlyExpense) && monthlyExpense > 0 &&
+    Number.isFinite(currentSavings) && currentSavings >= 0
+    ? {monthlyExpense, currentSavings}
+    : null;
+}
+
+function insuranceCheckerData(){
+  const data = readStoredObject(INSURANCE_CHECKER_KEY);
+  const coverAmount = Number(data.existingHealth);
+  if(data.existingHealth === undefined || data.existingHealth === '' || !Number.isFinite(coverAmount)) return null;
+  const adults = Number(data.adults) || 0;
+  const kids = Number(data.kids) || 0;
+  const baseAdult = data.cityTier === 'metro' ? 1000000 : 500000;
+  const recommended = Math.round(((adults * baseAdult) + (kids * baseAdult * 0.5)) * 0.65 / 100000) * 100000;
+  return {
+    coverAmount,
+    members: Math.max(1, adults + kids),
+    recommended
+  };
+}
+
+function retirementCalculatorData(){
+  const data = readStoredObject(RETIREMENT_CALCULATOR_KEY);
+  const fields = ['currentAge','retireAge','monthlyExp','currentSavings','existingSip','preReturn'];
+  return fields.some(field => data[field] !== undefined && data[field] !== '')
+    ? {
+        currentAge:Number(data.currentAge) || 0,
+        targetAge:Number(data.retireAge) || 60,
+        monthlyExpense:Number(data.monthlyExp) || 0,
+        currentSavings:Number(data.currentSavings) || 0,
+        currentSIP:Number(data.existingSip) || 0,
+        preReturn:Number(data.preReturn) || 12
+      }
+    : null;
+}
+
+function financialPlanDebts(){
+  const imported = debtDashboardLoans().map(loan => {
+    const type = ({home:'Home',car:'Car',personal:'Personal',creditcard:'Credit Card',gold:'Gold/Bullet',other:'Other'})[loan.type] || loan.type || 'Loan';
+    return {...loan, type:[loan.lender,type].filter(Boolean).join(' · ')};
+  });
+  const manual = state.debts.filter(debt => !debt.dashboardLoanId && Number(debt.outstanding) > 0);
+  return imported.concat(manual);
+}
+
 function emergencyFDs(){
   try {
     const fds = JSON.parse(safeGetItem(FD_STORAGE_KEY) || '[]');
@@ -143,21 +244,6 @@ function escapeHtml(value){
 function emergencyFDAmount(){
   const selected = emergencyFDs().find(fd => fd.id === state.emergencyFund.selectedFDId);
   return selected ? Number(selected.investedAmount) : 0;
-}
-
-function emergencyFDOptions(){
-  const fds = emergencyFDs();
-  return `<option value="">${fds.length ? 'Select an active FD' : 'No active FDs found'}</option>` +
-    fds.map(fd => {
-      const details = [fd.bankAccount, fd.owner, fd.purpose].filter(Boolean).join(' · ');
-      return `<option value="${escapeHtml(fd.id)}">${escapeHtml(details || 'FD')} — ₹${Number(fd.investedAmount).toLocaleString('en-IN')}</option>`;
-    }).join('');
-}
-
-function selectEmergencyFD(id){
-  state.emergencyFund.selectedFDId = id;
-  save();
-  patchUI();
 }
 
 function debtDashboardLoans(){
@@ -185,62 +271,13 @@ function debtDashboardLoans(){
     Number.isFinite(loan.outstanding) && loan.outstanding > 0);
 }
 
-function debtDashboardOptions(selectedId){
-  const loans = debtDashboardLoans();
-  return `<option value="">${loans.length ? 'Select a loan from Debt Dashboard' : 'No outstanding loans found'}</option>` +
-    loans.map(loan => {
-      const type = ({home:'Home',car:'Car',personal:'Personal',creditcard:'Credit Card',gold:'Gold/Bullet',other:'Other'})[loan.type] || loan.type || 'Loan';
-      const label = [loan.lender, type].filter(Boolean).join(' · ');
-      const selected = String(loan.id) === String(selectedId) ? ' selected' : '';
-      return `<option value="${escapeHtml(loan.id)}"${selected}>${escapeHtml(label)} — ₹${loan.outstanding.toLocaleString('en-IN',{maximumFractionDigits:0})} · ${loan.rate}%</option>`;
-    }).join('');
-}
-
-function selectDashboardLoan(index, id){
-  const loan = debtDashboardLoans().find(item => String(item.id) === id);
-  if(!loan) return;
-  const type = ({home:'Home',car:'Car',personal:'Personal',creditcard:'Credit Card',gold:'Gold/Bullet',other:'Other'})[loan.type] || loan.type || 'Loan';
-  state.debts[index] = {
-    ...state.debts[index],
-    dashboardLoanId: loan.id,
-    type: [loan.lender, type].filter(Boolean).join(' · '),
-    outstanding: loan.outstanding,
-    rate: loan.rate
-  };
-  save();
-  renderGoals();
-}
-
 function childPlannerGoals(type){
   return readStoredArray(CHILD_GOALS_STORAGE_KEY).filter(goal =>
     goal.goalType === type && goal.id !== undefined &&
     Number.isFinite(Number(goal.currentAge)) && Number.isFinite(Number(goal.targetAge)) &&
-    Number.isFinite(Number(goal.costToday))
+    Number.isFinite(Number(goal.costToday)) &&
+    Number.isFinite(Number(goal.inflationRate)) && Number.isFinite(Number(goal.returnRate))
   );
-}
-
-function childGoalOptions(type, selectedId){
-  const goals = childPlannerGoals(type);
-  return `<option value="">${goals.length ? 'Select a saved goal' : 'No saved goals found'}</option>` +
-    goals.map(goal => {
-      const selected = String(goal.id) === String(selectedId) ? ' selected' : '';
-      return `<option value="${escapeHtml(goal.id)}"${selected}>${escapeHtml(goal.childName)} · Age ${goal.currentAge}→${goal.targetAge} · ₹${Number(goal.costToday).toLocaleString('en-IN')}</option>`;
-    }).join('');
-}
-
-function selectChildGoal(type, id){
-  const goal = childPlannerGoals(type).find(item => String(item.id) === id);
-  if(!goal) return;
-  const prefix = type === 'Education' ? 'edu' : 'marriage';
-  state[`${prefix}ChildAge`] = Number(goal.currentAge);
-  state[`${prefix}TargetAge`] = Number(goal.targetAge);
-  state[`${prefix}Target`] = Number(goal.costToday);
-  state[`${prefix}InflationRate`] = Number(goal.inflationRate);
-  state[`${prefix}ReturnRate`] = Number(goal.returnRate);
-  state[`${prefix}AlreadySaved`] = Number(goal.alreadySaved) || 0;
-  state[`${prefix}GoalId`] = goal.id;
-  save();
-  renderGoals();
 }
 
 function saveLifeStage(isNone){
@@ -259,6 +296,15 @@ function saveLifeStage(isNone){
 }
 
 function loadLifeStageUI(){
+  let changed = false;
+  if(!state.lifeStage.none){
+    if(!state.lifeStage.loan && debtDashboardLoans().length){ state.lifeStage.loan = true; changed = true; }
+    if(!state.lifeStage.children && (childPlannerGoals('Education').length || childPlannerGoals('Marriage').length)){
+      state.lifeStage.children = true;
+      changed = true;
+    }
+  }
+  if(changed) save();
   document.getElementById('ls-married').checked = state.lifeStage.married;
   document.getElementById('ls-children').checked = state.lifeStage.children;
   document.getElementById('ls-parents').checked = state.lifeStage.parents;
@@ -294,9 +340,13 @@ function fvOfSIP(monthlyAmt, annualReturnPct, years){
 }
 
 function emergencyFundStatus(){
-  const { monthlyExpense, currentSavings } = state.emergencyFund;
+  const source = emergencyCalculatorData();
+  const monthlyExpense = source ? source.monthlyExpense : state.emergencyFund.monthlyExpense;
+  const currentSavings = source
+    ? source.currentSavings
+    : (state.emergencyFund.currentSavings || 0) + emergencyFDAmount();
   if(monthlyExpense<=0) return {status:'red', msg:'Enter your monthly expense to see your safety net.'};
-  const totalSavings = (currentSavings || 0) + emergencyFDAmount();
+  const totalSavings = currentSavings || 0;
   const months = totalSavings/monthlyExpense;
   const target = monthlyExpense*9;
   const gap = Math.max(0, target-totalSavings);
@@ -305,14 +355,16 @@ function emergencyFundStatus(){
 }
 
 function healthStatus(){
-  const { coverAmount, members } = state.health;
-  const recommended = 500000*Math.max(1,members);
+  const source = insuranceCheckerData();
+  const coverAmount = source ? source.coverAmount : state.health.coverAmount;
+  const members = source ? source.members : state.health.members;
+  const recommended = source ? source.recommended : 500000*Math.max(1,members);
   const status = coverAmount<=0 ? 'red' : coverAmount>=recommended ? 'green' : 'amber';
   return { status, msg: coverAmount<=0 ? `No cover on file. Recommended: ₹${recommended.toLocaleString('en-IN')} for ${members} member(s).` : `₹${coverAmount.toLocaleString('en-IN')} of ~₹${recommended.toLocaleString('en-IN')} recommended.` };
 }
 
 function debtStatus(){
-  const validDebts = state.debts.filter(d=>d.outstanding>0);
+  const validDebts = financialPlanDebts();
   if(validDebts.length===0) return {status:'red', msg:'Add your loans to see the payoff order.'};
   const sorted = [...validDebts].sort((a,b)=>b.rate-a.rate);
   const priority = sorted[0];
@@ -330,6 +382,43 @@ function childGoalCalc(targetToday, milestoneAge, inflationPct, currentSIP, curr
   return { yearsAway, futureValue, savedAtGoal, requiredSIP, status };
 }
 
+function childGoalSummary(type, prefix, fallbackTarget, fallbackAge, fallbackInflation, fallbackReturn, fallbackSaved, currentSIP){
+  const goals = childPlannerGoals(type);
+  if(!goals.length){
+    const yearsAway = Math.max(0,childTargetAgeFor(prefix,fallbackAge) - childAgeFor(prefix));
+    const result = childGoalCalc(
+      state[`${prefix}Target`] ?? fallbackTarget,
+      childTargetAgeFor(prefix,fallbackAge),
+      childRateFor(prefix,'InflationRate',fallbackInflation),
+      currentSIP,
+      childAgeFor(prefix),
+      state[`${prefix}AlreadySaved`] ?? fallbackSaved,
+      childRateFor(prefix,'ReturnRate',fallbackReturn)
+    );
+    return {...result, goals:[], targetToday:state[`${prefix}Target`] ?? fallbackTarget, yearsAway};
+  }
+  const plans = goals.map(goal => ({
+    goal,
+    result:childGoalCalc(
+      Number(goal.costToday),
+      Number(goal.targetAge),
+      Number(goal.inflationRate),
+      0,
+      Number(goal.currentAge),
+      Number(goal.alreadySaved)||0,
+      Number(goal.returnRate)
+    )
+  }));
+  const totals = plans.reduce((sum,item) => ({
+    targetToday:sum.targetToday + Number(item.goal.costToday),
+    futureValue:sum.futureValue + item.result.futureValue,
+    savedAtGoal:sum.savedAtGoal + item.result.savedAtGoal,
+    requiredSIP:sum.requiredSIP + item.result.requiredSIP
+  }), {targetToday:0,futureValue:0,savedAtGoal:0,requiredSIP:0});
+  const status = currentSIP<=0 ? 'red' : currentSIP>=totals.requiredSIP ? 'green' : 'amber';
+  return {...totals, status, goals:plans.map(item=>item.goal), yearsAway:null};
+}
+
 function parentsStatus(){
   const { parentsHealthIns, parentsBudgetSet } = state;
   const status = (parentsHealthIns && parentsBudgetSet) ? 'green' : (parentsHealthIns || parentsBudgetSet) ? 'amber' : 'red';
@@ -337,16 +426,26 @@ function parentsStatus(){
 }
 
 function retirementStatus(){
-  const { currentAge, targetAge, currentSIP } = state.retirement;
+  const source = retirementCalculatorData();
+  const currentAge = source ? source.currentAge : state.retirement.currentAge;
+  const targetAge = source ? source.targetAge : state.retirement.targetAge;
+  const currentSIP = source ? source.currentSIP : state.retirement.currentSIP;
   const gapYears = Math.max(0, targetAge-currentAge);
   if(currentAge<=0) return {status:'red', msg:'Enter your age to see your retirement runway.', requiredSIP:0, startNowVs5:''};
 
-  const monthlyExpense = state.emergencyFund.monthlyExpense || 0;
+  const emergencySource = emergencyCalculatorData();
+  const monthlyExpense = source && source.monthlyExpense > 0
+    ? source.monthlyExpense
+    : emergencySource ? emergencySource.monthlyExpense : state.emergencyFund.monthlyExpense || 0;
   const annualExpenseAtRetirement = monthlyExpense*12*Math.pow(1.06, gapYears);
   const corpusTarget = annualExpenseAtRetirement*25;
-  const requiredSIP = corpusTarget>0 ? requiredMonthlySIP(corpusTarget, 12, gapYears) : 0;
+  const preReturn = source ? source.preReturn : 12;
+  const currentSavings = source ? source.currentSavings : Number(state.retirement.currentSavings)||0;
+  const existingSavings = currentSavings*Math.pow(1+preReturn/100,gapYears);
+  const requiredSIP = corpusTarget>0 ? requiredMonthlySIP(Math.max(0,corpusTarget-existingSavings), preReturn, gapYears) : 0;
 
-  const status = currentSIP<=0 ? 'red' : (requiredSIP>0 && currentSIP>=requiredSIP) ? 'green' : 'amber';
+  const projectedCorpus = existingSavings + fvOfSIP(currentSIP, preReturn, gapYears);
+  const status = corpusTarget>0 && projectedCorpus>=corpusTarget ? 'green' : currentSIP<=0 ? 'red' : 'amber';
 
   let startNowVs5 = '';
   if(currentSIP<=0 && gapYears>5){
@@ -356,7 +455,7 @@ function retirementStatus(){
     startNowVs5 = `⏰ Starting ₹${demo}/mo now vs waiting 5 years: ₹${fvNow.toLocaleString('en-IN',{maximumFractionDigits:0})} vs ₹${fvLater.toLocaleString('en-IN',{maximumFractionDigits:0})} — a ₹${(fvNow-fvLater).toLocaleString('en-IN',{maximumFractionDigits:0})} difference just from 5 years of delay.`;
   }
 
-  return { status, requiredSIP, startNowVs5, msg: `${gapYears} years to retirement. Est. corpus needed: ₹${corpusTarget.toLocaleString('en-IN',{maximumFractionDigits:0})} (25x annual expense at retirement).` };
+  return { status, requiredSIP, preReturn, startNowVs5, msg: `${gapYears} years to retirement. Est. corpus needed: ₹${corpusTarget.toLocaleString('en-IN',{maximumFractionDigits:0})} (25x annual expense at retirement).` };
 }
 
 function badgeHTML(status){
@@ -367,6 +466,11 @@ function badgeHTML(status){
 // ---------- STRUCTURAL RENDER (rebuilds DOM: call only on card add/remove/open/close/life-stage change) ----------
 function renderGoals(){
   loadLifeStageUI();
+  const emergencySource = emergencyCalculatorData();
+  const insuranceSource = insuranceCheckerData();
+  const retirementSource = retirementCalculatorData();
+  const educationGoals = state.lifeStage.children ? childPlannerGoals('Education') : [];
+  const marriageGoals = state.lifeStage.children ? childPlannerGoals('Marriage') : [];
 
   // preserve focus across re-render (inputs use data-key)
   const active = document.activeElement;
@@ -379,6 +483,10 @@ function renderGoals(){
 
   const container = document.getElementById('goalsContainer');
   let html = '';
+  const monthlyExpense = emergencySource ? emergencySource.monthlyExpense : state.emergencyFund.monthlyExpense;
+  const emergencySavings = emergencySource
+    ? emergencySource.currentSavings
+    : (state.emergencyFund.currentSavings||0) + emergencyFDAmount();
 
   html += `
     <div class="goal-card">
@@ -386,16 +494,10 @@ function renderGoals(){
       <div class="goal-msg" id="msg-ef"></div>
       <div class="goal-detail ${state.openCard==='ef'?'open':''}">
         <div class="row">
-          <div class="field"><label>Monthly Essential Expense (₹)</label><input type="number" value="${state.emergencyFund.monthlyExpense||''}" oninput="state.emergencyFund.monthlyExpense=parseFloat(this.value)||0; save(); patchUI();"></div>
-          <div class="field"><label>Other Emergency Savings (₹)</label><input type="number" value="${state.emergencyFund.currentSavings||''}" oninput="state.emergencyFund.currentSavings=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="field"><label>Monthly Essential Expense (₹)</label><input type="number" value="${monthlyExpense||''}" ${emergencySource?'readonly':''} oninput="state.emergencyFund.monthlyExpense=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="field"><label>Current Emergency Savings (₹)</label><input type="number" value="${emergencySavings||''}" ${emergencySource?'readonly':''} oninput="state.emergencyFund.currentSavings=parseFloat(this.value)||0; save(); patchUI();"></div>
         </div>
-        <div class="row">
-          <div class="field">
-            <label for="emergencyFD">Emergency FD from FD Tracker</label>
-            <select id="emergencyFD" onchange="selectEmergencyFD(this.value)">${emergencyFDOptions()}</select>
-            <div class="goal-msg">Selected FD principal is included in your emergency-fund total. <a href="fd-tracker.html" style="color:var(--acc);">Open FD Tracker</a></div>
-          </div>
-        </div>
+        <div class="goal-msg">${emergencySource ? 'Synced from Emergency Fund Calculator.' : 'Enter values here or use the Emergency Fund Calculator to include your selected FDs, RDs, and liquid funds.'} <a href="emergency-fund-calculator.html" style="color:var(--acc);">Open Emergency Fund Calculator</a></div>
       </div>
     </div>
 
@@ -404,30 +506,41 @@ function renderGoals(){
       <div class="goal-msg" id="msg-health"></div>
       <div class="goal-detail ${state.openCard==='health'?'open':''}">
         <div class="row">
-          <div class="field"><label>Cover Amount (₹)</label><input type="number" value="${state.health.coverAmount||''}" oninput="state.health.coverAmount=parseFloat(this.value)||0; save(); patchUI();"></div>
-          <div class="field"><label>Family Members Covered</label><input type="number" value="${state.health.members||1}" oninput="state.health.members=parseFloat(this.value)||1; save(); patchUI();"></div>
+        <div class="field"><label>Cover Amount (₹)</label><input type="number" value="${insuranceSource ? insuranceSource.coverAmount : state.health.coverAmount||''}" ${insuranceSource?'readonly':''} oninput="state.health.coverAmount=parseFloat(this.value)||0; save(); patchUI();"></div>
+        <div class="field"><label>Family Members Covered</label><input type="number" value="${insuranceSource ? insuranceSource.members : state.health.members||1}" ${insuranceSource?'readonly':''} oninput="state.health.members=parseFloat(this.value)||1; save(); patchUI();"></div>
         </div>
+      <div class="goal-msg">${insuranceSource ? 'Synced from Insurance Calculator.' : 'Enter cover details here or use the Insurance Calculator.'} <a href="insurance-coverage-checker.html" style="color:var(--acc);">Open Insurance Calculator</a></div>
       </div>
     </div>
   `;
 
   if(state.lifeStage.loan){
-    const debtRows = state.debts.map((d,i)=>`
+    const linkedLoans = debtDashboardLoans();
+    const dashboardRows = linkedLoans.map(loan => {
+      const type = ({home:'Home',car:'Car',personal:'Personal',creditcard:'Credit Card',gold:'Gold/Bullet',other:'Other'})[loan.type] || loan.type || 'Loan';
+      return `
       <div class="row">
-        <div class="field"><label for="debtSource${i}">Pick from Debt Dashboard</label><select id="debtSource${i}" onchange="selectDashboardLoan(${i},this.value)">${debtDashboardOptions(d.dashboardLoanId)}</select></div>
+        <div class="field"><label>${escapeHtml(loan.lender)} · ${escapeHtml(type)}</label><input type="text" value="${loan.outstanding.toLocaleString('en-IN',{maximumFractionDigits:0})} outstanding · ${loan.rate}% interest" readonly></div>
+      </div>`;
+    }).join('');
+    const debtRows = state.debts.map((d,i)=>{
+      if(d.dashboardLoanId || (!d.type && !(d.outstanding>0) && !(d.rate>0))) return '';
+      return `
+      <div class="row">
         <div class="field"><label>Loan</label><input type="text" value="${escapeHtml(d.type||'')}" oninput="state.debts[${i}].type=this.value; save(); patchUI();"></div>
         <div class="field"><label>Outstanding (₹)</label><input type="number" value="${d.outstanding||''}" oninput="state.debts[${i}].outstanding=parseFloat(this.value)||0; save(); patchUI();"></div>
         <div class="field"><label>Rate (%)</label><input type="number" value="${d.rate||''}" oninput="state.debts[${i}].rate=parseFloat(this.value)||0; save(); patchUI();"></div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
     html += `
       <div class="goal-card">
         <div class="goal-head" onclick="toggleCard('debt')"><span class="goal-title">💳 Debt Dashboard</span><span id="badge-debt"></span></div>
         <div class="goal-msg" id="msg-debt"></div>
         <div class="goal-detail ${state.openCard==='debt'?'open':''}">
-          ${debtRows}
+          ${dashboardRows || '<div class="goal-msg">No loans in Debt Dashboard yet.</div>'}
           <div class="goal-msg" style="margin-bottom:8px;"><a href="debt-dashboard.html" style="color:var(--acc);">Open Debt Dashboard</a></div>
-          <button class="primary" style="margin-bottom:8px;" onclick="addLoan()">+ Add Loan</button>
+          ${debtRows}
+          <button class="primary" style="margin-bottom:8px;" onclick="addLoan()">+ Add Manual Loan</button>
           <div class="field"><label>Extra Monthly Payment Committed (₹)</label><input type="number" value="${state.extraPayment||''}" oninput="state.extraPayment=parseFloat(this.value)||0; save(); patchUI();"></div>
         </div>
       </div>
@@ -442,25 +555,36 @@ function renderGoals(){
         <div class="goal-detail ${state.openCard==='children'?'open':''}">
           <div class="subgoal-title">🎓 Education</div>
           <div class="row">
-            <div class="field"><label for="eduGoalSource">Pick Education Goal</label><select id="eduGoalSource" onchange="selectChildGoal('Education',this.value)">${childGoalOptions('Education',state.eduGoalId)}</select></div>
-            <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('edu')||''}" oninput="state.eduChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('edu',18)}" oninput="state.eduTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.eduTarget}" oninput="state.eduTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Already Saved (₹)</label><input type="number" value="${state.eduAlreadySaved||''}" oninput="state.eduAlreadySaved=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.eduCurrentSIP||''}" oninput="state.eduCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
-          </div>
-          <div class="goal-msg">Selected goal details fill age, target, saved amount, and rates. Current SIP remains independently editable. <a href="children-corpus-planner.html" style="color:var(--acc);">Open Children's Corpus Planner</a></div>
+              ${educationGoals.length ? `
+                <div class="field"><label>Tracked Education Goals</label><input type="text" value="${escapeHtml(educationGoals.map(goal=>goal.childName).join(', '))}" readonly></div>
+                <div class="field"><label>Combined Target Today (₹)</label><input type="number" value="${educationGoals.reduce((sum,goal)=>sum+(Number(goal.costToday)||0),0)}" readonly></div>
+                <div class="field"><label>Combined Already Saved (₹)</label><input type="number" value="${educationGoals.reduce((sum,goal)=>sum+(Number(goal.alreadySaved)||0),0)}" readonly></div>
+              ` : `
+                <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('edu')||''}" oninput="state.eduChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+                <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('edu',18)}" oninput="state.eduTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+                <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.eduTarget}" oninput="state.eduTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
+                <div class="field"><label>Already Saved (₹)</label><input type="number" value="${state.eduAlreadySaved||''}" oninput="state.eduAlreadySaved=parseFloat(this.value)||0; save(); patchUI();"></div>
+              `}
+              <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.eduCurrentSIP||''}" oninput="state.eduCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
+            </div>
+            <div class="goal-msg">${educationGoals.length ? 'All saved education goals stay synced from Children Funds Allocation.' : 'Enter goal details here or add education goals in Children Funds Allocation.'} Enter the combined monthly SIP. <a href="children-corpus-planner.html" style="color:var(--acc);">Open Children's Corpus Planner</a></div>
           <div class="math-line" id="math-edu"></div>
 
           <div class="subgoal-title">💍 Marriage</div>
           <div class="row">
-            <div class="field"><label for="marriageGoalSource">Pick Marriage Goal</label><select id="marriageGoalSource" onchange="selectChildGoal('Marriage',this.value)">${childGoalOptions('Marriage',state.marriageGoalId)}</select></div>
-            <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('marriage')||''}" oninput="state.marriageChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('marriage',25)}" oninput="state.marriageTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.marriageTarget}" oninput="state.marriageTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
-            <div class="field"><label>Already Saved (₹)</label><input type="number" value="${state.marriageAlreadySaved||''}" oninput="state.marriageAlreadySaved=parseFloat(this.value)||0; save(); patchUI();"></div>
+            ${marriageGoals.length ? `
+              <div class="field"><label>Tracked Marriage Goals</label><input type="text" value="${escapeHtml(marriageGoals.map(goal=>goal.childName).join(', '))}" readonly></div>
+              <div class="field"><label>Combined Target Today (₹)</label><input type="number" value="${marriageGoals.reduce((sum,goal)=>sum+(Number(goal.costToday)||0),0)}" readonly></div>
+              <div class="field"><label>Combined Already Saved (₹)</label><input type="number" value="${marriageGoals.reduce((sum,goal)=>sum+(Number(goal.alreadySaved)||0),0)}" readonly></div>
+            ` : `
+              <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('marriage')||''}" oninput="state.marriageChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+              <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('marriage',25)}" oninput="state.marriageTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+              <div class="field"><label>Target Amount Today (₹)</label><input type="number" value="${state.marriageTarget}" oninput="state.marriageTarget=parseFloat(this.value)||0; save(); patchUI();"></div>
+              <div class="field"><label>Already Saved (₹)</label><input type="number" value="${state.marriageAlreadySaved||''}" oninput="state.marriageAlreadySaved=parseFloat(this.value)||0; save(); patchUI();"></div>
+            `}
             <div class="field"><label>Current Monthly SIP (₹)</label><input type="number" value="${state.marriageCurrentSIP||''}" oninput="state.marriageCurrentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
           </div>
+          <div class="goal-msg">${marriageGoals.length ? 'All saved marriage goals stay synced from Children Funds Allocation.' : 'Enter goal details here or add marriage goals in Children Funds Allocation.'} Enter the combined monthly SIP.</div>
           <div class="math-line" id="math-marriage"></div>
         </div>
       </div>
@@ -489,12 +613,14 @@ function renderGoals(){
       <div class="goal-msg" id="msg-retirement"></div>
       <div class="goal-detail ${state.openCard==='retirement'?'open':''}">
         <div class="row">
-          <div class="field"><label>Current Age</label><input type="number" value="${state.retirement.currentAge||''}" oninput="state.retirement.currentAge=parseFloat(this.value)||0; save(); patchUI();"></div>
-          <div class="field"><label>Target Retirement Age</label><input type="number" value="${state.retirement.targetAge||60}" oninput="state.retirement.targetAge=parseFloat(this.value)||60; save(); patchUI();"></div>
+        <div class="field"><label>Current Age</label><input type="number" value="${retirementSource ? retirementSource.currentAge : state.retirement.currentAge||''}" ${retirementSource?'readonly':''} oninput="state.retirement.currentAge=parseFloat(this.value)||0; save(); patchUI();"></div>
+        <div class="field"><label>Target Retirement Age</label><input type="number" value="${retirementSource ? retirementSource.targetAge : state.retirement.targetAge||60}" ${retirementSource?'readonly':''} oninput="state.retirement.targetAge=parseFloat(this.value)||60; save(); patchUI();"></div>
         </div>
         <div class="row">
-          <div class="field"><label>Current Monthly Savings Toward Retirement (₹)</label><input type="number" value="${state.retirement.currentSIP||''}" oninput="state.retirement.currentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
-        </div>
+        <div class="field"><label>Current Monthly Savings Toward Retirement (₹)</label><input type="number" value="${retirementSource ? retirementSource.currentSIP : state.retirement.currentSIP||''}" ${retirementSource?'readonly':''} oninput="state.retirement.currentSIP=parseFloat(this.value)||0; save(); patchUI();"></div>
+        <div class="field"><label>Current Retirement Savings (₹)</label><input type="number" value="${retirementSource ? retirementSource.currentSavings : state.retirement.currentSavings||''}" ${retirementSource?'readonly':''} oninput="state.retirement.currentSavings=parseFloat(this.value)||0; save(); patchUI();"></div>
+      </div>
+      <div class="goal-msg">${retirementSource ? 'Synced from Retirement Planner.' : 'Enter details here or use the Retirement Planner.'} <a href="retirement-corpus-calculator.html" style="color:var(--acc);">Open Retirement Planner</a></div>
         <div class="math-line" id="math-retirement-required"></div>
         <div class="math-line" id="math-retirement-shock"></div>
       </div>
@@ -527,18 +653,16 @@ function patchUI(){
   }
 
   if(state.lifeStage.children){
-    const eduAge = childAgeFor('edu'), eduTargetAge = childTargetAgeFor('edu',18);
-    const eduInflation = childRateFor('edu','InflationRate',8), eduReturn = childRateFor('edu','ReturnRate',12);
-    const marriageAge = childAgeFor('marriage'), marriageTargetAge = childTargetAgeFor('marriage',25);
-    const marriageInflation = childRateFor('marriage','InflationRate',6), marriageReturn = childRateFor('marriage','ReturnRate',12);
-    const edu = childGoalCalc(state.eduTarget, eduTargetAge, eduInflation, state.eduCurrentSIP, eduAge, state.eduAlreadySaved||0, eduReturn);
-    const marriage = childGoalCalc(state.marriageTarget, marriageTargetAge, marriageInflation, state.marriageCurrentSIP, marriageAge, state.marriageAlreadySaved||0, marriageReturn);
+    const edu = childGoalSummary('Education','edu',1500000,18,8,12,0,state.eduCurrentSIP);
+    const marriage = childGoalSummary('Marriage','marriage',1000000,25,6,12,0,state.marriageCurrentSIP);
     const overallStatus = (edu.status==='green' && marriage.status==='green') ? 'green' : (edu.status==='red' && marriage.status==='red') ? 'red' : 'amber';
     applicableCount++; if(overallStatus==='green') protectedCount++;
     setIfExists('badge-children', badgeHTML(overallStatus));
-    setIfExists('msg-children', `Education in ${edu.yearsAway}y, Marriage in ${marriage.yearsAway}y.`, true);
-    setIfExists('math-edu', `${badgeHTML(edu.status)} In ${edu.yearsAway} years, ₹${state.eduTarget.toLocaleString('en-IN')} today = ₹${edu.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (${eduInflation}% inflation). Saved amount grows to ₹${edu.savedAtGoal.toLocaleString('en-IN',{maximumFractionDigits:0})}. Required SIP: ₹${edu.requiredSIP.toFixed(0)}/month at ${eduReturn}% return.`);
-    setIfExists('math-marriage', `${badgeHTML(marriage.status)} In ${marriage.yearsAway} years, ₹${state.marriageTarget.toLocaleString('en-IN')} today = ₹${marriage.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} (${marriageInflation}% inflation). Saved amount grows to ₹${marriage.savedAtGoal.toLocaleString('en-IN',{maximumFractionDigits:0})}. Required SIP: ₹${marriage.requiredSIP.toFixed(0)}/month at ${marriageReturn}% return.`);
+    const eduYears = edu.goals.length ? edu.goals.map(goal => `${escapeHtml(goal.childName)}: ${Math.max(0,Number(goal.targetAge)-Number(goal.currentAge))}y`).join(', ') : `${edu.yearsAway}y`;
+    const marriageYears = marriage.goals.length ? marriage.goals.map(goal => `${escapeHtml(goal.childName)}: ${Math.max(0,Number(goal.targetAge)-Number(goal.currentAge))}y`).join(', ') : `${marriage.yearsAway}y`;
+    setIfExists('msg-children', `Education: ${edu.goals.length||1} goal${(edu.goals.length||1)===1?'':'s'} · Marriage: ${marriage.goals.length||1} goal${(marriage.goals.length||1)===1?'':'s'}.`, true);
+    setIfExists('math-edu', `${badgeHTML(edu.status)} ${edu.goals.length ? `${edu.goals.length} tracked goal${edu.goals.length===1?'':'s'} (${eduYears})` : `In ${eduYears}`} · Target today ₹${edu.targetToday.toLocaleString('en-IN')} · Future cost ₹${edu.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} · Savings grow to ₹${edu.savedAtGoal.toLocaleString('en-IN',{maximumFractionDigits:0})} · Combined SIP needed ₹${edu.requiredSIP.toFixed(0)}/month.`);
+    setIfExists('math-marriage', `${badgeHTML(marriage.status)} ${marriage.goals.length ? `${marriage.goals.length} tracked goal${marriage.goals.length===1?'':'s'} (${marriageYears})` : `In ${marriageYears}`} · Target today ₹${marriage.targetToday.toLocaleString('en-IN')} · Future cost ₹${marriage.futureValue.toLocaleString('en-IN',{maximumFractionDigits:0})} · Savings grow to ₹${marriage.savedAtGoal.toLocaleString('en-IN',{maximumFractionDigits:0})} · Combined SIP needed ₹${marriage.requiredSIP.toFixed(0)}/month.`);
   }
 
   if(state.lifeStage.parents){
@@ -552,7 +676,7 @@ function patchUI(){
   applicableCount++; if(rs.status==='green') protectedCount++;
   setIfExists('badge-retirement', badgeHTML(rs.status));
   setIfExists('msg-retirement', rs.msg, true);
-  setIfExists('math-retirement-required', rs.requiredSIP ? `Required SIP to hit target corpus: ₹${rs.requiredSIP.toFixed(0)}/month at 12% return.` : '');
+  setIfExists('math-retirement-required', rs.requiredSIP ? `Required SIP to hit target corpus: ₹${rs.requiredSIP.toFixed(0)}/month at ${rs.preReturn}% return.` : '');
   setIfExists('math-retirement-shock', rs.startNowVs5 || '');
 
   document.getElementById('scoreNum').textContent = `${protectedCount}/${applicableCount}`;
@@ -575,6 +699,27 @@ function setIfExists(id, html, isText){
   if(isText) el.textContent = html.replace(/<[^>]*>/g,''); // msg lines are plain text
   else el.innerHTML = html;
 }
+
+const LINKED_PAGE_KEYS = new Set([
+  STORAGE_KEY,
+  FD_STORAGE_KEY,
+  DEBT_STORAGE_KEY,
+  CHILD_GOALS_STORAGE_KEY,
+  EMERGENCY_CALCULATOR_KEY,
+  EMERGENCY_FUND_DASHBOARD_KEY,
+  RD_STORAGE_KEY,
+  INVESTMENT_STORAGE_KEY,
+  INSURANCE_CHECKER_KEY,
+  RETIREMENT_CALCULATOR_KEY
+]);
+window.addEventListener('storage', event => {
+  if(event.key === null || LINKED_PAGE_KEYS.has(event.key)){
+    if(event.key === STORAGE_KEY){
+      state = JSON.parse(safeGetItem(STORAGE_KEY) || 'null') || state;
+    }
+    renderGoals();
+  }
+});
 
 loadLifeStageUI();
 renderGoals();
