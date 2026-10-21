@@ -36,10 +36,15 @@
   .bank-amount{font-weight:700;white-space:nowrap;}
   .pay-details{border-bottom:1px solid #334155;padding:12px 0;}
   .pay-details:last-child{border-bottom:none;}
+  .payment-group{margin-top:16px;}
+  .payment-group:first-child{margin-top:0;}
+  .payment-group-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0;padding-bottom:8px;border-bottom:1px solid #334155;font-size:14px;}
+  .payment-group-total{font-size:11px;color:var(--sub);font-weight:400;text-align:right;}
+  .payment-month-title{margin:12px 0 0;color:var(--sub);font-size:12px;}
   .pay-summary{list-style:none;cursor:pointer;display:block;}
   .pay-summary::-webkit-details-marker{display:none;}
   .pay-summary::after{content:"▾";float:right;color:var(--sub);font-size:16px;line-height:1.4;}
-  .pay-details[open]>.pay-summary::after{content:"▴";}
+  .pay-details details[open]>.pay-summary::after{content:"▴";}
   .pay-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
   .pay-name{font-weight:700;font-size:14px;}
   .pay-type{margin:0 0 5px;font-size:11px;color:var(--sub);}
@@ -554,7 +559,21 @@ function render(){
   let totalMonthly = 0, dueSoonCount = 0;
   const sorted = [...payments].sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
 
-  container.innerHTML = sorted.map(p=>{
+  const monthBuckets = new Map();
+  const overdue = [];
+  const currentMonthPayments = [];
+  sorted.forEach(payment=>{
+    const dueMonth = payment.dueDate.slice(0, 7);
+    if(dueMonth < thisMonth){
+      overdue.push(payment);
+    } else if(dueMonth === thisMonth){
+      currentMonthPayments.push(payment);
+    } else {
+      monthBuckets.set(dueMonth, [...(monthBuckets.get(dueMonth) || []), payment]);
+    }
+  });
+
+  const renderPayment = p=>{
     const days = daysUntil(p.dueDate);
     const monthlyEquiv = p.amount / p.freq;
     totalMonthly += monthlyEquiv;
@@ -594,7 +613,20 @@ function render(){
         </details>
       </div>
     `;
-  }).join('');
+  };
+
+  const paymentGroup = (title, items, emptyMessage)=>{
+    const pendingTotal = items.reduce((sum, payment)=>sum + Number(payment.amount || 0), 0);
+    return `<section class="payment-group"><h3 class="payment-group-title">${escapeHTML(title)}<span class="payment-group-total">${items.length} pending · ₹${pendingTotal.toFixed(0)}</span></h3>${items.length ? items.map(renderPayment).join('') : `<div class="empty">${escapeHTML(emptyMessage)}</div>`}</section>`;
+  };
+
+  const monthLabel = monthKey=>new Date(`${monthKey}-01T00:00:00`).toLocaleDateString(undefined, {month:'long', year:'numeric'});
+  const currentMonthLabel = monthLabel(thisMonth);
+  container.innerHTML = [
+    overdue.length ? paymentGroup('Overdue from previous months', overdue, '') : '',
+    paymentGroup(`This Month · ${currentMonthLabel}`, currentMonthPayments, 'No pending debits this month.'),
+    `<section class="payment-group"><h3 class="payment-group-title">Upcoming Months</h3>${monthBuckets.size ? [...monthBuckets.entries()].map(([month, items])=>`<h4 class="payment-month-title">${escapeHTML(monthLabel(month))} · ${items.length} pending · ₹${items.reduce((sum, payment)=>sum + Number(payment.amount || 0), 0).toFixed(0)}</h4>${items.map(renderPayment).join('')}`).join('') : '<div class="empty">No upcoming debits scheduled.</div>'}</section>`
+  ].join('');
 
   document.getElementById('totalCount').textContent = payments.length;
   document.getElementById('totalMonthly').textContent = '₹' + totalMonthly.toFixed(0);
