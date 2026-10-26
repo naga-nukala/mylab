@@ -118,13 +118,17 @@ function compute(){
       if(id!==e.payer){const k=id+'>'+e.payer;pair[k]=(pair[k]||0)+sh[i]}
     });
   });
-  // net pairwise debts
+  // consolidated settlement: repeatedly match the biggest debtor with the biggest creditor
+  const bal=S.users.map(u=>({id:u.id,n:paid[u.id]-owed[u.id]}));
   const debts=[];
-  S.users.forEach((a,i)=>S.users.slice(i+1).forEach(b=>{
-    const d=(pair[a.id+'>'+b.id]||0)-(pair[b.id+'>'+a.id]||0);
-    if(d>0)debts.push({from:a.id,to:b.id,amt:d});else if(d<0)debts.push({from:b.id,to:a.id,amt:-d});
-  }));
-  debts.sort((x,y)=>y.amt-x.amt);
+  for(let guard=0;guard<1000;guard++){
+    bal.sort((a,b)=>a.n-b.n);
+    const d=bal[0],c=bal[bal.length-1];
+    if(!d||d.n>=0||c.n<=0)break;
+    const x=Math.min(-d.n,c.n);
+    debts.push({from:d.id,to:c.id,amt:x});
+    d.n+=x;c.n-=x;
+  }
   return{paid,owed,debts};
 }
 
@@ -132,7 +136,7 @@ function renderSummary(){
   const {paid,owed,debts}=compute();
   const total=S.expenses.reduce((s,e)=>s+e.amt,0);
   let h=`<div class="stats"><div class="stat"><b>${money(total)}</b><span class="mu">Total spent</span></div><div class="stat"><b>${S.users.length}</b><span class="mu">People</span></div><div class="stat"><b>${S.expenses.length}</b><span class="mu">Expenses</span></div></div>`;
-  h+='<h2>Who pays whom</h2>';
+  h+=`<h2>Settle up · ${debts.length} payment${debts.length===1?'':'s'} needed</h2>`;
   h+=debts.length?debts.map(d=>`<div class="pay"><b>${esc(name(d.from))}</b><span class="arrow">pays →</span><b>${esc(name(d.to))}</b> <span class="neg" style="float:right;font-weight:600">${money(d.amt)}</span></div>`).join(''):`<div class="empty">${S.expenses.length?'All settled up 🎉':'Nothing to settle yet.'}</div>`;
   if(S.users.length&&S.expenses.length){
     h+='<h2 style="margin-top:14px">Net balance</h2>';
