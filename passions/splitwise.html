@@ -37,6 +37,9 @@ button.del.armed{background:var(--coral);color:#0f1412}
 .pay{padding:9px 6px;border-top:1px solid var(--line)}
 .pay:first-of-type{border-top:0}
 .arrow{color:var(--mu);margin:0 4px}
+.tgl{display:flex;width:100%;justify-content:space-between;align-items:center;background:transparent;color:var(--mu);border:0;padding:0;margin:0 0 10px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;text-align:left}
+.tgl .car{transition:transform .15s;display:inline-block}
+.tgl.closed .car{transform:rotate(-90deg)}
 .empty{color:var(--mu);font-size:13px;padding:4px 0}
 .actions{display:flex;gap:8px}.actions button{flex:1}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#26322c;color:var(--tx);padding:10px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:.2s;font-size:14px;z-index:9}
@@ -53,7 +56,8 @@ button.del.armed{background:var(--coral);color:#0f1412}
   <div class="card">
     <h2>People</h2>
     <div class="inline"><input id="uname" placeholder="Add a person's name" maxlength="30" autocomplete="off"><button data-act="addUser">Add</button></div>
-    <div id="users" style="margin-top:8px"></div>
+    <button class="tgl" id="usersTgl" data-act="toggleUsers" style="margin-top:12px"><span id="usersLbl">Added people</span><span class="car">▾</span></button>
+    <div id="users"></div>
   </div>
 
   <div class="card">
@@ -81,6 +85,7 @@ button.del.armed{background:var(--coral);color:#0f1412}
 
 <script>
 const KEY='as_splitwise_v1';
+let netOpen=true, usersOpen=true;
 let S=load(), editId=null, armedKey=null, armTimer=null, toastTimer=null;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -139,13 +144,16 @@ function renderSummary(){
   h+=`<h2>Settle up · ${debts.length} payment${debts.length===1?'':'s'} needed</h2>`;
   h+=debts.length?debts.map(d=>`<div class="pay"><b>${esc(name(d.from))}</b><span class="arrow">pays →</span><b>${esc(name(d.to))}</b> <span class="neg" style="float:right;font-weight:600">${money(d.amt)}</span></div>`).join(''):`<div class="empty">${S.expenses.length?'All settled up 🎉':'Nothing to settle yet.'}</div>`;
   if(S.users.length&&S.expenses.length){
-    h+='<h2 style="margin-top:14px">Net balance</h2>';
-    h+=S.users.map(u=>{const n=paid[u.id]-owed[u.id];return `<div class="pay">${esc(u.name)}<span class="${n>=0?'pos':'neg'}" style="float:right">${n>=0?'gets back ':'owes '}${money(Math.abs(n))}</span></div>`}).join('');
+    h+=`<button class="tgl${netOpen?'':' closed'}" data-act="toggleNet" style="margin-top:14px"><span>Net balance</span><span class="car">▾</span></button>`;
+    if(netOpen)h+=S.users.map(u=>{const n=paid[u.id]-owed[u.id];return `<div class="pay">${esc(u.name)}<span class="${n>=0?'pos':'neg'}" style="float:right">${n>=0?'gets back ':'owes '}${money(Math.abs(n))}</span></div>`}).join('');
   }
   $('#summary').innerHTML=h;
 }
 
 function renderUsers(){
+  $('#usersLbl').textContent='Added people ('+S.users.length+')';
+  $('#usersTgl').classList.toggle('closed',!usersOpen);
+  $('#users').style.display=usersOpen?'':'none';
   $('#users').innerHTML=S.users.length?S.users.map(u=>`<div class="row"><span class="grow">${esc(u.name)}</span><button class="del small" data-act="delUser" data-id="${u.id}">Delete</button></div>`).join(''):'<div class="empty">No people yet — add at least two.</div>';
 }
 
@@ -202,6 +210,8 @@ document.addEventListener('click',ev=>{
   const b=ev.target.closest('[data-act]');if(!b)return;
   const act=b.dataset.act,id=b.dataset.id;
   if(act==='addUser')addUser();
+  else if(act==='toggleNet'){netOpen=!netOpen;renderSummary()}
+  else if(act==='toggleUsers'){usersOpen=!usersOpen;renderUsers()}
   else if(act==='addExp')saveExpense();
   else if(act==='cancelEdit'){resetForm()}
   else if(act==='selAll')document.querySelectorAll('#split input').forEach(i=>i.checked=true);
