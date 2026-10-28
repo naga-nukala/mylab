@@ -79,6 +79,12 @@ button.del.armed{background:var(--coral);color:#0f1412}
     <div id="expenses"></div>
   </div>
 
+  <div class="card">
+    <h2>Saved lists</h2>
+    <div class="inline"><input id="sname" placeholder="Name this list (e.g. Goa trip)" maxlength="40" autocomplete="off"><button data-act="saveNamed">Save</button></div>
+    <div id="saved" style="margin-top:8px"></div>
+  </div>
+
   <button class="del" id="wipe" data-act="wipe" style="width:100%">Delete whole list</button>
 </div>
 <div id="toast"></div>
@@ -86,6 +92,10 @@ button.del.armed{background:var(--coral);color:#0f1412}
 <script>
 const KEY='as_splitwise_v1';
 let netOpen=true, usersOpen=true;
+const SKEY='as_splitwise_saved_v1';
+function loadSavedLists(){try{const v=JSON.parse(localStorage.getItem(SKEY));if(Array.isArray(v))return v}catch(e){}return[]}
+let SAVED=loadSavedLists();
+function persistSaved(){try{localStorage.setItem(SKEY,JSON.stringify(SAVED))}catch(e){}}
 let S=load(), editId=null, armedKey=null, armTimer=null, toastTimer=null;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -169,11 +179,17 @@ function renderForm(){
 function renderExpenses(){
   $('#expenses').innerHTML=S.expenses.length?[...S.expenses].reverse().map(e=>{
     const sp=e.split.map(name).map(esc).join(', ');
-    return `<div class="row"><div class="grow"><div><b>${esc(e.desc)}</b> · ${money(e.amt)}</div><div class="mu">${esc(name(e.payer))} paid · split: ${sp} · ${esc(e.date)}</div></div><button class="ghost small" data-act="editExp" data-id="${e.id}">Edit</button><button class="del small" data-act="delExp" data-id="${e.id}">Delete</button></div>`;
+    return `<div class="row"><div class="grow"><div><b>${esc(e.desc)}</b> · ${money(e.amt)}</div><div class="mu">${esc(name(e.payer))} paid · ${esc(e.date)}</div><div class="mu">Split: ${sp}</div></div><button class="ghost small" data-act="editExp" data-id="${e.id}">Edit</button><button class="del small" data-act="delExp" data-id="${e.id}">Delete</button></div>`;
   }).join(''):'<div class="empty">No expenses yet.</div>';
 }
 
-function renderAll(){renderSummary();renderUsers();renderForm();renderExpenses()}
+function renderSaved(){
+  $('#saved').innerHTML=SAVED.length?SAVED.map(x=>{
+    const t=x.expenses.reduce((a,e)=>a+e.amt,0);
+    return `<div class="row"><div class="grow"><div><b>${esc(x.name)}</b></div><div class="mu">${x.users.length} people · ${x.expenses.length} expenses · ${money(t)}</div><div class="mu">Saved ${esc(x.savedAt)}</div></div><button class="ghost small" data-act="loadNamed" data-id="${x.id}">Load</button><button class="del small" data-act="delSaved" data-id="${x.id}">Delete</button></div>`;
+  }).join(''):'<div class="empty">No saved lists yet.</div>';
+}
+function renderAll(){renderSummary();renderUsers();renderForm();renderExpenses();renderSaved()}
 
 function resetForm(){
   editId=null;$('#desc').value='';$('#amt').value='';
@@ -210,6 +226,25 @@ document.addEventListener('click',ev=>{
   const b=ev.target.closest('[data-act]');if(!b)return;
   const act=b.dataset.act,id=b.dataset.id;
   if(act==='addUser')addUser();
+  else if(act==='saveNamed'){
+    const n=$('#sname').value.trim();
+    if(!n)return toast('Enter a name for this list');
+    if(!S.users.length&&!S.expenses.length)return toast('Nothing to save yet');
+    const snap=JSON.parse(JSON.stringify(S));
+    const ex=SAVED.find(x=>x.name.toLowerCase()===n.toLowerCase());
+    if(ex){ex.name=n;ex.users=snap.users;ex.expenses=snap.expenses;ex.savedAt=today();toast('Updated "'+n+'"')}
+    else{SAVED.push({id:uid(),name:n,users:snap.users,expenses:snap.expenses,savedAt:today()});toast('Saved "'+n+'"')}
+    persistSaved();renderSaved();
+  }
+  else if(act==='loadNamed'){
+    const x=SAVED.find(v=>v.id===id);if(!x)return;
+    if((S.users.length||S.expenses.length)&&!confirmTap('l'+id,b,'Tap again to replace the current list'))return;
+    S=JSON.parse(JSON.stringify({users:x.users,expenses:x.expenses}));
+    save();resetForm();renderAll();$('#sname').value=x.name;toast('Loaded "'+x.name+'"');
+  }
+  else if(act==='delSaved'){
+    if(confirmTap('s'+id,b)){SAVED=SAVED.filter(v=>v.id!==id);persistSaved();renderSaved();toast('Saved list deleted')}
+  }
   else if(act==='toggleNet'){netOpen=!netOpen;renderSummary()}
   else if(act==='toggleUsers'){usersOpen=!usersOpen;renderUsers()}
   else if(act==='addExp')saveExpense();
@@ -234,6 +269,7 @@ document.addEventListener('click',ev=>{
     if(confirmTap('wipe',b,'Tap again to delete everything')){S={users:[],expenses:[]};save();resetForm();renderAll();toast('List deleted')}
   }
 });
+$('#sname').addEventListener('keydown',e=>{if(e.key==='Enter')$('[data-act=saveNamed]').click()});
 $('#uname').addEventListener('keydown',e=>{if(e.key==='Enter')addUser()});
 renderAll();
 </script>
