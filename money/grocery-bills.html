@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f1412">
+<title>Grocery Bills · Little Lab</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#26332c;--tx:#e8f1ec;--mu:#8fa398;--mint:#a7e8c5;--coral:#ff8c70;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:640px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 14px;color:var(--mint)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.sum b{display:block;font-size:18px;color:var(--mint)}.sum span{font-size:12px;color:var(--mu)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--tx);border-radius:10px;padding:9px 13px;cursor:pointer}
+button.p{background:var(--mint);color:#0f1412;border-color:var(--mint);font-weight:600}
+button.d{color:var(--coral)}button.d.arm{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}button.d:hover{border-color:var(--coral)}}
+input,textarea{font:inherit;width:100%;background:#0f1412;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px}
+input:focus,textarea:focus{outline:2px solid var(--mint);outline-offset:-1px}
+label{font-size:12px;color:var(--mu);display:block;margin-bottom:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.row{display:grid;grid-template-columns:1fr 56px 82px 34px;gap:6px;margin-bottom:6px}
+.row.h{font-size:11px;color:var(--mu)}.row button{padding:0}
+#stat{color:var(--mu);font-size:13px;margin:-4px 0 10px;min-height:18px}
+#chk{font-size:13px;margin:8px 0}.ok{color:var(--mint)}.bad{color:var(--coral)}
+details summary{cursor:pointer;color:var(--mu);font-size:13px}
+textarea{min-height:110px;margin:8px 0;font-size:13px}
+.bill{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.bill small{color:var(--mu)}.items{margin:8px 0 0;font-size:13px;color:var(--mu)}
+.items div{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.acts{display:flex;gap:6px;margin-top:8px}.acts button{padding:6px 11px;font-size:13px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+.empty{color:var(--mu);text-align:center;padding:18px 0}
+</style>
+</head>
+<body>
+<h1>Grocery Bills</h1>
+
+<div class="card sum" id="sum"></div>
+
+<div class="bar">
+  <button class="p" data-act="scan">📷 Scan bill</button>
+  <button data-act="manual">+ Manual</button>
+</div>
+<input type="file" id="file" accept="image/*" hidden>
+<div id="stat"></div>
+
+<details class="card" id="pp">
+  <summary>Raw / pasted text (OCR output appears here)</summary>
+  <textarea id="txt" placeholder="Paste bill text here, or fix the OCR text and parse again"></textarea>
+  <button data-act="parse">Parse text</button>
+</details>
+
+<div class="card" id="draft" hidden>
+  <div class="two">
+    <div><label>Store</label><input data-f="store" id="f-store"></div>
+    <div><label>Date</label><input type="date" data-f="date" id="f-date"></div>
+  </div>
+  <div class="row h"><span>Item</span><span>Qty</span><span>Amount</span><span></span></div>
+  <div id="rows"></div>
+  <button data-act="addrow">+ Add row</button>
+  <div id="chk"></div>
+  <label>Bill total (optional, used to cross-check)</label>
+  <input data-f="total" id="f-total" inputmode="decimal" placeholder="e.g. 1,245.50">
+  <div class="acts"><button class="p" data-act="save">Save bill</button><button data-act="cancel">Cancel</button></div>
+</div>
+
+<div id="list"></div>
+<div id="toast"></div>
+
+<script>
+const KEY='grocery_bills_v1';
+const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const $=s=>document.querySelector(s);
+let bills=[];try{bills=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+let draft=null,armed=null,tT,aT;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(bills))}catch(e){toast('Could not save (storage blocked)')}};
+const inr=n=>Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fd=s=>{const p=(s||'').split('-');return p.length<3?'—':`${+p[2]}th ${M[p[1]-1]} ${p[0]}`};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const num=v=>parseFloat(String(v).replace(/,/g,''))||0;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),2200)}
+const stat=m=>$('#stat').textContent=m||'';
+
+/* ---------- parsing ---------- */
+const SKIP=/(gst|cgst|sgst|igst|cess|tax|invoice|bill\s*no|cash|card|upi|change|saving|round|mrp|hsn|thank|visit|avenue|supermarts|fssai|customer|phone|tel\b|time|tender|paid)/i;
+const TOT=/(net\s*(amount|payable|total)|grand\s*total|total\s*(amount|payable|value)|amount\s*payable|^\s*total\b)/i;
+function parse(text){
+  const lines=text.split('\n').map(l=>l.replace(/[|_]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+  const items=[];let total=null,date=null;
+  const store=/d\s*-?\s*mart|avenue\s*supermarts/i.test(text)?'DMart':'';
+  for(const l of lines){
+    const dm=l.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
+    if(dm&&!date&&+dm[2]<=12&&+dm[1]<=31){let y=+dm[3];if(y<100)y+=2000;date=`${y}-${String(dm[2]).padStart(2,'0')}-${String(dm[1]).padStart(2,'0')}`}
+    const nums=(l.match(/\d[\d,]*[.,]\d{2}(?!\d)/g)||[]).map(x=>parseFloat(x.replace(/,(?=\d{3})/g,'').replace(',','.')));
+    if(!nums.length)continue;
+    if(TOT.test(l)){total=nums[nums.length-1];continue}
+    if(SKIP.test(l))continue;
+    const tk=l.split(' ');const tail=[];
+    while(tk.length>1&&/^[\d.,]+$/.test(tk[tk.length-1]))tail.unshift(tk.pop());
+    const name=tk.join(' ').replace(/^\d+[.)]?\s+/,'').trim();
+    const amount=nums[nums.length-1];
+    if(name.length<2||!/[A-Za-z]{2}/.test(name)||!(amount>0))continue;
+    let q=1;
+    if(nums.length>=2&&nums[nums.length-2]>0){const r=amount/nums[nums.length-2];if(r>=0.01&&r<=1000)q=Math.round(r*1000)/1000}
+    items.push({n:name,q:String(q),a:String(amount)});
+  }
+  return {store,date:date||today(),total:total==null?'':String(total),items};
+}
+
+/* ---------- OCR (lazy-loaded, runs in the browser) ---------- */
+const TSRC='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const loadLib=()=>new Promise((res,rej)=>{if(window.Tesseract)return res();const s=document.createElement('script');s.src=TSRC;s.onload=res;s.onerror=()=>rej(new Error('lib'));document.head.appendChild(s)});
+async function prep(file){
+  const b=await createImageBitmap(file);
+  const sc=Math.max(.5,Math.min(2,1800/b.width));
+  const c=document.createElement('canvas');c.width=Math.round(b.width*sc);c.height=Math.round(b.height*sc);
+  const x=c.getContext('2d');x.filter='grayscale(1) contrast(1.4)';x.drawImage(b,0,0,c.width,c.height);return c;
+}
+async function scan(file){
+  try{
+    stat('Loading reader (first time needs internet)…');
+    await loadLib();
+    stat('Preparing image…');
+    const c=await prep(file);
+    const r=await Tesseract.recognize(c,'eng',{logger:m=>{if(m.status==='recognizing text')stat('Reading bill… '+Math.round(m.progress*100)+'%')}});
+    $('#txt').value=r.data.text;
+    stat('');
+    openDraft(parse(r.data.text));
+    if(!draft.items.length)toast('No items found — add rows or fix the raw text');
+    else toast(draft.items.length+' items read — please check them');
+  }catch(e){stat('');toast(e.message==='lib'?'Could not load reader — check internet':'Could not read this image')}
+}
+
+/* ---------- draft ---------- */
+function openDraft(d){
+  draft=d;$('#draft').hidden=false;
+  $('#f-store').value=d.store||'';$('#f-date').value=d.date||today();$('#f-total').value=d.total||'';
+  rows();chk();$('#draft').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function rows(){
+  $('#rows').innerHTML=draft.items.map((it,i)=>`<div class="row" data-i="${i}"><input data-role="n" value="${esc(it.n)}" aria-label="Item"><input data-role="q" inputmode="decimal" value="${esc(it.q)}" aria-label="Qty"><input data-role="a" inputmode="decimal" value="${esc(it.a)}" aria-label="Amount"><button class="d" data-act="rm" aria-label="Remove row">✕</button></div>`).join('');
+}
+function chk(){
+  const sum=draft.items.reduce((s,i)=>s+num(i.a),0),t=num(draft.total),el=$('#chk');
+  let h=`Items total: <b>₹${inr(sum)}</b>`;
+  if(t){const d=Math.abs(sum-t);h+=d<=1?` · <span class="ok">matches bill total ✓</span>`:` · <span class="bad">differs from bill total by ₹${inr(d)} — check rows</span>`}
+  el.innerHTML=h;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const ym=today().slice(0,7),mt=bills.filter(b=>b.date.startsWith(ym)).reduce((s,b)=>s+b.total,0);
+  const all=bills.reduce((s,b)=>s+b.total,0);
+  $('#sum').innerHTML=`<div><b>₹${inr(mt)}</b><span>This month</span></div><div><b>${bills.length}</b><span>Bills</span></div><div><b>₹${inr(bills.length?all/bills.length:0)}</b><span>Avg bill</span></div>`;
+  const s=[...bills].sort((a,b)=>b.date.localeCompare(a.date));
+  $('#list').innerHTML=s.length?s.map(b=>`<div class="card"><div class="bill"><div><b>${esc(b.store||'Grocery')}</b><br><small>${fd(b.date)} · ${b.items.length} items</small></div><b style="color:var(--mint)">₹${inr(b.total)}</b></div><details><summary>Items</summary><div class="items">${b.items.map(i=>`<div><span>${esc(i.n)}${i.q!=1?' × '+i.q:''}</span><span>₹${inr(i.a)}</span></div>`).join('')}</div></details><div class="acts"><button data-act="edit" data-id="${b.id}">Edit</button><button class="d${armed===b.id?' arm':''}" data-act="del" data-id="${b.id}">${armed===b.id?'Tap again':'Delete'}</button></div></div>`).join(''):'<div class="empty">No bills yet — tap “Scan bill” to start.</div>';
+}
+
+/* ---------- events (delegated) ---------- */
+document.addEventListener('input',e=>{
+  const t=e.target;if(!draft)return;
+  if(t.dataset.f){draft[t.dataset.f]=t.value;if(t.dataset.f==='total')chk();return}
+  const r=t.closest('.row');if(r&&t.dataset.role){draft.items[+r.dataset.i][t.dataset.role]=t.value;chk()}
+});
+$('#file').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)scan(f)});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,id=b.dataset.id;
+  if(a==='scan')$('#file').click();
+  else if(a==='manual')openDraft({id:null,store:'',date:today(),total:'',items:[{n:'',q:'1',a:''}]});
+  else if(a==='parse'){const t=$('#txt').value.trim();if(!t)return toast('Nothing to parse');openDraft(parse(t));if(!draft.items.length)toast('No items found')}
+  else if(a==='addrow'){draft.items.push({n:'',q:'1',a:''});rows();chk();const r=$('#rows').lastElementChild;r&&r.querySelector('input').focus()}
+  else if(a==='rm'){draft.items.splice(+b.closest('.row').dataset.i,1);rows();chk()}
+  else if(a==='cancel'){draft=null;$('#draft').hidden=true}
+  else if(a==='save'){
+    const items=draft.items.filter(i=>i.n.trim()||num(i.a)).map(i=>({n:i.n.trim()||'Item',q:num(i.q)||1,a:num(i.a)}));
+    if(!items.length)return toast('Add at least one item');
+    const sum=items.reduce((s,i)=>s+i.a,0);
+    const bill={id:draft.id||Date.now().toString(36),store:(draft.store||'').trim(),date:draft.date||today(),total:num(draft.total)||sum,items};
+    const k=bills.findIndex(x=>x.id===bill.id);k>=0?bills[k]=bill:bills.push(bill);
+    save();draft=null;$('#draft').hidden=true;render();toast('Bill saved');
+  }
+  else if(a==='edit'){const x=bills.find(v=>v.id===id);if(x)openDraft({id:x.id,store:x.store,date:x.date,total:String(x.total),items:x.items.map(i=>({n:i.n,q:String(i.q),a:String(i.a)}))})}
+  else if(a==='del'){
+    if(armed===id){bills=bills.filter(v=>v.id!==id);armed=null;save();render();toast('Bill deleted')}
+    else{armed=id;render();toast('Tap again to delete');clearTimeout(aT);aT=setTimeout(()=>{armed=null;render()},3000)}
+  }
+});
+render();
+</script>
+</body>
+</html>

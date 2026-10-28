@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Auto-Credit Tracker</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--acc:#a7e8c5;--coral:#ff8c70;--warn:#f59e0b;--txt:#e2e8f0;--sub:#94a3b8;--line:#334155;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
+  .wrap{max-width:600px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
+  label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  input, select{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:14px;}
+  input[type=date]{color-scheme:dark;}
+  input:focus, select:focus{outline:2px solid var(--acc);}
+  input.invalid, select.invalid{outline:2px solid var(--coral);}
+  .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .field{flex:1;min-width:100px;}
+  button{font-family:inherit;}
+  button.add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#062b1a;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
+  button.ghost{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--sub);font-size:13px;cursor:pointer;margin-top:8px;}
+
+  .summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .summary .box{text-align:center;background:var(--bg);border-radius:10px;padding:14px;min-width:0;}
+  .summary .n{font-size:20px;font-weight:800;overflow-wrap:anywhere;}
+  .summary .l{font-size:11px;color:var(--sub);margin-top:2px;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:var(--bg);padding:4px;border-radius:10px;}
+  .tab{flex:1;padding:9px;border:none;border-radius:8px;background:none;color:var(--sub);font-size:13px;font-weight:700;cursor:pointer;}
+  .tab.active{background:var(--acc);color:#062b1a;}
+  .year-nav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;}
+  .year-nav h2{font-size:16px;margin:0;}
+  .nav-btn{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--txt);padding:7px 14px;cursor:pointer;font-size:14px;}
+
+  .mrow{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:700;}
+  .mrow .mamt{color:var(--acc);white-space:nowrap;}
+  .mrow.zero,.mrow.zero .mamt{color:var(--sub);font-weight:400;}
+  .bar{height:5px;background:var(--bg);border-radius:5px;overflow:hidden;margin-top:7px;}
+  .bar i{display:block;height:100%;background:var(--acc);}
+  .m-item{border-bottom:1px solid var(--line);padding:10px 0;}
+  .m-item:last-child{border-bottom:none;}
+  .m-item details>summary{list-style:none;cursor:pointer;display:block;}
+  .m-item details>summary::-webkit-details-marker{display:none;}
+  .m-item details>summary .mrow::after{content:"▾";color:var(--sub);margin-left:6px;font-weight:400;}
+  .m-item details[open]>summary .mrow::after{content:"▴";}
+  .m-body{padding-top:8px;}
+  .ent{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);}
+  .ent-main{flex:1;min-width:0;}
+  .ent-name{font-size:13px;font-weight:700;overflow-wrap:anywhere;}
+  .ent-meta{font-size:11px;color:var(--sub);}
+  .ent-amt{font-size:13px;font-weight:700;white-space:nowrap;}
+  .totals{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13px;}
+  .kv b{white-space:nowrap;}
+  .sec-title{font-size:12px;color:var(--sub);margin:14px 0 4px;}
+
+  .pay-details{border-bottom:1px solid var(--line);padding:12px 0;}
+  .pay-details:last-child{border-bottom:none;}
+  .pay-summary{list-style:none;cursor:pointer;display:block;}
+  .pay-summary::-webkit-details-marker{display:none;}
+  .pay-summary::after{content:"▾";float:right;color:var(--sub);font-size:16px;line-height:1.4;}
+  .pay-details details[open]>.pay-summary::after{content:"▴";}
+  .pay-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;}
+  .pay-name{font-weight:700;font-size:14px;overflow-wrap:anywhere;}
+  .pay-type{margin:0 0 5px;font-size:11px;color:var(--sub);}
+  .pay-meta{font-size:12px;color:var(--sub);margin-bottom:6px;}
+  .pay-body{padding-top:8px;}
+  .note{font-size:12px;color:var(--sub);margin:0 0 8px;}
+  .del{background:none;border:none;color:var(--coral);cursor:pointer;font-size:13px;padding:3px 6px;border-radius:6px;}
+  .del.armed{background:var(--coral);color:#3b0d00;font-weight:700;}
+  .got{background:none;border:none;color:var(--acc);cursor:pointer;font-size:13px;font-weight:700;padding:3px 6px;}
+  .undo{background:none;border:none;color:var(--warn);cursor:pointer;font-size:13px;padding:3px 6px;}
+  .edit-button{background:none;border:none;color:var(--acc);cursor:pointer;font-size:17px;line-height:1;padding:3px 6px;}
+  .status-badge{font-size:10px;padding:2px 10px;border-radius:10px;font-weight:700;}
+  .active-b{background:rgba(167,232,197,.15);color:var(--acc);}
+  .due-b{background:rgba(245,158,11,.15);color:var(--warn);}
+  .overdue-b{background:rgba(255,140,112,.15);color:var(--coral);}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+  details.card{padding:0;overflow:hidden;}
+  details.card>summary{padding:16px;cursor:pointer;font-size:14px;font-weight:700;color:var(--txt);list-style:none;}
+  details.card>summary::-webkit-details-marker{display:none;}
+  details.card>summary::after{content:"+";float:right;color:var(--sub);}
+  details.card[open]>summary::after{content:"−";}
+  .details-content{padding:0 16px 16px;}
+
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--acc);color:#062b1a;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90%;text-align:center;z-index:50;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #toast.err{background:var(--coral);color:#3b0d00;}
+
+  @media (hover:hover) and (pointer:fine){
+    .edit-button:hover,.got:hover,.undo:hover{opacity:.75;}
+    .del:hover{background:rgba(255,140,112,.15);}
+    .nav-btn:hover,.tab:not(.active):hover{background:var(--line);}
+    button.add:hover{filter:brightness(1.08);}
+  }
+  @media(max-width:480px){
+    body{padding:12px;}
+    .summary{gap:6px;}
+    .summary .box{padding:10px 5px;}
+    .summary .n{font-size:16px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💰 Auto-Credit Tracker</h1>
+  <p class="sub">FD interest, SGB interest, credit-card cashback and other auto-credits — logged monthly, consolidated monthly and yearly.</p>
+
+  <div class="card">
+    <div class="summary">
+      <div class="box"><div class="n" id="sumMonth">₹0</div><div class="l">Received this month</div></div>
+      <div class="box"><div class="n" id="sumPending" style="color:var(--warn);">₹0</div><div class="l">Expected, still pending this month</div></div>
+      <div class="box"><div class="n" id="sumYear">₹0</div><div class="l">Received this year</div></div>
+      <div class="box"><div class="n" id="sumRunRate">₹0</div><div class="l">Expected per year (from sources)</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button type="button" class="tab active" data-role="view" data-view="monthly">Monthly</button>
+      <button type="button" class="tab" data-role="view" data-view="yearly">Yearly</button>
+    </div>
+    <div id="consolidated"></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field"><label for="sName">Source Name</label><input type="text" id="sName" placeholder="e.g. HDFC FD #2 interest"></div>
+      <div class="field"><label for="sType">Type</label><select id="sType"></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="sAmount">Expected Amount (₹)</label><input type="number" id="sAmount" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 4500"></div>
+      <div class="field"><label for="sFreq">Frequency</label><select id="sFreq"></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="sAccount">Credited To</label><input type="text" id="sAccount" placeholder="e.g. SBI a/c"></div>
+      <div class="field"><label for="sDue">Next Expected Date</label><input type="date" id="sDue"></div>
+    </div>
+    <button type="button" class="add" id="addSourceBtn" data-role="save-source">+ Add Credit Source</button>
+    <button type="button" class="ghost" id="cancelSourceBtn" data-role="cancel-source" hidden>Cancel edit</button>
+  </div>
+
+  <div class="card">
+    <label style="font-size:14px;color:var(--txt);font-weight:700;">Your Credit Sources</label>
+    <p class="note">Tap <b>✓ Received</b> when the credit lands — it is added to this month's entries and the next date moves ahead automatically.</p>
+    <div id="sourcesList"></div>
+  </div>
+
+  <details class="card" id="logCard" data-key="logcard">
+    <summary>+ Log a credit (past or one-off)</summary>
+    <div class="details-content">
+      <p class="note">For back-filling earlier months or credits that are not a recurring source.</p>
+      <div class="row">
+        <div class="field"><label for="eDate">Date Credited</label><input type="date" id="eDate"></div>
+        <div class="field"><label for="eType">Type</label><select id="eType"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="eName">Name</label><input type="text" id="eName" placeholder="e.g. SBI Card cashback"></div>
+        <div class="field"><label for="eAmount">Amount (₹)</label><input type="number" id="eAmount" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 350"></div>
+      </div>
+      <button type="button" class="add" id="addEntryBtn" data-role="save-entry">+ Add Entry</button>
+      <button type="button" class="ghost" id="cancelEntryBtn" data-role="cancel-entry" hidden>Cancel edit</button>
+    </div>
+  </details>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const STORAGE_KEY = 'as_autocredit_v1';
+const TYPES = ['FD Interest','SGB Interest','CC Cashback','Bond Coupon','Dividend','Savings Interest','Other'];
+const FREQS = [[1,'Monthly'],[3,'Quarterly'],[6,'Half-yearly'],[12,'Yearly']];
+const FREQ_TEXT = {1:'every month',3:'every quarter',6:'every 6 months',12:'every year'};
+const VARIABLE_TYPES = ['CC Cashback','Dividend','Other'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MON_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let state = { sources: [], entries: [] };
+try{
+  const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  if(raw && Array.isArray(raw.sources) && Array.isArray(raw.entries)) state = raw;
+}catch(e){}
+
+let view = 'monthly';
+let viewYear = new Date().getFullYear();
+let editingSourceId = null;
+let editingEntryId = null;
+let uiOpen = {};
+let armed = null;
+let toastTimer = null;
+
+const $ = id => document.getElementById(id);
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+function esc(v){ return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function inr(n){ return '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+function ordinal(n){
+  const v = n % 100;
+  if(v >= 11 && v <= 13) return n + 'th';
+  return n + ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th');
+}
+function fmtDate(d){ const [y,m,dd] = d.split('-').map(Number); return `${ordinal(dd)} ${MON[m-1]} ${y}`; }
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function sumOf(list){ return list.reduce((s,e)=>s + Number(e.amount || 0), 0); }
+function isOpen(key, def){ return key in uiOpen ? uiOpen[key] : def; }
+
+function addMonths(dateString, months){
+  const [year, month, day] = dateString.split('-').map(Number);
+  const t = month - 1 + months;
+  const ty = year + Math.floor(t / 12);
+  const tm = ((t % 12) + 12) % 12;
+  const td = Math.min(day, new Date(ty, tm + 1, 0).getDate());
+  return `${ty}-${String(tm+1).padStart(2,'0')}-${String(td).padStart(2,'0')}`;
+}
+function daysUntil(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((new Date(y, m-1, d) - now) / 86400000);
+}
+
+function toast(msg, isErr){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function flagInvalid(ids){
+  ids.forEach(id=>{
+    const el = $(id); el.classList.add('invalid');
+    el.addEventListener('input', ()=>el.classList.remove('invalid'), {once:true});
+  });
+}
+
+/* tap-twice delete confirmation (no confirm()/alert()) */
+function disarm(){
+  if(!armed) return;
+  clearTimeout(armed.t);
+  armed.btn.textContent = armed.orig;
+  armed.btn.classList.remove('armed');
+  armed = null;
+}
+function tapTwice(btn, key, action){
+  if(armed && armed.key === key){ clearTimeout(armed.t); armed = null; action(); return; }
+  disarm();
+  armed = { key, btn, orig: btn.textContent, t: setTimeout(disarm, 3000) };
+  btn.textContent = 'Sure?';
+  btn.classList.add('armed');
+  toast('Tap again to delete');
+}
+
+/* ---------- sources ---------- */
+function resetSourceForm(){
+  ['sName','sAmount','sAccount','sDue'].forEach(id=>$(id).value = '');
+  $('sType').value = TYPES[0];
+  $('sFreq').value = '1';
+  editingSourceId = null;
+  $('addSourceBtn').textContent = '+ Add Credit Source';
+  $('cancelSourceBtn').hidden = true;
+}
+function saveSource(){
+  const name = $('sName').value.trim();
+  const type = $('sType').value;
+  const amount = Number($('sAmount').value);
+  const freq = Number($('sFreq').value) || 1;
+  const account = $('sAccount').value.trim();
+  const dueDate = $('sDue').value;
+  const bad = [];
+  if(!name) bad.push('sName');
+  if(!($('sAmount').value.trim() !== '' && Number.isFinite(amount) && amount > 0)) bad.push('sAmount');
+  if(!dueDate) bad.push('sDue');
+  if(bad.length){ flagInvalid(bad); toast('Enter a name, amount and next expected date', true); return; }
+  if(editingSourceId){
+    const i = state.sources.findIndex(s=>s.id === editingSourceId);
+    if(i > -1) state.sources[i] = { ...state.sources[i], name, type, amount, freq, account, dueDate };
+    toast('Source updated');
+  } else {
+    state.sources.push({ id: uid(), name, type, amount, freq, account, dueDate });
+    toast('Source added');
+  }
+  save(); resetSourceForm(); renderAll();
+}
+function editSource(id){
+  const s = state.sources.find(x=>x.id === id); if(!s) return;
+  $('sName').value = s.name; $('sType').value = s.type; $('sAmount').value = s.amount;
+  $('sFreq').value = String(s.freq); $('sAccount').value = s.account || ''; $('sDue').value = s.dueDate;
+  editingSourceId = id;
+  $('addSourceBtn').textContent = '✓ Update Credit Source';
+  $('cancelSourceBtn').hidden = false;
+  $('sName').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function removeSource(id){
+  state.sources = state.sources.filter(s=>s.id !== id);
+  if(editingSourceId === id) resetSourceForm();
+  save(); renderAll(); toast('Source deleted');
+}
+function markReceived(id){
+  const s = state.sources.find(x=>x.id === id); if(!s) return;
+  const aEl = $('actual-' + id), dEl = $('actualDate-' + id);
+  const aRaw = aEl ? aEl.value.trim() : '';
+  const amount = aRaw === '' ? Number(s.amount) : Number(aRaw);
+  if(!Number.isFinite(amount) || amount <= 0){ if(aEl) flagInvalid(['actual-' + id]); toast('Enter a valid amount received', true); return; }
+  const date = (dEl && dEl.value) ? dEl.value : s.dueDate;
+  state.entries.push({ id: uid(), date, name: s.name, type: s.type, amount, sourceId: s.id, expectedDate: s.dueDate });
+  s.dueDate = addMonths(s.dueDate, Number(s.freq) || 1);
+  viewYear = Number(date.slice(0,4));
+  save(); renderAll(); toast(`${inr(amount)} logged for ${MON[Number(date.slice(5,7))-1]} ${date.slice(0,4)}`);
+}
+function undoReceived(id){
+  const s = state.sources.find(x=>x.id === id); if(!s) return;
+  let idx = -1;
+  for(let i = state.entries.length - 1; i >= 0; i--){ if(state.entries[i].sourceId === id){ idx = i; break; } }
+  if(idx === -1) return;
+  const e = state.entries.splice(idx, 1)[0];
+  if(e.expectedDate) s.dueDate = e.expectedDate;
+  save(); renderAll(); toast('Last receipt undone');
+}
+
+/* ---------- entries ---------- */
+function resetEntryForm(){
+  $('eDate').value = ymd(new Date());
+  $('eType').value = TYPES[0];
+  $('eName').value = ''; $('eAmount').value = '';
+  editingEntryId = null;
+  $('addEntryBtn').textContent = '+ Add Entry';
+  $('cancelEntryBtn').hidden = true;
+}
+function saveEntry(){
+  const date = $('eDate').value;
+  const type = $('eType').value;
+  const name = $('eName').value.trim();
+  const amount = Number($('eAmount').value);
+  const bad = [];
+  if(!date) bad.push('eDate');
+  if(!name) bad.push('eName');
+  if(!($('eAmount').value.trim() !== '' && Number.isFinite(amount) && amount > 0)) bad.push('eAmount');
+  if(bad.length){ flagInvalid(bad); toast('Enter a date, name and amount', true); return; }
+  if(editingEntryId){
+    const i = state.entries.findIndex(e=>e.id === editingEntryId);
+    if(i > -1) state.entries[i] = { ...state.entries[i], date, type, name, amount };
+    toast('Entry updated');
+  } else {
+    state.entries.push({ id: uid(), date, name, type, amount });
+    toast('Entry added');
+  }
+  viewYear = Number(date.slice(0,4));
+  uiOpen['m-' + date.slice(0,7)] = true;
+  save(); resetEntryForm(); renderAll();
+}
+function editEntry(id){
+  const e = state.entries.find(x=>x.id === id); if(!e) return;
+  $('eDate').value = e.date; $('eType').value = e.type; $('eName').value = e.name; $('eAmount').value = e.amount;
+  editingEntryId = id;
+  $('addEntryBtn').textContent = '✓ Update Entry';
+  $('cancelEntryBtn').hidden = false;
+  $('logCard').open = true;
+  uiOpen.logcard = true;
+  $('logCard').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function removeEntry(id){
+  state.entries = state.entries.filter(e=>e.id !== id);
+  if(editingEntryId === id) resetEntryForm();
+  save(); renderAll(); toast('Entry deleted');
+}
+
+/* ---------- rendering ---------- */
+function renderSummary(){
+  const today = ymd(new Date());
+  const m = today.slice(0,7), y = today.slice(0,4);
+  $('sumMonth').textContent = inr(sumOf(state.entries.filter(e=>e.date.slice(0,7) === m)));
+  $('sumPending').textContent = inr(sumOf(state.sources.filter(s=>s.dueDate.slice(0,7) === m)));
+  $('sumYear').textContent = inr(sumOf(state.entries.filter(e=>e.date.slice(0,4) === y)));
+  $('sumRunRate').textContent = inr(state.sources.reduce((s,x)=>s + Number(x.amount) * 12 / (Number(x.freq) || 1), 0));
+}
+
+function entryRow(e){
+  return `<div class="ent"><div class="ent-main"><div class="ent-name">${esc(e.name)}</div><div class="ent-meta">${esc(fmtDate(e.date))} · ${esc(e.type)}</div></div><div class="ent-amt">${inr(e.amount)}</div><span><button type="button" class="edit-button" data-role="ent-edit" data-id="${e.id}" aria-label="Edit entry" title="Edit">✎</button><button type="button" class="del" data-role="ent-del" data-id="${e.id}" aria-label="Delete entry">✕</button></span></div>`;
+}
+function typeRows(list){
+  const t = {};
+  list.forEach(e=>{ t[e.type] = (t[e.type] || 0) + Number(e.amount || 0); });
+  const rows = Object.entries(t).sort((a,b)=>b[1]-a[1]);
+  return rows.length ? rows.map(([k,v])=>`<div class="kv"><span>${esc(k)}</span><b>${inr(v)}</b></div>`).join('') : '<div class="note">No entries yet.</div>';
+}
+function monthsElapsed(year){
+  const now = new Date(), cy = now.getFullYear();
+  return year < cy ? 12 : (year === cy ? now.getMonth() + 1 : 0);
+}
+
+function renderMonthly(){
+  const ents = state.entries.filter(e=>e.date.slice(0,4) === String(viewYear));
+  const buckets = Array.from({length:12}, ()=>[]);
+  ents.forEach(e=>buckets[Number(e.date.slice(5,7)) - 1].push(e));
+  const totals = buckets.map(sumOf);
+  const max = Math.max(...totals, 1);
+  const yearTotal = totals.reduce((a,b)=>a+b, 0);
+  const n = monthsElapsed(viewYear);
+  const rows = buckets.map((list, i)=>{
+    const key = `${viewYear}-${String(i+1).padStart(2,'0')}`;
+    if(!list.length) return `<div class="m-item"><div class="mrow zero"><span>${MON_LONG[i]}</span><span class="mamt">—</span></div></div>`;
+    list.sort((a,b)=>b.date.localeCompare(a.date));
+    return `<div class="m-item"><details data-key="m-${key}"${isOpen('m-' + key, false) ? ' open' : ''}><summary><div class="mrow"><span>${MON_LONG[i]} <span style="color:var(--sub);font-weight:400;font-size:11px;">· ${list.length} ${list.length === 1 ? 'entry' : 'entries'}</span></span><span class="mamt">${inr(totals[i])}</span></div><div class="bar"><i style="width:${Math.round(totals[i] / max * 100)}%"></i></div></summary><div class="m-body">${list.map(entryRow).join('')}</div></details></div>`;
+  }).join('');
+  return `<div class="year-nav"><button type="button" class="nav-btn" data-role="yr-prev" aria-label="Previous year">‹</button><h2>${viewYear}</h2><button type="button" class="nav-btn" data-role="yr-next" aria-label="Next year">›</button></div>
+    ${rows}
+    <div class="totals"><div class="kv"><span>Total for ${viewYear}</span><b style="color:var(--acc);">${inr(yearTotal)}</b></div>${n ? `<div class="kv"><span>Average per month${n < 12 ? ` (${n} mo so far)` : ''}</span><b>${inr(yearTotal / n)}</b></div>` : ''}</div>
+    <div class="sec-title">By type · ${viewYear}</div>${typeRows(ents)}`;
+}
+
+function renderYearly(){
+  const years = new Set(state.entries.map(e=>Number(e.date.slice(0,4))));
+  years.add(new Date().getFullYear());
+  const list = [...years].sort((a,b)=>b-a);
+  const grand = sumOf(state.entries);
+  const rows = list.map(y=>{
+    const ents = state.entries.filter(e=>e.date.slice(0,4) === String(y));
+    const total = sumOf(ents), n = monthsElapsed(y);
+    return `<div class="m-item"><details data-key="y-${y}"${isOpen('y-' + y, y === new Date().getFullYear()) ? ' open' : ''}><summary><div class="mrow ${ents.length ? '' : 'zero'}"><span>${y}</span><span class="mamt">${ents.length ? inr(total) : '—'}</span></div></summary><div class="m-body"><div class="kv"><span>Entries</span><b>${ents.length}</b></div>${n && ents.length ? `<div class="kv"><span>Average per month${n < 12 ? ` (${n} mo so far)` : ''}</span><b>${inr(total / n)}</b></div>` : ''}<div class="sec-title">By type</div>${typeRows(ents)}</div></details></div>`;
+  }).join('');
+  return `${rows}<div class="totals"><div class="kv"><span>All-time total</span><b style="color:var(--acc);">${inr(grand)}</b></div></div>`;
+}
+
+function renderConsolidated(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view === view));
+  $('consolidated').innerHTML = view === 'monthly' ? renderMonthly() : renderYearly();
+}
+
+function renderSources(){
+  const box = $('sourcesList');
+  if(!state.sources.length){ box.innerHTML = '<div class="empty">No credit sources yet. Add an FD, SGB or card above.</div>'; return; }
+  const sorted = [...state.sources].sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  box.innerHTML = sorted.map(s=>{
+    const days = daysUntil(s.dueDate);
+    let cls, label;
+    if(days < 0){ cls = 'overdue-b'; label = `Expected ${Math.abs(days)}d ago`; }
+    else if(days <= 7){ cls = 'due-b'; label = days === 0 ? 'Expected today' : `Expected in ${days}d`; }
+    else { cls = 'active-b'; label = `Expected ${fmtDate(s.dueDate)}`; }
+    const hasUndo = state.entries.some(e=>e.sourceId === s.id);
+    const key = 's-' + s.id;
+    return `<div class="pay-details"><details data-key="${key}"${isOpen(key, VARIABLE_TYPES.includes(s.type)) ? ' open' : ''}>
+      <summary class="pay-summary">
+        <div class="pay-head"><span class="pay-name">${esc(s.name)}</span><span>
+          <button type="button" class="got" data-role="src-got" data-id="${s.id}">✓ Received</button>${hasUndo ? `<button type="button" class="undo" data-role="src-undo" data-id="${s.id}">Undo</button>` : ''}<button type="button" class="edit-button" data-role="src-edit" data-id="${s.id}" aria-label="Edit ${esc(s.name)}" title="Edit">✎</button><button type="button" class="del" data-role="src-del" data-id="${s.id}" aria-label="Delete ${esc(s.name)}">✕</button>
+        </span></div>
+        <div class="pay-type">${esc(s.type)}</div>
+        <div class="pay-meta">${inr(s.amount)} ${FREQ_TEXT[s.freq] || ''}${s.account ? ` • to ${esc(s.account)}` : ''}</div>
+        <span class="status-badge ${cls}">${label}</span>
+      </summary>
+      <div class="pay-body"><p class="note">Amount or date different this time? Fill below, then tap ✓ Received. Blank = ${inr(s.amount)} on ${esc(fmtDate(s.dueDate))}.</p>
+        <div class="row"><div class="field"><label for="actual-${s.id}">Amount received (₹)</label><input type="number" id="actual-${s.id}" inputmode="decimal" min="0" step="0.01" placeholder="${s.amount}"></div>
+        <div class="field"><label for="actualDate-${s.id}">Date received</label><input type="date" id="actualDate-${s.id}"></div></div>
+      </div></details></div>`;
+  }).join('');
+}
+
+function renderAll(){ renderSummary(); renderConsolidated(); renderSources(); }
+
+/* ---------- events (delegation) ---------- */
+document.addEventListener('click', ev=>{
+  const el = ev.target.closest('[data-role]');
+  if(!el) return;
+  const role = el.dataset.role, id = el.dataset.id;
+  if(role === 'src-del' || role === 'ent-del') ev.preventDefault();
+  switch(role){
+    case 'view': view = el.dataset.view; renderConsolidated(); break;
+    case 'yr-prev': viewYear--; renderConsolidated(); break;
+    case 'yr-next': viewYear++; renderConsolidated(); break;
+    case 'save-source': saveSource(); break;
+    case 'cancel-source': resetSourceForm(); break;
+    case 'save-entry': saveEntry(); break;
+    case 'cancel-entry': resetEntryForm(); break;
+    case 'src-got': markReceived(id); break;
+    case 'src-undo': undoReceived(id); break;
+    case 'src-edit': editSource(id); break;
+    case 'src-del': tapTwice(el, 'src-' + id, ()=>removeSource(id)); break;
+    case 'ent-edit': editEntry(id); break;
+    case 'ent-del': tapTwice(el, 'ent-' + id, ()=>removeEntry(id)); break;
+  }
+});
+document.addEventListener('toggle', ev=>{
+  const d = ev.target;
+  if(d && d.dataset && d.dataset.key) uiOpen[d.dataset.key] = d.open;
+}, true);
+
+/* ---------- init ---------- */
+TYPES.forEach(t=>{
+  $('sType').insertAdjacentHTML('beforeend', `<option value="${esc(t)}">${esc(t)}</option>`);
+  $('eType').insertAdjacentHTML('beforeend', `<option value="${esc(t)}">${esc(t)}</option>`);
+});
+FREQS.forEach(([v,l])=>$('sFreq').insertAdjacentHTML('beforeend', `<option value="${v}">${l}</option>`));
+resetSourceForm();
+resetEntryForm();
+renderAll();
+</script>
+</body>
+</html>
