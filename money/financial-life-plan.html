@@ -197,9 +197,16 @@ function emergencyCalculatorData(){
 function parentsCoverageData(){
   const data = readStoredObject(PARENTS_COVERAGE_KEY);
   const items = Array.isArray(data.items) ? data.items : [];
+  const total = (type, field) => items.filter(item => item && item.type === type)
+    .reduce((sum,item) => sum + (Number(item[field]) || 0), 0);
   const healthPolicies = items.filter(item => item && item.type === 'ins' &&
     item.kind === 'Health' && Number(item.amt) > 0);
+  const savingsInterest = items.filter(item => item && item.type === 'sav')
+    .reduce((sum,item) => sum + (Number(item.amt) || 0) * (Number(item.rate) || 0) / 1200, 0);
   return {
+    insuranceCover: total('ins','amt'),
+    monthlyIncome: total('inc','amt') + (data.incl === 'true' ? savingsInterest : 0),
+    savingsBalance: total('sav','amt'),
     healthCover: healthPolicies.reduce((sum,item) => sum + (Number(item.amt) || 0), 0),
     healthPolicies
   };
@@ -652,6 +659,11 @@ function renderGoals(){
             <div class="checkbox-row"><input type="checkbox" ${state.parentsHealthIns?'checked':''} onchange="state.parentsHealthIns=this.checked; save(); patchUI();"><label>Parents have health insurance</label></div>
           `}
           <div class="goal-msg"><a href="parents-coverage.html" style="color:var(--acc);">Open Parents Coverage</a> to manage their insurance, income, expenses, and savings.</div>
+          <div class="row">
+            <div class="field"><label>Insurance Cover (₹)</label><input type="text" value="${parentsSource.insuranceCover.toLocaleString('en-IN',{maximumFractionDigits:0})}" readonly></div>
+            <div class="field"><label>Monthly Income (₹)</label><input type="text" value="${parentsSource.monthlyIncome.toLocaleString('en-IN',{maximumFractionDigits:0})}" readonly></div>
+            <div class="field"><label>Savings Balance (₹)</label><input type="text" value="${parentsSource.savingsBalance.toLocaleString('en-IN',{maximumFractionDigits:0})}" readonly></div>
+          </div>
           <div class="checkbox-row"><input type="checkbox" ${state.parentsBudgetSet?'checked':''} onchange="state.parentsBudgetSet=this.checked; save(); patchUI();"><label>Monthly budget set aside for their expenses</label></div>
           <div class="row" style="margin-top:8px;">
             <div class="field"><label>Monthly Budget Amount (₹)</label><input type="number" value="${state.parentsBudgetAmt||''}" oninput="state.parentsBudgetAmt=parseFloat(this.value)||0; save(); patchUI();"></div>
