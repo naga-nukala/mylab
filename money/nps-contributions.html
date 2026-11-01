@@ -8,7 +8,7 @@
 <style>
 :root{
   --bg:#0e1311; --card:#161d1a; --card2:#1c2521; --line:#27322d; --text:#e9f2ed; --mut:#8c9c94;
-  --mint:#a7e8c5; --coral:#ff8c70;
+  --mint:#a7e8c5; --coral:#ff8c70; --amber:#f5c26b;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -22,37 +22,47 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-o
 input::placeholder{color:#55655d}
 label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint{font-size:12px;color:var(--mut);margin-top:3px;min-height:1em}
+.pos{color:var(--mint)} .neg{color:var(--coral)} .warn{color:var(--coral)}
 
-.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
-@media(min-width:560px){.summary{grid-template-columns:repeat(4,1fr)}}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.summary,.mini{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+@media(min-width:560px){.summary,.mini{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.mini .stat,.acc .stat{background:var(--card2)}
 .stat .k{font-size:12px;color:var(--mut)}
-.stat .v{font-size:17px;font-weight:650;margin-top:2px;overflow-wrap:anywhere}
+.stat .v{font-size:16px;font-weight:650;margin-top:2px;overflow-wrap:anywhere}
+.stat .s{font-size:11.5px;color:var(--mut);margin-top:1px}
 .stat.hl .v{color:var(--mint)}
 
 .acc{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;overflow:hidden}
-.acc-head,.yr-head{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.acc-head,.tier-head,.yr-head{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
 .acc-head{padding:14px}
-.acc-head .t{flex:1;min-width:0}
+.acc-head .t,.tier-head .t{flex:1;min-width:0}
 .acc-head .name{font-weight:650;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.acc-head .sub{font-size:12.5px;color:var(--mut)}
-.acc-head .bal{text-align:right}
-.acc-head .bal .v{color:var(--mint);font-weight:650}
-.acc-head .bal .k{font-size:11.5px;color:var(--mut)}
+.sub{font-size:12.5px;color:var(--mut)}
+.bal{text-align:right}
+.bal .v{color:var(--mint);font-weight:650}
+.bal .k{font-size:11.5px;color:var(--mut)}
 .chev{width:10px;height:10px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s;flex:none}
-.open>.acc-head .chev,.open>.yr-head .chev{transform:rotate(45deg)}
+.open>.acc-head .chev,.open>.tier-head .chev,.open>.yr-head .chev,.det.open .det-head .chev{transform:rotate(45deg)}
 .acc-body{padding:0 14px 14px;border-top:1px solid var(--line)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 @media(min-width:560px){.grid3{grid-template-columns:repeat(4,1fr)}}
 .det-head{display:flex;align-items:center;justify-content:space-between;padding:12px 0 4px;cursor:pointer;user-select:none;font-weight:600;font-size:14px}
-.det:not(.open) .grid2,.det:not(.open) .dethint{display:none}
+.det:not(.open) .grid2{display:none}
 .det .grid2{margin-top:6px}
-.det.open .det-head .chev{transform:rotate(45deg)}
-.info{margin-top:10px;font-size:12.5px;color:var(--mut);background:var(--card2);border-radius:10px;padding:8px 10px}
-.sect{margin:16px 0 8px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:space-between}
+.info{margin:10px 0 12px;font-size:12.5px;color:var(--mut);background:var(--card2);border-radius:10px;padding:8px 10px}
+.sect{margin:16px 0 8px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 
-.yr{background:var(--card2);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;position:relative}
+.tier{background:var(--card2);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.tier-head{padding:12px}
+.tier-head .tname{font-weight:700;color:var(--mint)}
+.tier-body{padding:2px 12px 12px;border-top:1px solid var(--line)}
+.tier-body .mini{margin-top:12px}
+.tier-body .stat{background:var(--card)}
+.fund{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:2px 10px 10px;margin-bottom:8px}
+
+.yr{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;position:relative}
 .yr-head{padding:10px 12px;align-items:stretch}
 .yr-head .fy{font-weight:650;min-width:66px;display:flex;align-items:center;color:var(--mint)}
 .yr-stats{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;min-width:0}
@@ -73,22 +83,21 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-spac
 .seg button.on{border-color:var(--mint);color:var(--mint);background:rgba(167,232,197,.08)}
 .psum{margin-top:10px;font-size:13px;color:var(--mut)}
 .psum b{color:var(--text)}
-.warn{color:var(--coral)}
 .mlab{font-size:11.5px;margin-bottom:3px;color:var(--mut)}
 
 .btn{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px;font-size:13.5px}
 .btn.mint{border-color:var(--mint);color:var(--mint)}
 .btn.del{color:var(--coral);border-color:rgba(255,140,112,.35)}
-.btn.delyr{width:100%;color:#f5c26b;border-color:#f5c26b;background:rgba(245,194,107,.12);font-weight:650;padding:11px 12px}
-.btn.delyr.armed{background:#f5c26b;color:#1d1405;border-color:#f5c26b}
 .btn.del.armed{background:var(--coral);color:#1a0d09;border-color:var(--coral);font-weight:650}
+.btn.delyr{width:100%;color:var(--amber);border-color:var(--amber);background:rgba(245,194,107,.12);font-weight:650;padding:11px 12px}
+.btn.delyr.armed{background:var(--amber);color:#1d1405;border-color:var(--amber)}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .addacc{width:100%;padding:13px;border-radius:14px;border:1px dashed var(--mint);background:transparent;color:var(--mint);font-weight:600}
-.empty{color:var(--mut);text-align:center;padding:24px 8px;font-size:14px}
+.empty{color:var(--mut);text-align:center;padding:16px 8px;font-size:14px}
 .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--card2);border:1px solid var(--mint);color:var(--text);padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:9}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 @media (hover:hover) and (pointer:fine){
-  .acc-head:hover,.yr-head:hover{background:rgba(167,232,197,.05)}
+  .acc-head:hover,.tier-head:hover,.yr-head:hover{background:rgba(167,232,197,.05)}
   .btn:hover{border-color:var(--mint)}
   .btn.del:hover{border-color:var(--coral)}
 }
@@ -97,13 +106,13 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-spac
 <body>
 <a href="../index.html">← Little Lab</a>
 <h1>NPS contributions</h1>
-<p class="tag">National Pension System tracker. Saved only in this browser.</p>
+<p class="tag">National Pension System tracker with Tier I, Tier II, funds and XIRR. Saved only in this browser.</p>
 
 <div class="summary">
-  <div class="stat"><div class="k">Accounts</div><div class="v" data-role="s-accs">0</div></div>
-  <div class="stat"><div class="k">Total contributed</div><div class="v" data-role="s-p">₹0</div></div>
-  <div class="stat"><div class="k">Total returns</div><div class="v" data-role="s-i">₹0</div></div>
-  <div class="stat hl"><div class="k">Total corpus</div><div class="v" data-role="s-b">₹0</div></div>
+  <div class="stat"><div class="k">Total investment</div><div class="v" data-role="s-inv">₹0</div></div>
+  <div class="stat hl"><div class="k">Current value</div><div class="v" data-role="s-val">₹0</div></div>
+  <div class="stat"><div class="k">Gain</div><div class="v" data-role="s-gain">₹0</div><div class="s" data-role="s-gainp"></div></div>
+  <div class="stat"><div class="k">XIRR</div><div class="v" data-role="s-xirr">—</div><div class="s">all accounts</div></div>
 </div>
 
 <div id="list"></div>
@@ -113,9 +122,11 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;white-spac
 <script>
 (function(){
 'use strict';
-var KEY='nps_contributions_v1';
+var KEY='nps_contributions_v2',OLD='nps_contributions_v1';
 var MON=['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
 var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var TN=['Tier I','Tier II'];
+var FMAP={fname:'name',manager:'manager',alloc:'alloc',fvalue:'value'};
 var S={accs:[]};
 var $list=document.getElementById('list');
 
@@ -126,60 +137,112 @@ function num(v){var n=parseFloat(v);return isFinite(n)?n:0;}
 function uni(a){var v=a.filter(has);return v.every(function(x){return num(x)===num(v[0]);});}
 function inr(n){return '₹'+(Math.round(n*100)/100).toLocaleString('en-IN',{maximumFractionDigits:2});}
 function pad(n){return (n<10?'0':'')+n;}
-function fmtDate(s){
-  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');
-  if(!m)return '';
-  return pad(+m[3])+'th '+MN[+m[2]-1]+' '+m[1];
+function fmtDate(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?pad(+m[3])+'th '+MN[+m[2]-1]+' '+m[1]:'';}
+function addYears(s,n){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?(+m[1]+n)+'-'+m[2]+'-'+m[3]:'';}
+function ageText(s){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');if(!m)return '';
+  var t=new Date(),mo=(t.getFullYear()-m[1])*12+(t.getMonth()+1-m[2]);
+  if(t.getDate()<+m[3])mo--;
+  if(mo<0)return 'not born yet';
+  var y=Math.floor(mo/12);return y+' yr'+(y===1?'':'s')+' '+(mo%12)+' mo';
 }
 function fyLabel(fy){return has(fy)?(parseInt(fy,10)+'-'+pad((parseInt(fy,10)+1)%100)):'FY ?';}
-function monthLabel(fy,i){
-  if(!has(fy))return MON[i];
-  var y=parseInt(fy,10)+(i>=9?1:0);
-  return MON[i]+" '"+pad(y%100);
-}
+function monthLabel(fy,i){if(!has(fy))return MON[i];return MON[i]+" '"+pad((parseInt(fy,10)+(i>=9?1:0))%100);}
 function currentFY(){var t=new Date();return t.getMonth()>=3?t.getFullYear():t.getFullYear()-1;}
-function addYears(s,n){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?(+m[1]+n)+'-'+m[2]+'-'+m[3]:'';}
 function openFY(s){var m=/^(\d{4})-(\d{2})/.exec(s||'');return m?(+m[2]>=4?+m[1]:+m[1]-1):null;}
+function parseD(s){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?Date.UTC(+m[1],+m[2]-1,+m[3]):null;}
+function todayUTC(){var n=new Date();return Date.UTC(n.getFullYear(),n.getMonth(),n.getDate());}
+function xs(x){return x==null?'—':(Math.round(x*100)/100)+'%';}
 
 /* ---------- state ---------- */
-function load(){
-  try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&Array.isArray(o.accs))S=o;}}catch(e){}
-}
+function newTier(collapsed){return {collapsed:!!collapsed,opening:'',cur:'',curDate:'',years:[],funds:[]};}
+function newAcc(){return {id:uid(),name:'',dob:'',open:'',collapsed:false,detOpen:true,tiers:[newTier(false),newTier(true)]};}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
-function accById(id){return S.accs.filter(function(k){return k.id===id;})[0];}
-function yearById(k,id){return k.years.filter(function(y){return y.id===id;})[0];}
-function newAcc(){return {id:uid(),name:'',bank:'',dob:'',open:'',opening:'',collapsed:false,detOpen:true,years:[]};}
-function sorted(k){
-  return k.years.slice().sort(function(a,b){return (has(a.fy)?+a.fy:9999)-(has(b.fy)?+b.fy:9999);});
+function load(){
+  try{
+    var r=localStorage.getItem(KEY);
+    if(r){var o=JSON.parse(r);if(o&&Array.isArray(o.accs))S=o;return;}
+    var old=localStorage.getItem(OLD);
+    if(old){
+      var p=JSON.parse(old);
+      if(p&&Array.isArray(p.accs)){
+        p.accs.forEach(function(k){
+          var a=newAcc();a.name=k.name||'';a.dob=k.dob||'';a.open=k.open||'';
+          a.tiers[0].opening=k.opening||'';a.tiers[0].years=k.years||[];
+          if(k.bank)a.tiers[0].funds.push({id:uid(),name:'',manager:k.bank,alloc:'',value:''});
+          S.accs.push(a);
+        });
+        save();
+      }
+    }
+  }catch(e){}
 }
-function newYear(k){
-  var fy,rate='';
-  if(k.years.length){
-    var s=sorted(k),last=s[s.length-1];
-    fy=has(last.fy)?parseInt(last.fy,10)+1:currentFY();rate='';
-  }else{
-    var o=openFY(k.open);fy=o!==null?o:currentFY();
-  }
-  return {id:uid(),fy:String(fy),mode:'same',same:'',n:'12',months:['','','','','','','','','','','',''],interest:'',rate:rate,balance:'',employer:'',collapsed:false};
+function accById(id){return S.accs.filter(function(k){return k.id===id;})[0];}
+function byId(list,id){return list.filter(function(x){return x.id===id;})[0];}
+function sorted(t){return t.years.slice().sort(function(a,b){return (has(a.fy)?+a.fy:9999)-(has(b.fy)?+b.fy:9999);});}
+function newYear(a,t){
+  var fy;
+  if(t.years.length){var s=sorted(t),last=s[s.length-1];fy=has(last.fy)?parseInt(last.fy,10)+1:currentFY();}
+  else{var o=openFY(a.open);fy=o!==null?o:currentFY();}
+  return {id:uid(),fy:String(fy),mode:'same',same:'',n:'12',months:['','','','','','','','','','','',''],interest:'',rate:'',balance:'',employer:'',collapsed:false};
 }
 
 /* ---------- calc ---------- */
-function principal(y){return ownP(y)+num(y.employer);}
 function ownP(y){
   if(y.mode==='each')return (y.months||[]).reduce(function(s,v){return s+num(v);},0);
   var n=has(y.n)?Math.max(0,Math.min(12,parseInt(y.n,10))):12;
   return num(y.same)*n;
 }
-function calcAcc(k){
-  var prev=num(k.opening),rows={},totP=0,totI=0;
-  sorted(k).forEach(function(y){
-    var p=principal(y),auto=prev+p+num(y.interest),eff,i;
+function principal(y,idx){return ownP(y)+(idx===0?num(y.employer):0);}
+function calcTier(t,idx){
+  var prev=num(t.opening),rows={},totP=0,totI=0,lastFy=null;
+  sorted(t).forEach(function(y){
+    var p=principal(y,idx),auto=prev+p+num(y.interest),eff,i;
     if(has(y.balance)){eff=num(y.balance);i=eff-prev-p;}else{i=num(y.interest);eff=auto;}
     var base=prev+p,rt=has(y.rate)?num(y.rate):(base>0?i/base*100:null);
     rows[y.id]={p:p,i:i,auto:auto,eff:eff,rt:rt};
     totP+=p;totI+=i;prev=eff;
+    if(has(y.fy))lastFy=parseInt(y.fy,10);
   });
-  return {rows:rows,totP:totP,totI:totI,bal:prev};
+  var invested=num(t.opening)+totP;
+  var fundSum=t.funds.reduce(function(s,f){return s+num(f.value);},0);
+  var cur=0,src='',kind='none';
+  if(has(t.cur)){cur=num(t.cur);src='Using the current value you entered.';kind='entered';}
+  else if(fundSum>0){cur=fundSum;src='Using the total of your fund values.';kind='funds';}
+  else if(t.years.length||num(t.opening)>0){cur=prev;src='Using the latest FY corpus. Enter a current value for a sharper XIRR.';kind='latest';}
+  return {rows:rows,totP:totP,totI:totI,invested:invested,cur:cur,src:src,kind:kind,lastFy:lastFy,gain:cur-invested};
+}
+function tierFlows(t,idx,c){
+  var fl=[],first=null;
+  sorted(t).forEach(function(y){
+    if(!has(y.fy))return;
+    var f=parseInt(y.fy,10);if(first===null||f<first)first=f;
+    var emp=idx===0?num(y.employer)/12:0,n=has(y.n)?Math.max(0,Math.min(12,parseInt(y.n,10))):12;
+    for(var i=0;i<12;i++){
+      var own=y.mode==='each'?num(y.months[i]):(i<n?num(y.same):0),amt=own+emp;
+      if(amt>0)fl.push({d:Date.UTC(f+(i>=9?1:0),i<9?3+i:i-9,1),a:-amt});
+    }
+  });
+  if(num(t.opening)>0&&first!==null)fl.push({d:Date.UTC(first,3,1),a:-num(t.opening)});
+  var td=(c.kind==='latest'&&c.lastFy!==null)?Date.UTC(c.lastFy+1,2,31):(parseD(t.curDate)||todayUTC());
+  fl=fl.filter(function(x){return x.d<=td;});
+  if(c.cur>0)fl.push({d:td,a:c.cur});
+  return fl;
+}
+function xirr(fl){
+  if(!fl.some(function(x){return x.a<0;})||!fl.some(function(x){return x.a>0;}))return null;
+  var ds=fl.map(function(x){return x.d;}),t0=Math.min.apply(null,ds),t1=Math.max.apply(null,ds);
+  if((t1-t0)/864e5<30)return null;
+  function f(r){return fl.reduce(function(s,x){return s+x.a/Math.pow(1+r,(x.d-t0)/(365*864e5));},0);}
+  var lo=-0.99,hi=50,flo=f(lo),fhi=f(hi);
+  if(flo*fhi>0)return null;
+  var mid=0;
+  for(var i=0;i<200;i++){
+    mid=(lo+hi)/2;var fm=f(mid);
+    if(Math.abs(fm)<1e-6)break;
+    if(flo*fm<0)hi=mid;else{lo=mid;flo=fm;}
+  }
+  return mid*100;
 }
 
 /* ---------- render (structure) ---------- */
@@ -187,8 +250,14 @@ function field(label,f,val,extra,ph){
   return '<div><label>'+label+'</label><input data-f="'+f+'" value="'+esc(val)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+' '+(extra||'')+'></div>';
 }
 function numAttr(){return 'type="number" inputmode="decimal" step="any" min="0"';}
-
-function yearHTML(y){
+function miniStats(p){
+  return '<div class="mini">'+
+    '<div class="stat"><div class="k">Invested</div><div class="v" data-role="'+p+'-inv"></div></div>'+
+    '<div class="stat"><div class="k">Current value</div><div class="v" data-role="'+p+'-val"></div></div>'+
+    '<div class="stat"><div class="k">Gain</div><div class="v" data-role="'+p+'-gain"></div></div>'+
+    '<div class="stat"><div class="k">XIRR</div><div class="v" data-role="'+p+'-xirr"></div></div></div>';
+}
+function yearHTML(y,idx){
   var h='<div class="yr'+(y.collapsed?'':' open')+'" data-year="'+y.id+'">'+
     '<div class="yr-head" data-act="toggle-year"><div class="fy" data-role="yr-title">'+fyLabel(y.fy)+'</div>'+
     '<div class="yr-stats">'+
@@ -200,19 +269,18 @@ function yearHTML(y){
   if(!y.collapsed){
     h+='<div class="yr-body"><div class="grid2">'+
       field('FY starting Apr of','fy',y.fy,'type="number" inputmode="numeric" step="1"')+
-      field('Employer share (₹)','employer',y.employer,numAttr(),'0')+
+      (idx===0?field('Employer share (₹)','employer',y.employer,numAttr(),'0'):'')+
       field('Mar-end corpus (₹)','balance',y.balance,numAttr(),'auto')+
       field('Returns for FY (₹)','interest',y.interest,numAttr(),'0')+
       field('Return for FY (%)','rate',y.rate,numAttr(),'auto')+
-    '</div><div class="hint">Enter the corpus from your statement and returns and return % are worked out for you. Or enter returns and leave corpus blank. Contributed = your monthly amounts + employer contribution.</div>'+
+    '</div><div class="hint">Enter the corpus from your statement and returns and return % are worked out. Or enter returns and leave corpus blank.</div>'+
     '<div class="sect" style="margin-top:14px">Monthly contributions</div>'+
     '<div class="seg"><button data-act="mode" data-mode="same" class="'+(y.mode==='each'?'':'on')+'">Same every month</button>'+
     '<button data-act="mode" data-mode="each" class="'+(y.mode==='each'?'on':'')+'">Different each month</button></div>';
     if(y.mode==='each'){
       h+='<div class="grid3">';
       for(var i=0;i<12;i++){
-        h+='<div><div class="mlab">'+monthLabel(y.fy,i)+'</div>'+
-          '<input data-f="month" data-m="'+i+'" value="'+esc(y.months[i])+'" '+numAttr()+' placeholder="0"></div>';
+        h+='<div><div class="mlab">'+monthLabel(y.fy,i)+'</div><input data-f="month" data-m="'+i+'" value="'+esc(y.months[i])+'" '+numAttr()+' placeholder="0"></div>';
       }
       h+='</div>';
     }else{
@@ -220,34 +288,57 @@ function yearHTML(y){
         field('Months contributed','n',y.n,'type="number" inputmode="numeric" min="0" max="12" step="1"','12')+'</div>';
     }
     h+='<div class="psum" data-role="yr-psum"></div>'+
-      '<div class="row"><button class="btn delyr" data-act="del-year" data-key="y'+y.id+'">Delete FY</button></div></div>';
+      '<div class="row"><button class="btn delyr" data-act="del-year">Delete FY</button></div></div>';
   }
   return h+'</div>';
 }
-
+function fundHTML(f){
+  return '<div class="fund" data-fund="'+f.id+'"><div class="grid2">'+
+    field('Scheme','fname',f.name,'type="text" autocomplete="off"','e.g. Scheme E')+
+    field('Fund manager','manager',f.manager,'type="text" autocomplete="off"')+
+    field('Allocation (%)','alloc',f.alloc,numAttr())+
+    field('Value (₹)','fvalue',f.value,numAttr())+
+    '</div><div class="row" style="margin-top:8px"><button class="btn del" data-act="del-fund">Remove fund</button></div></div>';
+}
+function tierHTML(t,idx){
+  var h='<div class="tier'+(t.collapsed?'':' open')+'" data-tier="'+idx+'">'+
+    '<div class="tier-head" data-act="toggle-tier"><div class="t"><div class="tname">'+TN[idx]+'</div><div class="sub" data-role="t-sub"></div></div>'+
+    '<div class="bal"><div class="v" data-role="t-hval"></div><div class="k" data-role="t-hx"></div></div><span class="chev"></span></div>';
+  if(!t.collapsed){
+    h+='<div class="tier-body">'+miniStats('t')+
+      '<div class="grid2" style="margin-top:0">'+
+        field('Current value (₹)','cur',t.cur,numAttr(),'optional')+
+        '<div><label>Value as of</label><input data-f="curDate" type="date" value="'+esc(t.curDate)+'"><div class="hint" data-role="t-cur-fmt"></div></div>'+
+        field('Corpus carried in (₹)','opening',t.opening,numAttr(),'0')+
+      '</div><div class="hint" data-role="t-src"></div>'+
+      '<div class="hint">Carried in: only needed if earlier years are not entered here. Value as of: today if blank.</div>'+
+      '<div class="sect"><span>Funds / schemes</span><span class="hint" style="margin:0" data-role="t-alloc"></span></div>';
+    if(!t.funds.length)h+='<div class="empty">No funds added yet.</div>';
+    t.funds.forEach(function(f){h+=fundHTML(f);});
+    h+='<div class="row" style="margin-top:0"><button class="btn mint" data-act="add-fund">+ Add fund</button></div>'+
+      '<div class="sect"><span>Financial years</span><span class="hint" style="margin:0">tap a year to expand</span></div>';
+    var ys=sorted(t);
+    if(!ys.length)h+='<div class="empty">No years yet. Add the first FY.</div>';
+    ys.forEach(function(y){h+=yearHTML(y,idx);});
+    h+='<div class="row" style="margin-top:0"><button class="btn mint" data-act="add-year">+ Add FY</button></div></div>';
+  }
+  return h+'</div>';
+}
 function accHTML(k){
   var h='<section class="acc'+(k.collapsed?'':' open')+'" data-acc="'+k.id+'">'+
-    '<div class="acc-head" data-act="toggle-acc"><div class="t"><div class="name" data-role="k-name"></div>'+
-    '<div class="sub" data-role="k-sub"></div></div>'+
-    '<div class="bal"><div class="v" data-role="k-bal"></div><div class="k">corpus</div></div><span class="chev"></span></div>';
+    '<div class="acc-head" data-act="toggle-acc"><div class="t"><div class="name" data-role="k-name"></div><div class="sub" data-role="k-sub"></div></div>'+
+    '<div class="bal"><div class="v" data-role="k-bal"></div><div class="k" data-role="k-x"></div></div><span class="chev"></span></div>';
   if(!k.collapsed){
     h+='<div class="acc-body"><div class="det'+(k.detOpen?' open':'')+'"><div class="det-head" data-act="toggle-det"><span>Details</span><span class="chev"></span></div><div class="grid2">'+
       field('Account holder','name',k.name,'type="text" autocomplete="off"')+
-      field('Fund manager / scheme','bank',k.bank,'type="text" autocomplete="off"')+
       '<div><label>Date of birth</label><input data-f="dob" type="date" value="'+esc(k.dob)+'"><div class="hint" data-role="dob-fmt"></div></div>'+
       '<div><label>Account open date</label><input data-f="open" type="date" value="'+esc(k.open)+'"><div class="hint" data-role="open-fmt"></div></div>'+
-      field('Corpus carried in (₹)','opening',k.opening,numAttr(),'0')+
-    '</div><div class="hint dethint">Carried in: only needed if earlier years are not entered here. Leave blank if you add every FY from the start.</div></div><div class="info" data-role="k-info"></div>'+
-    '<div class="sect"><span>Financial years</span><span class="hint" style="margin:0">tap a year to expand</span></div>';
-    var ys=sorted(k);
-    if(!ys.length)h+='<div class="empty">No years yet. Add the first FY.</div>';
-    ys.forEach(function(y){h+=yearHTML(y);});
-    h+='<div class="row"><button class="btn mint" data-act="add-year">+ Add FY</button>'+
-      '<button class="btn del" data-act="del-acc" data-key="k'+k.id+'">Delete account</button></div></div>';
+    '</div></div><div class="info" data-role="k-info"></div>'+miniStats('a')+
+    k.tiers.map(tierHTML).join('')+
+    '<div class="row"><button class="btn del" data-act="del-acc">Delete account</button></div></div>';
   }
   return h+'</section>';
 }
-
 function render(){
   var sy=window.scrollY;
   $list.innerHTML=S.accs.length?S.accs.map(accHTML).join(''):'<div class="empty">No accounts yet. Add one to start tracking.</div>';
@@ -256,43 +347,72 @@ function render(){
 }
 
 /* ---------- update (in place, no rebuild) ---------- */
-function setRole(root,role,txt){var e=root.querySelector('[data-role="'+role+'"]');if(e&&e.textContent!==txt)e.textContent=txt;}
+function setRole(root,role,txt,val){
+  var e=root.querySelector('[data-role="'+role+'"]');if(!e)return;
+  if(e.textContent!==txt)e.textContent=txt;
+  if(val!==undefined){e.classList.remove('pos','neg');if(val!=null)e.classList.add(val>=0?'pos':'neg');}
+}
+function gainTxt(c){return inr(c.gain)+(c.invested>0?' ('+xs(c.gain/c.invested*100)+')':'');}
 function update(){
-  var tp=0,ti=0,tb=0;
+  var G={inv:0,cur:0,fl:[]};
   S.accs.forEach(function(k){
     var el=$list.querySelector('[data-acc="'+k.id+'"]');
-    var c=calcAcc(k);tp+=c.totP;ti+=c.totI;tb+=c.bal;
-    if(!el)return;
-    var od=fmtDate(k.open);
-    setRole(el,'k-name',k.name||'Unnamed account');
-    setRole(el,'k-sub',[k.bank,od?'Opened '+od:''].filter(Boolean).join(' • ')||'Add details');
-    setRole(el,'k-bal',inr(c.bal));
-    setRole(el,'open-fmt',od);
-    setRole(el,'dob-fmt',fmtDate(k.dob));
-    setRole(el,'k-info',k.dob?'Retirement at age 60 on '+fmtDate(addYears(k.dob,60)):'Add the date of birth to see the retirement date (age 60).');
-    k.years.forEach(function(y){
-      var ye=el.querySelector('[data-year="'+y.id+'"]');if(!ye)return;
-      var r=c.rows[y.id];
-      setRole(ye,'yr-title',fyLabel(y.fy));
-      setRole(ye,'yr-p',inr(r.p));
-      setRole(ye,'yr-i',inr(r.i));
-      setRole(ye,'yr-b',inr(r.eff));
-      setRole(ye,'yr-r',r.rt==null?'—':(Math.round(r.rt*100)/100)+'%');
-      var b=ye.querySelector('[data-f="balance"]');if(b)b.placeholder='auto: '+inr(r.auto);
-      var ri=ye.querySelector('[data-f="interest"]');if(ri)ri.placeholder=has(y.balance)?'auto: '+inr(r.i):'0';
-      var rr=ye.querySelector('[data-f="rate"]');if(rr)rr.placeholder=r.rt==null?'auto':'auto: '+(Math.round(r.rt*100)/100)+'%';
-      var ps=ye.querySelector('[data-role="yr-psum"]');
-      if(ps){
-        var n=y.mode==='each'?(y.months||[]).filter(has).length:(has(y.n)?parseInt(y.n,10):12);
-        ps.innerHTML='Contributed this FY: <b>'+inr(r.p)+'</b>'+(y.mode==='each'?' over '+n+' month'+(n===1?'':'s'):(num(y.same)?' ('+inr(num(y.same))+' × '+n+')':''))+
-          '';
-      }
+    var A={inv:0,cur:0,fl:[]};
+    k.tiers.forEach(function(t,idx){
+      var c=calcTier(t,idx),fl=tierFlows(t,idx,c),x=xirr(fl);
+      A.inv+=c.invested;A.cur+=c.cur;A.fl=A.fl.concat(fl);
+      var te=el&&el.querySelector('[data-tier="'+idx+'"]');if(!te)return;
+      setRole(te,'t-sub',inr(c.invested)+' invested');
+      setRole(te,'t-hval',inr(c.cur));
+      setRole(te,'t-hx','XIRR '+xs(x));
+      setRole(te,'t-inv',inr(c.invested));
+      setRole(te,'t-val',inr(c.cur));
+      setRole(te,'t-gain',gainTxt(c),c.invested>0||c.cur>0?c.gain:null);
+      setRole(te,'t-xirr',xs(x),x);
+      setRole(te,'t-src',c.src);
+      setRole(te,'t-cur-fmt',fmtDate(t.curDate));
+      var as=t.funds.reduce(function(s,f){return s+num(f.alloc);},0),anyA=t.funds.some(function(f){return has(f.alloc);});
+      var ae=te.querySelector('[data-role="t-alloc"]');
+      if(ae){ae.textContent=anyA?'Allocation total '+(Math.round(as*100)/100)+'%':'';ae.classList.toggle('warn',anyA&&Math.abs(as-100)>0.01);}
+      t.years.forEach(function(y){
+        var ye=te.querySelector('[data-year="'+y.id+'"]');if(!ye)return;
+        var r=c.rows[y.id];
+        setRole(ye,'yr-title',fyLabel(y.fy));
+        setRole(ye,'yr-p',inr(r.p));
+        setRole(ye,'yr-i',inr(r.i));
+        setRole(ye,'yr-b',inr(r.eff));
+        setRole(ye,'yr-r',r.rt==null?'—':(Math.round(r.rt*100)/100)+'%');
+        var b=ye.querySelector('[data-f="balance"]');if(b)b.placeholder='auto: '+inr(r.auto);
+        var ri=ye.querySelector('[data-f="interest"]');if(ri)ri.placeholder=has(y.balance)?'auto: '+inr(r.i):'0';
+        var rr=ye.querySelector('[data-f="rate"]');if(rr)rr.placeholder=r.rt==null?'auto':'auto: '+(Math.round(r.rt*100)/100)+'%';
+        var ps=ye.querySelector('[data-role="yr-psum"]');
+        if(ps){
+          var n=y.mode==='each'?(y.months||[]).filter(has).length:(has(y.n)?parseInt(y.n,10):12);
+          ps.innerHTML='Contributed this FY: <b>'+inr(r.p)+'</b>'+(y.mode==='each'?' over '+n+' month'+(n===1?'':'s'):(num(y.same)?' ('+inr(num(y.same))+' × '+n+')':''));
+        }
+      });
     });
+    G.inv+=A.inv;G.cur+=A.cur;G.fl=G.fl.concat(A.fl);
+    if(!el)return;
+    var ax=xirr(A.fl),age=ageText(k.dob),od=fmtDate(k.open),ac={invested:A.inv,gain:A.cur-A.inv};
+    setRole(el,'k-name',k.name||'Unnamed account');
+    setRole(el,'k-sub',[age?'Age '+age:'',od?'Opened '+od:''].filter(Boolean).join(' • ')||'Add details');
+    setRole(el,'k-bal',inr(A.cur));
+    setRole(el,'k-x','XIRR '+xs(ax));
+    setRole(el,'dob-fmt',fmtDate(k.dob));
+    setRole(el,'open-fmt',od);
+    setRole(el,'k-info',k.dob?'Retirement at age 60 on '+fmtDate(addYears(k.dob,60)):'Add the date of birth to see the retirement date (age 60).');
+    setRole(el,'a-inv',inr(A.inv));
+    setRole(el,'a-val',inr(A.cur));
+    setRole(el,'a-gain',gainTxt(ac),A.inv>0||A.cur>0?ac.gain:null);
+    setRole(el,'a-xirr',xs(ax),ax);
   });
-  setRole(document,'s-accs',String(S.accs.length));
-  setRole(document,'s-p',inr(tp));
-  setRole(document,'s-i',inr(ti));
-  setRole(document,'s-b',inr(tb));
+  var gx=xirr(G.fl),gg={invested:G.inv,gain:G.cur-G.inv};
+  setRole(document,'s-inv',inr(G.inv));
+  setRole(document,'s-val',inr(G.cur));
+  setRole(document,'s-gain',inr(gg.gain),G.inv>0||G.cur>0?gg.gain:null);
+  setRole(document,'s-gainp',G.inv>0?xs(gg.gain/G.inv*100):'');
+  setRole(document,'s-xirr',xs(gx),gx);
 }
 
 /* ---------- toast + tap-twice ---------- */
@@ -300,36 +420,42 @@ var tt;
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show');},1800);}
 var armedBtn=null,armedTimer;
 function disarm(){
-  if(armedBtn){armedBtn.classList.remove('armed');armedBtn.textContent=armedBtn.dataset.label;}
+  if(armedBtn&&armedBtn.isConnected){armedBtn.classList.remove('armed');armedBtn.textContent=armedBtn.dataset.label;}
   armedBtn=null;clearTimeout(armedTimer);
 }
 function armed(btn){
   if(armedBtn===btn)return true;
   disarm();
-  btn.dataset.label=btn.textContent;
-  btn.classList.add('armed');btn.textContent='Tap again to delete';
-  armedBtn=btn;armedTimer=setTimeout(disarm,3000);
-  toast('Tap again to confirm delete');
+  btn.dataset.label=btn.textContent;btn.classList.add('armed');btn.textContent='Tap again to delete';
+  armedBtn=btn;armedTimer=setTimeout(disarm,3000);toast('Tap again to confirm delete');
   return false;
 }
 
 /* ---------- events ---------- */
+function ctx(el){
+  var aEl=el.closest('[data-acc]'),tEl=el.closest('[data-tier]'),yEl=el.closest('[data-year]'),fEl=el.closest('[data-fund]');
+  var a=aEl?accById(aEl.dataset.acc):null,t=(a&&tEl)?a.tiers[+tEl.dataset.tier]:null;
+  return {a:a,t:t,idx:tEl?+tEl.dataset.tier:null,y:(t&&yEl)?byId(t.years,yEl.dataset.year):null,f:(t&&fEl)?byId(t.funds,fEl.dataset.fund):null};
+}
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-act]');
-  if(!t){disarm();return;}
-  var act=t.dataset.act;
-  var kEl=t.closest('[data-acc]'),yEl=t.closest('[data-year]');
-  var k=kEl?accById(kEl.dataset.acc):null,y=(k&&yEl)?yearById(k,yEl.dataset.year):null;
-  if(act!=='del-acc'&&act!=='del-year')disarm();
+  var el=e.target.closest('[data-act]');
+  if(!el){disarm();return;}
+  var act=el.dataset.act,c=ctx(el),a=c.a,t=c.t,y=c.y,f=c.f;
+  if(act!=='del-acc'&&act!=='del-year'&&act!=='del-fund')disarm();
 
   if(act==='add-acc'){var na=newAcc();S.accs.push(na);save();render();
     var inp=$list.querySelector('[data-acc="'+na.id+'"] [data-f="name"]');if(inp)inp.focus();}
-  else if(act==='toggle-acc'&&k){k.collapsed=!k.collapsed;save();render();}
-  else if(act==='toggle-det'&&k){var dd=t.closest('.det');dd.classList.toggle('open');k.detOpen=dd.classList.contains('open');save();}
+  else if(act==='toggle-acc'&&a){a.collapsed=!a.collapsed;save();render();}
+  else if(act==='toggle-det'&&a){var dd=el.closest('.det');dd.classList.toggle('open');a.detOpen=dd.classList.contains('open');save();}
+  else if(act==='toggle-tier'&&t){t.collapsed=!t.collapsed;save();render();}
   else if(act==='toggle-year'&&y){y.collapsed=!y.collapsed;save();render();}
-  else if(act==='add-year'&&k){k.years.push(newYear(k));save();render();}
+  else if(act==='add-year'&&t){t.years.push(newYear(a,t));save();render();}
+  else if(act==='add-fund'&&t){
+    var nf={id:uid(),name:'',manager:'',alloc:'',value:''};t.funds.push(nf);save();render();
+    var fi=$list.querySelector('[data-fund="'+nf.id+'"] [data-f="fname"]');if(fi)fi.focus();
+  }
   else if(act==='mode'&&y){
-    var m=t.dataset.mode;
+    var m=el.dataset.mode;
     if(m!==y.mode){
       if(m==='each'&&has(y.same)&&uni(y.months)){
         var n=has(y.n)?Math.max(0,Math.min(12,parseInt(y.n,10))):12;
@@ -338,27 +464,26 @@ document.addEventListener('click',function(e){
       y.mode=m;save();render();
     }
   }
-  else if(act==='del-year'&&k&&y){
-    if(armed(t)){k.years=k.years.filter(function(x){return x.id!==y.id;});armedBtn=null;save();render();toast('FY deleted');}
+  else if(act==='del-year'&&t&&y){
+    if(armed(el)){t.years=t.years.filter(function(x){return x.id!==y.id;});armedBtn=null;save();render();toast('FY deleted');}
   }
-  else if(act==='del-acc'&&k){
-    if(armed(t)){S.accs=S.accs.filter(function(x){return x.id!==k.id;});armedBtn=null;save();render();toast('Account deleted');}
+  else if(act==='del-fund'&&t&&f){
+    if(armed(el)){t.funds=t.funds.filter(function(x){return x.id!==f.id;});armedBtn=null;save();render();toast('Fund removed');}
+  }
+  else if(act==='del-acc'&&a){
+    if(armed(el)){S.accs=S.accs.filter(function(x){return x.id!==a.id;});armedBtn=null;save();render();toast('Account deleted');}
   }
 });
 
 document.addEventListener('input',function(e){
-  var el=e.target,f=el.dataset&&el.dataset.f;if(!f)return;
-  var kEl=el.closest('[data-acc]');if(!kEl)return;
-  var k=accById(kEl.dataset.acc);if(!k)return;
-  var yEl=el.closest('[data-year]');
-  if(yEl){
-    var y=yearById(k,yEl.dataset.year);if(!y)return;
-    if(f==='month')y.months[+el.dataset.m]=el.value;else y[f]=el.value;
-  }else k[f]=el.value;
+  var el=e.target,k=el.dataset&&el.dataset.f;if(!k)return;
+  var c=ctx(el);if(!c.a)return;
+  if(c.f)c.f[FMAP[k]]=el.value;
+  else if(c.y){if(k==='month')c.y.months[+el.dataset.m]=el.value;else c.y[k]=el.value;}
+  else if(c.t)c.t[k]=el.value;
+  else c.a[k]=el.value;
   save();update();
 });
-
-/* re-sort years and refresh month labels once FY is committed (on blur) */
 document.addEventListener('change',function(e){
   if(e.target.dataset&&e.target.dataset.f==='fy'){render();}
 });

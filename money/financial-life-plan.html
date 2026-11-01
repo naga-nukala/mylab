@@ -20,6 +20,8 @@
   input:focus, select:focus{outline:2px solid var(--acc);}
   .row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
   .field{flex:1;min-width:120px;}
+  .goal-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;flex:1 1 100%;}
+  .goal-summary .field{min-width:0;}
   button.primary{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;}
 
   .checkbox-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #334155;}
@@ -82,6 +84,7 @@ const RD_STORAGE_KEY = 'as_rdtracker_v1';
 const INVESTMENT_STORAGE_KEY = 'investment_appreciation_entries';
 const INSURANCE_CHECKER_KEY = 'as_insurancechecker';
 const RETIREMENT_CALCULATOR_KEY = 'as_retirementcorpus';
+const PARENTS_COVERAGE_KEY = 'as_parents_coverage_v1';
 function safeGetItem(key){
   try { return localStorage.getItem(key); } catch(e) { return null; }
 }
@@ -94,6 +97,7 @@ let state = JSON.parse(safeGetItem(STORAGE_KEY) || 'null') || {
   health: { coverAmount:0, members:1 },
   debts: [ { type:'Home', outstanding:0, rate:0 } ],
   extraPayment: 0,
+  debtPlanStrategy: '',
   childAge: 0,
   eduTarget: 1500000, eduCurrentSIP: 0,
   marriageTarget: 1000000, marriageCurrentSIP: 0,
@@ -144,8 +148,8 @@ function readStoredObject(key){
 
 function emergencyCalculatorData(){
   const data = readStoredObject(EMERGENCY_CALCULATOR_KEY);
-  const monthlyExpense = Number(data.monthlyExp);
-  let currentSavings = Number(data.current);
+  const monthlyExpense = Number(data.monthlyExp) || 0;
+  let currentSavings = Number(data.current) || 0;
   const hasSplitData = ['cur_savings','cur_cash','cur_liquid','cur_fd','cur_rd','cur_other']
     .some(key => data[key] !== undefined && data[key] !== '');
   if(hasSplitData){
@@ -183,10 +187,22 @@ function emergencyCalculatorData(){
       currentSavings += liveLiquid - (Number(data.cur_liquid) || 0);
     }
   }
-  return Number.isFinite(monthlyExpense) && monthlyExpense > 0 &&
-    Number.isFinite(currentSavings) && currentSavings >= 0
+  return Number.isFinite(monthlyExpense) && monthlyExpense >= 0 &&
+    Number.isFinite(currentSavings) && currentSavings >= 0 &&
+    (monthlyExpense > 0 || currentSavings > 0)
     ? {monthlyExpense, currentSavings}
     : null;
+}
+
+function parentsCoverageData(){
+  const data = readStoredObject(PARENTS_COVERAGE_KEY);
+  const items = Array.isArray(data.items) ? data.items : [];
+  const healthPolicies = items.filter(item => item && item.type === 'ins' &&
+    item.kind === 'Health' && Number(item.amt) > 0);
+  return {
+    healthCover: healthPolicies.reduce((sum,item) => sum + (Number(item.amt) || 0), 0),
+    healthPolicies
+  };
 }
 
 function insuranceCheckerData(){
@@ -345,12 +361,16 @@ function emergencyFundStatus(){
   const currentSavings = source
     ? source.currentSavings
     : (state.emergencyFund.currentSavings || 0) + emergencyFDAmount();
-  if(monthlyExpense<=0) return {status:'red', msg:'Enter your monthly expense to see your safety net.'};
   const totalSavings = currentSavings || 0;
+  if(monthlyExpense<=0){
+    return totalSavings>0
+      ? {status:'amber', msg:`₹${totalSavings.toLocaleString('en-IN')} tracked. Enter monthly essential expenses to measure your emergency-fund coverage.`}
+      : {status:'red', msg:'Enter your monthly expense to see your safety net.'};
+  }
   const months = totalSavings/monthlyExpense;
   const target = monthlyExpense*9;
   const gap = Math.max(0, target-totalSavings);
-  const status = months>=9 ? 'green' : months>=3 ? 'amber' : 'red';
+  const status = months>=9 ? 'green' : totalSavings>0 ? 'amber' : 'red';
   return { status, msg: `${months.toFixed(1)} months covered. Target: 9 months (₹${target.toLocaleString('en-IN')}). ${gap>0?`Need ₹${gap.toLocaleString('en-IN')} more.`:'Fully funded.'}` };
 }
 
@@ -366,11 +386,23 @@ function healthStatus(){
 function debtStatus(){
   const validDebts = financialPlanDebts();
   if(validDebts.length===0) return {status:'red', msg:'Add your loans to see the payoff order.'};
-  const sorted = [...validDebts].sort((a,b)=>b.rate-a.rate);
+  const strategy = state.debtPlanStrategy || '';
+  const sorted = [...validDebts].sort(strategy==='snowball'
+    ? (a,b)=>a.outstanding-b.outstanding
+    : (a,b)=>b.rate-a.rate);
   const priority = sorted[0];
-  const status = state.extraPayment>0 ? 'green' : 'amber';
+  const hasPlan = (strategy==='avalanche' || strategy==='snowball') && Number(state.extraPayment)>0;
+  const status = hasPlan ? 'green' : 'amber';
   const totalOutstanding = validDebts.reduce((s,d)=>s+d.outstanding,0);
-  return { status, msg: `Close ${priority.type||'top loan'} first (${priority.rate}% — highest rate). Total outstanding: ₹${totalOutstanding.toLocaleString('en-IN')}. ${state.extraPayment>0?`Extra ₹${state.extraPayment}/mo committed.`:'No extra payment committed yet.'}` };
+  const priorityNote = strategy==='snowball'
+    ? `lowest balance: ₹${priority.outstanding.toLocaleString('en-IN')}`
+    : `highest rate: ${priority.rate}%`;
+  const nextStep = hasPlan
+    ? `₹${Number(state.extraPayment).toLocaleString('en-IN')}/mo committed to the ${strategy} plan.`
+    : strategy
+      ? 'Set an extra monthly payment to complete your payoff plan.'
+      : 'Choose a payoff strategy and set an extra monthly payment to create a plan.';
+  return { status, msg: `Close ${priority.type||'top loan'} first (${priorityNote}). Total outstanding: ₹${totalOutstanding.toLocaleString('en-IN')}. ${nextStep}` };
 }
 
 function childGoalCalc(targetToday, milestoneAge, inflationPct, currentSIP, currentAge, alreadySaved, returnPct){
@@ -421,8 +453,14 @@ function childGoalSummary(type, prefix, fallbackTarget, fallbackAge, fallbackInf
 
 function parentsStatus(){
   const { parentsHealthIns, parentsBudgetSet } = state;
-  const status = (parentsHealthIns && parentsBudgetSet) ? 'green' : (parentsHealthIns || parentsBudgetSet) ? 'amber' : 'red';
-  return { status, msg: !parentsHealthIns ? '⚠️ No health insurance for parents — senior premiums are high but critical.' : (!parentsBudgetSet ? 'Health insurance in place. Set aside a monthly budget too.' : 'Health insurance + monthly budget both in place.') };
+  const coverage = parentsCoverageData();
+  const hasHealthInsurance = coverage.healthPolicies.length>0 || parentsHealthIns;
+  const status = (hasHealthInsurance && parentsBudgetSet) ? 'green' : (hasHealthInsurance || parentsBudgetSet) ? 'amber' : 'red';
+  return { status, msg: !hasHealthInsurance
+    ? "No parents' health insurance is recorded. Add their coverage in Parents Coverage."
+    : !parentsBudgetSet
+      ? `${coverage.healthPolicies.length ? `₹${coverage.healthCover.toLocaleString('en-IN')} health cover synced.` : 'Health insurance marked as in place.'} Set aside a monthly budget too.`
+      : `${coverage.healthPolicies.length ? `₹${coverage.healthCover.toLocaleString('en-IN')} health cover synced.` : 'Health insurance in place.'} Monthly budget is set.` };
 }
 
 function retirementStatus(){
@@ -469,6 +507,7 @@ function renderGoals(){
   const emergencySource = emergencyCalculatorData();
   const insuranceSource = insuranceCheckerData();
   const retirementSource = retirementCalculatorData();
+  const parentsSource = parentsCoverageData();
   const educationGoals = state.lifeStage.children ? childPlannerGoals('Education') : [];
   const marriageGoals = state.lifeStage.children ? childPlannerGoals('Marriage') : [];
 
@@ -541,7 +580,13 @@ function renderGoals(){
           <div class="goal-msg" style="margin-bottom:8px;"><a href="debt-dashboard.html" style="color:var(--acc);">Open Debt Dashboard</a></div>
           ${debtRows}
           <button class="primary" style="margin-bottom:8px;" onclick="addLoan()">+ Add Manual Loan</button>
+          <div class="field"><label>Debt Payoff Strategy</label><select onchange="state.debtPlanStrategy=this.value; save(); patchUI();">
+            <option value="" ${!state.debtPlanStrategy?'selected':''}>Choose a strategy</option>
+            <option value="avalanche" ${state.debtPlanStrategy==='avalanche'?'selected':''}>Avalanche — highest interest first</option>
+            <option value="snowball" ${state.debtPlanStrategy==='snowball'?'selected':''}>Snowball — lowest balance first</option>
+          </select></div>
           <div class="field"><label>Extra Monthly Payment Committed (₹)</label><input type="number" value="${state.extraPayment||''}" oninput="state.extraPayment=parseFloat(this.value)||0; save(); patchUI();"></div>
+          <div class="goal-msg">The debt goal is Protected only after you choose a payoff strategy and commit an extra monthly payment.</div>
         </div>
       </div>
     `;
@@ -557,8 +602,10 @@ function renderGoals(){
           <div class="row">
               ${educationGoals.length ? `
                 <div class="field"><label>Tracked Education Goals</label><input type="text" value="${escapeHtml(educationGoals.map(goal=>goal.childName).join(', '))}" readonly></div>
-                <div class="field"><label>Combined Target Today (₹)</label><input type="number" value="${educationGoals.reduce((sum,goal)=>sum+(Number(goal.costToday)||0),0)}" readonly></div>
-                <div class="field"><label>Combined Already Saved (₹)</label><input type="number" value="${educationGoals.reduce((sum,goal)=>sum+(Number(goal.alreadySaved)||0),0)}" readonly></div>
+                <div class="goal-summary">
+                  <div class="field"><label>Combined Target Today (₹)</label><input type="number" value="${educationGoals.reduce((sum,goal)=>sum+(Number(goal.costToday)||0),0)}" readonly></div>
+                  <div class="field"><label>Combined Already Saved (₹)</label><input type="number" value="${educationGoals.reduce((sum,goal)=>sum+(Number(goal.alreadySaved)||0),0)}" readonly></div>
+                </div>
               ` : `
                 <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('edu')||''}" oninput="state.eduChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
                 <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('edu',18)}" oninput="state.eduTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
@@ -574,8 +621,10 @@ function renderGoals(){
           <div class="row">
             ${marriageGoals.length ? `
               <div class="field"><label>Tracked Marriage Goals</label><input type="text" value="${escapeHtml(marriageGoals.map(goal=>goal.childName).join(', '))}" readonly></div>
-              <div class="field"><label>Combined Target Today (₹)</label><input type="number" value="${marriageGoals.reduce((sum,goal)=>sum+(Number(goal.costToday)||0),0)}" readonly></div>
-              <div class="field"><label>Combined Already Saved (₹)</label><input type="number" value="${marriageGoals.reduce((sum,goal)=>sum+(Number(goal.alreadySaved)||0),0)}" readonly></div>
+              <div class="goal-summary">
+                <div class="field"><label>Combined Target Today (₹)</label><input type="number" value="${marriageGoals.reduce((sum,goal)=>sum+(Number(goal.costToday)||0),0)}" readonly></div>
+                <div class="field"><label>Combined Already Saved (₹)</label><input type="number" value="${marriageGoals.reduce((sum,goal)=>sum+(Number(goal.alreadySaved)||0),0)}" readonly></div>
+              </div>
             ` : `
               <div class="field"><label>Child's Current Age</label><input type="number" value="${childAgeFor('marriage')||''}" oninput="state.marriageChildAge=parseFloat(this.value)||0; save(); patchUI();"></div>
               <div class="field"><label>Target Age</label><input type="number" value="${childTargetAgeFor('marriage',25)}" oninput="state.marriageTargetAge=parseFloat(this.value)||0; save(); patchUI();"></div>
@@ -597,7 +646,12 @@ function renderGoals(){
         <div class="goal-head" onclick="toggleCard('parents')"><span class="goal-title">👨‍👩‍👧 Parents' Protection</span><span id="badge-parents"></span></div>
         <div class="goal-msg" id="msg-parents"></div>
         <div class="goal-detail ${state.openCard==='parents'?'open':''}">
-          <div class="checkbox-row"><input type="checkbox" ${state.parentsHealthIns?'checked':''} onchange="state.parentsHealthIns=this.checked; save(); patchUI();"><label>Parents have health insurance</label></div>
+          ${parentsSource.healthPolicies.length ? `
+            <div class="goal-msg">${parentsSource.healthPolicies.length} health polic${parentsSource.healthPolicies.length===1?'y':'ies'} synced · Total cover ₹${parentsSource.healthCover.toLocaleString('en-IN')}.</div>
+          ` : `
+            <div class="checkbox-row"><input type="checkbox" ${state.parentsHealthIns?'checked':''} onchange="state.parentsHealthIns=this.checked; save(); patchUI();"><label>Parents have health insurance</label></div>
+          `}
+          <div class="goal-msg"><a href="parents-coverage.html" style="color:var(--acc);">Open Parents Coverage</a> to manage their insurance, income, expenses, and savings.</div>
           <div class="checkbox-row"><input type="checkbox" ${state.parentsBudgetSet?'checked':''} onchange="state.parentsBudgetSet=this.checked; save(); patchUI();"><label>Monthly budget set aside for their expenses</label></div>
           <div class="row" style="margin-top:8px;">
             <div class="field"><label>Monthly Budget Amount (₹)</label><input type="number" value="${state.parentsBudgetAmt||''}" oninput="state.parentsBudgetAmt=parseFloat(this.value)||0; save(); patchUI();"></div>
@@ -710,7 +764,8 @@ const LINKED_PAGE_KEYS = new Set([
   RD_STORAGE_KEY,
   INVESTMENT_STORAGE_KEY,
   INSURANCE_CHECKER_KEY,
-  RETIREMENT_CALCULATOR_KEY
+  RETIREMENT_CALCULATOR_KEY,
+  PARENTS_COVERAGE_KEY
 ]);
 window.addEventListener('storage', event => {
   if(event.key === null || LINKED_PAGE_KEYS.has(event.key)){
