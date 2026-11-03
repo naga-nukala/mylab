@@ -1,0 +1,35 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day-wise · Time Zones</title><style>
+:root{--bg:#0f1412;--c:#17201c;--m:#a7e8c5;--o:#ff8c70;--t:#e8f0ec;--d:#8a9a92}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--t);font:15px/1.4 system-ui,sans-serif;padding:14px;max-width:720px;margin:0 auto}
+a{color:var(--m)}h1{font-size:20px;margin:6px 0}h2{font-size:15px;color:var(--m);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--c);border-radius:14px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:var(--t);background:var(--bg);border:1px solid #2c3a33;border-radius:8px;padding:7px}
+button{cursor:pointer;background:var(--m);color:var(--bg);border:0;font-weight:600}
+button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.arm{background:var(--o);color:var(--bg)}
+.nav{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-bottom:6px}.fl{display:flex;gap:6px;flex-wrap:wrap}
+.bar{height:6px;background:var(--m);border-radius:3px}.chip{display:inline-block;background:var(--bg);border:1px solid #2c3a33;border-radius:12px;padding:3px 10px;margin:3px 4px 0 0;font-size:13px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--m);color:var(--bg);padding:8px 14px;border-radius:20px;opacity:0;transition:opacity .2s;pointer-events:none}#toast.on{opacity:1}
+:focus-visible{outline:2px solid var(--o)}
+@media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
+table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
+</style></head><body>
+<h1>Day-wise Contributions</h1><div class="nav"><a href="tz-main.html">Contributions</a><a href="tz-today.html">Today's planner</a><a href="tz-monthly.html">Monthly</a></div>
+<div id="l"></div>
+<div id="toast"></div><script>
+const K='tz_v1',$=s=>document.querySelector(s);
+let D;try{D=JSON.parse(localStorage.getItem(K))||{}}catch(e){D={}}
+D.tags=D.tags||['goal-sleep','goal-mundane','goal-passion','goal-health','goal-parenting','goal-career','goal-relationships','goal-office'];D.log=D.log||{};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}};
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p2=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const fd=s=>{const[y,m,d]=s.split('-');return +d+'th '+MN[m-1]+' '+y};
+const H=d=>{const o={},l=D.log[d]||{};for(const k in l.done||{}){const[t,h]=l.done[k];o[t]=(o[t]||0)+h}for(const t in l.man||{})o[t]=(o[t]||0)+l.man[t];return o};
+const f=h=>(Math.round(h*100)/100).toLocaleString('en-IN')+'h';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clearTimeout(tt);tt=setTimeout(()=>e.className='',1600)};
+let arm=null;const twice=(k,fn)=>{if(arm===k){arm=null;fn()}else{arm=k;toast('Tap again to confirm');setTimeout(()=>{if(arm===k)arm=null},2500)}};
+const RV=['Sleep','Water (L)','Steps','Breakfast','Lunch','Dinner','Vitamin D (hrs)','Snax','Learn','Parenting','Health issue','Graha'];
+const ds=Object.keys(D.log).filter(d=>{const h=H(d),r=D.log[d].rv||{};return Object.values(h).some(x=>x)||Object.values(r).some(x=>x)}).sort().reverse();
+$('#l').innerHTML=ds.map(d=>{const h=H(d),r=D.log[d].rv||{},tot=Object.values(h).reduce((a,x)=>a+x,0);
+return`<div class="card"><h2>${fd(d)} <span>${f(tot)}</span></h2>${Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')}<div style="margin-top:8px;font-size:14px">${RV.filter(k=>r[k]).map(k=>`<div>${k}: <b>${esc(r[k])}</b></div>`).join('')}</div></div>`}).join('')||'<div class="card">Nothing logged yet. Tick blocks on the planner or add hours on the main page.</div>';
+</script></body></html>

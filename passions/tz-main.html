@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Time Zone Contributions</title><style>
+:root{--bg:#0f1412;--c:#17201c;--m:#a7e8c5;--o:#ff8c70;--t:#e8f0ec;--d:#8a9a92}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--t);font:15px/1.4 system-ui,sans-serif;padding:14px;max-width:720px;margin:0 auto}
+a{color:var(--m)}h1{font-size:20px;margin:6px 0}h2{font-size:15px;color:var(--m);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--c);border-radius:14px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:var(--t);background:var(--bg);border:1px solid #2c3a33;border-radius:8px;padding:7px}
+button{cursor:pointer;background:var(--m);color:var(--bg);border:0;font-weight:600}
+button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.arm{background:var(--o);color:var(--bg)}
+.nav{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-bottom:6px}.fl{display:flex;gap:6px;flex-wrap:wrap}
+.bar{height:6px;background:var(--m);border-radius:3px}.chip{display:inline-block;background:var(--bg);border:1px solid #2c3a33;border-radius:12px;padding:3px 10px;margin:3px 4px 0 0;font-size:13px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--m);color:var(--bg);padding:8px 14px;border-radius:20px;opacity:0;transition:opacity .2s;pointer-events:none}#toast.on{opacity:1}
+:focus-visible{outline:2px solid var(--o)}
+@media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
+table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
+.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}</style></head><body>
+<h1>Time Zone Contributions</h1><div class="nav"><a href="tz-today.html">Today's planner</a><a href="tz-monthly.html">Monthly</a><a href="tz-daily.html">Day-wise</a></div>
+<div class="card"><h2>Hours by tag <input id="yr" type="number" style="width:84px" aria-label="Year"></h2><div id="tot"></div></div>
+<div class="card"><h2>DS Review <span id="rd" style="color:var(--d);font-weight:400"></span></h2><div id="rv"></div><a href="tz-daily.html">All day-wise reviews</a></div>
+<div class="card"><h2>Add hours manually</h2><div class="fl"><select id="mt"></select><input id="md" type="date"><input id="mh" type="number" step="0.25" min="0" placeholder="hours" style="width:90px"><button id="ma">Add</button></div></div>
+<div class="card"><h2>Manage tags</h2><div id="tg"></div><div class="fl" style="margin-top:8px"><input id="nt" placeholder="e.g. goal-fitness"><button id="na">Add tag</button></div></div>
+<div id="toast"></div><script>
+const K='tz_v1',$=s=>document.querySelector(s);
+let D;try{D=JSON.parse(localStorage.getItem(K))||{}}catch(e){D={}}
+D.tags=D.tags||['goal-sleep','goal-mundane','goal-passion','goal-health','goal-parenting','goal-career','goal-relationships','goal-office'];D.log=D.log||{};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}};
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p2=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const fd=s=>{const[y,m,d]=s.split('-');return +d+'th '+MN[m-1]+' '+y};
+const H=d=>{const o={},l=D.log[d]||{};for(const k in l.done||{}){const[t,h]=l.done[k];o[t]=(o[t]||0)+h}for(const t in l.man||{})o[t]=(o[t]||0)+l.man[t];return o};
+const f=h=>(Math.round(h*100)/100).toLocaleString('en-IN')+'h';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clearTimeout(tt);tt=setTimeout(()=>e.className='',1600)};
+let arm=null;const twice=(k,fn)=>{if(arm===k){arm=null;fn()}else{arm=k;toast('Tap again to confirm');setTimeout(()=>{if(arm===k)arm=null},2500)}};
+const RV=['Sleep','Water (L)','Steps','Breakfast','Lunch','Dinner','Vitamin D (hrs)','Snax','Learn','Parenting','Health issue','Graha'];
+const day=iso(new Date());let Y=+day.slice(0,4);
+$('#rd').textContent=fd(day);$('#md').value=day;$('#yr').value=Y;
+$('#rv').innerHTML=RV.map(k=>`<label class="rl">${k}<input data-k="${k}" value="${esc(((D.log[day]||{}).rv||{})[k]||'')}"></label>`).join('');
+$('#rv').oninput=e=>{const k=e.target.dataset.k;if(!k)return;const L=D.log[day]=D.log[day]||{};(L.rv=L.rv||{})[k]=e.target.value;save()};
+function draw(){const o={};for(const d in D.log)if(d.slice(0,4)==Y){const h=H(d);for(const t in h)o[t]=(o[t]||0)+h[t]}
+D.tags.forEach(t=>o[t]=o[t]||0);const r=Object.entries(o).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...r.map(x=>x[1])),tot=r.reduce((a,x)=>a+x[1],0);
+$('#tot').innerHTML=r.map(([t,h])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>#${esc(t)}</span><b>${f(h)}</b></div><div class="bar" style="width:${h/mx*100}%"></div></div>`).join('')+`<div style="text-align:right;color:var(--d)">Total ${f(tot)}</div>`||'No tags yet.';
+$('#tg').innerHTML=D.tags.map(t=>`<span class="chip">#${esc(t)} <button class="g x" data-del="${esc(t)}" style="padding:0 6px" aria-label="Delete tag">✕</button></span>`).join('')||'<span style="color:var(--d)">Add a tag to start tracking.</span>';
+$('#mt').innerHTML=D.tags.map(t=>`<option>${esc(t)}</option>`).join('')}
+$('#yr').onchange=e=>{Y=+e.target.value||Y;draw()};
+$('#tg').onclick=e=>{const t=e.target.dataset.del;if(t==null)return;twice('t'+t,()=>{D.tags=D.tags.filter(x=>x!=t);save();draw();toast('Tag deleted')});if(arm)e.target.classList.add('arm')};
+$('#na').onclick=()=>{const t=$('#nt').value.trim().toLowerCase().replace(/^#/,'').replace(/\s+/g,'-');if(!t)return toast('Enter a tag name');if(D.tags.includes(t))return toast('Tag exists');D.tags.push(t);$('#nt').value='';save();draw();toast('Tag added')};
+$('#ma').onclick=()=>{const t=$('#mt').value,d=$('#md').value,h=parseFloat($('#mh').value);if(!t||!d||!(h>0))return toast('Pick tag, date and hours');const L=D.log[d]=D.log[d]||{};L.man=L.man||{};L.man[t]=(L.man[t]||0)+h;$('#mh').value='';save();draw();toast('Added '+f(h)+' to #'+t+' · '+fd(d))};
+draw();
+</script></body></html>
