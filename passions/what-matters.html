@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1311">
+<title>What Matters · Little Lab</title>
+<style>
+:root{
+  --bg:#0f1311; --card:#171d1a; --card2:#1e2622; --line:#2a342f;
+  --text:#e8efe9; --muted:#8a9a91; --mint:#a7e8c5; --coral:#ff8c70;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+body{max-width:720px;margin:0 auto;padding:16px 14px 80px}
+h1{font-size:22px;margin:6px 0 2px;color:var(--mint)}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+input,textarea,button{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-height:34px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+
+.summary{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.stat b{display:block;font-size:20px;color:var(--mint)}
+.stat span{font-size:11px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--card2);margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--mint);width:0;transition:width .25s}
+.upd{font-size:11px;color:var(--muted);margin-top:8px;text-align:right}
+
+.sec{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.sec-h{display:flex;align-items:center;gap:6px;padding:10px;flex-wrap:wrap}
+.badge{background:var(--mint);color:#0f1311;font-weight:700;font-size:12px;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.sec-title{flex:1;min-width:120px;background:transparent;border:1px solid transparent;border-radius:8px;padding:6px 8px;font-size:17px;font-weight:600}
+.sec-title:hover,.sec-title:focus{border-color:var(--line)}
+.prog{font-size:12px;color:var(--muted);white-space:nowrap}
+.tools{display:flex;gap:4px}
+.tools button{padding:4px 8px;min-height:32px;color:var(--muted)}
+.sec-b{padding:0 10px 12px}
+
+.goal{background:var(--card2);border-radius:12px;padding:10px;margin-top:10px}
+.goal-h{display:flex;gap:6px;align-items:center}
+.goal-title{flex:1;background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 8px;font-weight:600;color:var(--mint);font-size:15px}
+.goal-title:hover,.goal-title:focus{border-color:var(--line)}
+.item{display:flex;gap:8px;align-items:flex-start;margin-top:4px}
+.item input[type=checkbox]{margin-top:10px;width:18px;height:18px;accent-color:var(--mint);flex:none}
+.item textarea{flex:1;resize:none;overflow:hidden;background:transparent;border:1px solid transparent;border-radius:8px;padding:6px 8px;line-height:1.35;font-size:14px;min-height:34px}
+.item textarea:hover,.item textarea:focus{border-color:var(--line)}
+.item.done textarea{color:var(--muted);text-decoration:line-through}
+.del{color:var(--coral);border-color:transparent;padding:4px 8px;min-height:32px;flex:none}
+.del.armed{background:var(--coral);color:#0f1311;border-color:var(--coral);font-weight:700}
+@media (hover:hover) and (pointer:fine){
+  .item .del{opacity:0}
+  .item:hover .del,.item .del:focus-visible,.item .del.armed{opacity:1}
+  button:hover{border-color:var(--mint)}
+  .del:hover{border-color:var(--coral)}
+}
+.add{color:var(--mint);border-style:dashed;margin-top:8px;font-size:13px}
+.add.big{width:100%;padding:10px;margin-top:2px}
+.foot{display:flex;gap:8px;margin-top:16px}
+.foot button{flex:1}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--mint);color:#0f1311;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:10;max-width:90vw}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-color-scheme:light){
+  /* tool is intentionally dark-first like the rest of Little Lab */
+}
+</style>
+</head>
+<body>
+<h1>What Matters</h1>
+<p class="sub">Priorities, goals and the things I will do. Tap any text to edit. Saved on this device only.</p>
+
+<div class="summary" id="summary"></div>
+<div id="app"></div>
+<div class="foot"><button id="resetBtn" data-act="reset">Reset to my original notes</button></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='as_whatmatters_v1';
+var uidN=0;
+function uid(){uidN++;return 'x'+Date.now().toString(36)+uidN+Math.random().toString(36).slice(2,5);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDate(d){var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return String(d.getDate()).padStart(2,'0')+'th '+m[d.getMonth()]+' '+d.getFullYear();}
+
+/* ---------- default data (from WHAT MATTERS notes) ---------- */
+function G(title,items){return {id:uid(),t:title,items:items.map(function(x){return {id:uid(),t:x,d:false};})};}
+function defaults(){
+  return {updated:Date.now(),sections:[
+    {id:uid(),t:'Health',c:false,goals:[
+      G('A. Change Appearance',['Half-hands shirt in place already.','Shave head for a rough look.','Good attire even at home','Show affluent as few people thought I am working as watchmen, and make a look as aged person so that people believe I am parent and husband.']),
+      G('B. Organic Diet with all nutrients',['Milk + Egg after the exercises.','1 fruit daily add as mid snack','Chia seeds 0.5 lt as morning water.','1 guava daily for Vit C','One coconut per week.','Sweet potatoes at the evening for sleep','Sambar once a week.','Cucumber as a mid morning snack.','Make the most out of your diet: Combos: Vit C + Iron - Moringa leaves, Beetroot, Ragi, Dal + lemon','Dry Fruits - Badam + a in the morning and the evening','Carrot + Beetroot idly','Lemon grass tea as a refreshing drink.','Amla in February, highest content.','Moringa Leaves for Iron','Vit D Foods - Mushrooms, Fish, Avocado, Egg yolks']),
+      G('C. Life style for myself and family members',['Dad\u2019s daily walking - 5 K steps','Kids daily schedule','Ramya less tablets usage, stop non-veg esp. meat, coffee intake, screen time, shampoos etc.']),
+      G('My Notes',['BODY','BRAIN'])
+    ]},
+    {id:uid(),t:'Money',c:true,goals:[
+      G('A. Middle Class to Equal Class',['Savings to Investments','Take risks']),
+      G('B. Passive Income (Money should work for me)',['Other sources of income','Percentage leverage','Saved money is earned money']),
+      G('C. Buy More lands',['Moturu','Ajjamuru','Hyderabad','Chennai']),
+      G('D. Independent from Children (Good Retirement)',['For monthly expenses - PPF, EPF, NPS','A home to live','Medical Insurance']),
+      G('My Notes',['MINIMIZE EXPENSES','LITTLE SAVINGS','MICRO INVESTMENTS'])
+    ]},
+    {id:uid(),t:'Career',c:true,goals:[
+      G('A. Lead By Example',['People should follow me not by my mentoring, they should follow using what I follow.']),
+      G('B. Work in Google',['Ultimate Goal/Company']),
+      G('C. Knowledge Sharing/Mentoring \u2014 what I can share',['About QA','Productivity','Create Products with collaboration']),
+      G('D. Streamlining Process',['Agile (Retro, Scrum call)','QA']),
+      G('E. Minimize QA effort',['QA SRD','URT']),
+      G('F. Analytics',['Jira Analytics','Story Point Analytics']),
+      G('3 things for ideas',['Get the idea and work on it.','Present it in a new way.','Make it use by everybody.']),
+      G('\u2018TOP\u2019 Role',['(T)RUST','(O)RGANIZED','(P)ROCESS','ROLE'])
+    ]},
+    {id:uid(),t:'Relationships',c:true,goals:[
+      G('A. Bring back old Naga to relatives',['I need to call everyone.']),
+      G('B. Find well wishers',['BofA: Lavanya, Aravinth, Anjana, Anitha, Venu','Tagit: Bhuvana, Krithiga','Intertek: Narendra, Darisa, Avinash','B.Tech: Pavan, Sandeep, Prajith','Inter: Srinu, Kalyan','Tenth: Srinu, Jimmy']),
+      G('C. Parents',['Meet them often','Participate in conversations.','Don\u2019t yell at them.']),
+      G('C. Wife',['I need to change many things in her, mainly social connections and her passions.']),
+      G('C. Brother',['Steady stream of income and assets on his name.','If possible, invest money for Jagan\u2019s family too.']),
+      G('D. Responsible parenting',['Since both are girls, I need to educate them first their basic responsibility.','Then socially active.','Pyramid areas.']),
+      G('E. Networks',['KTBO - Community','I might try Communite, but the journey is stopping me to join.','Toast Masters: Increases in building network. I need to restart.','Devotional community: Like temple associations'])
+    ]},
+    {id:uid(),t:'Passions',c:true,goals:[
+      G('A. Psychology',['Find your stream.','Collect data.','Write observations']),
+      G('B. Arts & Crafts',['Hand crafts Duplicate','Creativity']),
+      G('C. Writing',['Write & collect love quotes','Love stories','Travel blog','Little Savings','Bday wishes','Search for platforms and share what I know (Mentor-Mentee)','LinkedIn posts']),
+      G('D. New Languages',['Tamil','Malayalam','Kannada','Tamil/Malayalam: by listening I learned more; same for Malayalam using Google Translate.','Songs? Of course, but that will be pure or poetic forms.','Watching movies is second source. You can listen more.','Tried book reading, and learnt letters in Tamil.']),
+      G('E. Music',['Guitar learning','Write lyrics']),
+      G('F. Social Responsibility',['KTBO','Save 5 Basic elements'])
+    ]}
+  ]};
+}
+
+/* ---------- state ---------- */
+var state;
+function load(){
+  try{
+    var r=localStorage.getItem(KEY);
+    if(r){var o=JSON.parse(r);if(o&&Array.isArray(o.sections))return o;}
+  }catch(e){}
+  return defaults();
+}
+function save(){
+  state.updated=Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  var u=document.getElementById('upd');if(u)u.textContent='Updated '+fmtDate(new Date(state.updated));
+}
+state=load();
+
+/* ---------- lookups ---------- */
+function findSec(id){return state.sections.find(function(s){return s.id===id;});}
+function ctx(el){
+  var se=el.closest('[data-sid]'),ge=el.closest('[data-gid]'),ie=el.closest('[data-iid]');
+  var s=se&&findSec(se.dataset.sid),g=null,i=null;
+  if(s&&ge)g=s.goals.find(function(x){return x.id===ge.dataset.gid;});
+  if(g&&ie)i=g.items.find(function(x){return x.id===ie.dataset.iid;});
+  return {s:s,g:g,i:i};
+}
+
+/* ---------- render ---------- */
+var pendingFocus=null;
+function render(){
+  var h='';
+  state.sections.forEach(function(s,idx){
+    var tot=0,done=0;s.goals.forEach(function(g){g.items.forEach(function(i){tot++;if(i.d)done++;});});
+    h+='<section class="sec" data-sid="'+s.id+'">'+
+      '<div class="sec-h"><span class="badge">#'+(idx+1)+'</span>'+
+      '<input class="sec-title" data-role="sec-title" value="'+esc(s.t)+'" aria-label="Section title">'+
+      '<span class="prog" data-role="prog">'+done+'/'+tot+'</span>'+
+      '<div class="tools">'+
+      '<button data-act="sec-up" title="Move up" aria-label="Move section up"'+(idx===0?' disabled':'')+'>\u25B2</button>'+
+      '<button data-act="sec-down" title="Move down" aria-label="Move section down"'+(idx===state.sections.length-1?' disabled':'')+'>\u25BC</button>'+
+      '<button data-act="toggle" aria-label="Expand or collapse">'+(s.c?'Show':'Hide')+'</button>'+
+      '<button class="del" data-act="sec-del" aria-label="Delete section">\u2715</button>'+
+      '</div></div>';
+    if(!s.c){
+      h+='<div class="sec-b">';
+      s.goals.forEach(function(g){
+        h+='<div class="goal" data-gid="'+g.id+'"><div class="goal-h">'+
+          '<input class="goal-title" data-role="goal-title" value="'+esc(g.t)+'" aria-label="Goal title">'+
+          '<button class="del" data-act="goal-del" aria-label="Delete goal">\u2715</button></div>';
+        g.items.forEach(function(i){
+          h+='<div class="item'+(i.d?' done':'')+'" data-iid="'+i.id+'">'+
+            '<input type="checkbox" data-role="item-done"'+(i.d?' checked':'')+' aria-label="Done">'+
+            '<textarea rows="1" data-role="item-text" aria-label="Item">'+esc(i.t)+'</textarea>'+
+            '<button class="del" data-act="item-del" aria-label="Delete item">\u2715</button></div>';
+        });
+        h+='<button class="add" data-act="item-add">+ Add item</button></div>';
+      });
+      h+='<button class="add" data-act="goal-add">+ Add goal</button></div>';
+    }
+    h+='</section>';
+  });
+  h+='<button class="add big" data-act="sec-add">+ Add section</button>';
+  document.getElementById('app').innerHTML=h;
+  document.querySelectorAll('#app textarea').forEach(grow);
+  renderSummary();
+  if(pendingFocus){
+    var el=document.querySelector('[data-iid="'+pendingFocus+'"] textarea')||document.querySelector('[data-gid="'+pendingFocus+'"] input')||document.querySelector('[data-sid="'+pendingFocus+'"] .sec-title');
+    pendingFocus=null;if(el){el.focus();if(el.select)el.select();}
+  }
+}
+function grow(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';}
+
+function totals(){
+  var g=0,i=0,d=0;
+  state.sections.forEach(function(s){g+=s.goals.length;s.goals.forEach(function(x){x.items.forEach(function(it){i++;if(it.d)d++;});});});
+  return {s:state.sections.length,g:g,i:i,d:d};
+}
+function renderSummary(){
+  var t=totals(),pct=t.i?Math.round(t.d/t.i*100):0;
+  document.getElementById('summary').innerHTML=
+    '<div class="stats"><div class="stat"><b>'+t.s+'</b><span>Priorities</span></div>'+
+    '<div class="stat"><b>'+t.g+'</b><span>Goals</span></div>'+
+    '<div class="stat"><b>'+t.i+'</b><span>Items</span></div>'+
+    '<div class="stat"><b>'+pct+'%</b><span>Done</span></div></div>'+
+    '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+    '<div class="upd" id="upd">Updated '+fmtDate(new Date(state.updated))+'</div>';
+}
+function updateProgress(sid){
+  var s=findSec(sid),el=document.querySelector('[data-sid="'+sid+'"] [data-role="prog"]');
+  if(s&&el){var tot=0,d=0;s.goals.forEach(function(g){g.items.forEach(function(i){tot++;if(i.d)d++;});});el.textContent=d+'/'+tot;}
+  renderSummary();
+}
+
+/* ---------- toast + tap-twice ---------- */
+var toastT;
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show');},2200);}
+var armTimers=new WeakMap();
+function tapTwice(btn,msg,fn){
+  if(btn.classList.contains('armed')){clearTimeout(armTimers.get(btn));fn();return;}
+  btn.classList.add('armed');btn.dataset.orig=btn.textContent;btn.textContent='Sure?';
+  toast(msg+' \u2014 tap again to confirm');
+  armTimers.set(btn,setTimeout(function(){btn.classList.remove('armed');btn.textContent=btn.dataset.orig;},2500));
+}
+
+/* ---------- events ---------- */
+var app=document.getElementById('app');
+
+app.addEventListener('input',function(e){
+  var r=e.target.dataset.role;if(!r)return;
+  var c=ctx(e.target);
+  if(r==='sec-title'&&c.s){c.s.t=e.target.value;save();}
+  else if(r==='goal-title'&&c.g){c.g.t=e.target.value;save();}
+  else if(r==='item-text'&&c.i){c.i.t=e.target.value;grow(e.target);save();}
+});
+app.addEventListener('change',function(e){
+  if(e.target.dataset.role!=='item-done')return;
+  var c=ctx(e.target);if(!c.i)return;
+  c.i.d=e.target.checked;
+  e.target.closest('.item').classList.toggle('done',c.i.d);
+  save();updateProgress(c.s.id);
+});
+app.addEventListener('keydown',function(e){
+  if(e.target.dataset.role==='item-text'&&e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    var c=ctx(e.target);if(!c.g)return;
+    var idx=c.g.items.indexOf(c.i),n={id:uid(),t:'',d:false};
+    c.g.items.splice(idx+1,0,n);pendingFocus=n.id;save();render();
+  }
+});
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]');if(!b)return;
+  var act=b.dataset.act,c=ctx(b),n;
+  if(act==='reset'){tapTwice(b,'This replaces everything',function(){state=defaults();save();render();toast('Reset to original notes');b.classList.remove('armed');b.textContent='Reset to my original notes';});return;}
+  if(act==='sec-add'){n={id:uid(),t:'New priority',c:false,goals:[]};state.sections.push(n);pendingFocus=n.id;save();render();return;}
+  if(!c.s)return;
+  if(act==='toggle'){c.s.c=!c.s.c;save();render();}
+  else if(act==='sec-up'||act==='sec-down'){
+    var i=state.sections.indexOf(c.s),j=act==='sec-up'?i-1:i+1;
+    if(j>=0&&j<state.sections.length){state.sections.splice(i,1);state.sections.splice(j,0,c.s);save();render();}
+  }
+  else if(act==='sec-del'){tapTwice(b,'Delete \u201C'+c.s.t+'\u201D',function(){state.sections.splice(state.sections.indexOf(c.s),1);save();render();toast('Priority deleted');});}
+  else if(act==='goal-add'){n={id:uid(),t:'New goal',items:[]};c.s.goals.push(n);pendingFocus=n.id;save();render();}
+  else if(act==='goal-del'&&c.g){tapTwice(b,'Delete goal',function(){c.s.goals.splice(c.s.goals.indexOf(c.g),1);save();render();toast('Goal deleted');});}
+  else if(act==='item-add'&&c.g){n={id:uid(),t:'',d:false};c.g.items.push(n);pendingFocus=n.id;save();render();}
+  else if(act==='item-del'&&c.g&&c.i){tapTwice(b,'Delete item',function(){c.g.items.splice(c.g.items.indexOf(c.i),1);save();render();toast('Item deleted');});}
+});
+
+render();
+})();
+</script>
+</body>
+</html>
