@@ -11,14 +11,14 @@
   :root{--bg:#0f172a;--card:#1e293b;--acc:#22c55e;--warn:#f59e0b;--bad:#ef4444;--txt:#e2e8f0;--sub:#94a3b8;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding:20px;}
-  .wrap{max-width:520px;margin:0 auto;}
+  .wrap{max-width:640px;margin:0 auto;}
   h1{font-size:20px;margin-bottom:4px;}
   p.sub{color:var(--sub);font-size:13px;margin-top:0;margin-bottom:20px;}
   .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;}
   label{display:block;font-size:14px;margin-bottom:6px;font-weight:600;}
   .hint{font-size:12px;color:var(--sub);margin-bottom:8px;}
-  input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
-  input:focus{outline:2px solid var(--acc);}
+  input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
+  input:focus,select:focus{outline:2px solid var(--acc);}
 
   .budget-box{text-align:center;padding:20px 16px;}
   .budget-num{font-size:32px;font-weight:800;}
@@ -33,8 +33,39 @@
   .items-list{margin-top:10px;}
   .item-line{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid #334155;}
   .item-line button{background:none;border:none;color:var(--bad);cursor:pointer;font-size:13px;}
+  .item-line button.item-edit{color:var(--acc);margin-right:4px;}
   .add-row{display:flex;gap:8px;margin-top:10px;}
   .add-row button{padding:10px 16px;border:none;border-radius:8px;background:var(--acc);color:#052e16;font-weight:700;cursor:pointer;}
+  .add-row button.secondary{background:#334155;color:var(--txt);}
+  .saved-list{margin-top:10px;}
+  .saved-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #334155;}
+  .saved-row:last-child{border-bottom:none;}
+  .saved-name{font-size:14px;}
+  .saved-actions{display:flex;gap:6px;flex-shrink:0;}
+  .saved-actions button{padding:7px 10px;border:none;border-radius:7px;background:#334155;color:var(--txt);font-weight:600;cursor:pointer;}
+  .saved-actions button.delete{color:var(--bad);}
+  .save-button{width:100%;padding:10px;border:none;border-radius:8px;background:var(--acc);color:#052e16;font-weight:700;cursor:pointer;}
+  .saved-empty{color:var(--sub);font-size:13px;padding:12px 0;}
+  .save-status{min-height:18px;margin:8px 0 0;color:var(--sub);font-size:12px;}
+
+  .price-fields{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .price-fields .field{flex:1;min-width:100px;}
+  .price-fields label{font-size:12px;color:var(--sub);margin-bottom:4px;}
+  .price-add{width:100%;padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;cursor:pointer;margin-top:4px;}
+  .price-entry{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #334155;font-size:13px;}
+  .price-entry:last-child{border-bottom:none;}
+  .price-meta{color:var(--sub);}
+  .price-unit{font-weight:700;white-space:nowrap;}
+  .price-best{color:var(--acc);}
+  .price-tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.15);color:var(--acc);font-weight:700;margin-left:6px;white-space:nowrap;}
+  .price-action{background:none;border:none;cursor:pointer;font-size:12px;margin-left:4px;padding:3px;}
+  .price-edit{color:var(--acc);}
+  .price-delete{color:var(--bad);}
+  .price-empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
+  .price-group{margin-bottom:16px;}
+  .price-group:last-child{margin-bottom:0;}
+  .price-group-title{font-size:14px;font-weight:700;margin-bottom:8px;}
+  .price-status{min-height:18px;margin:8px 0 0;color:var(--sub);font-size:12px;}
 
   .tip{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #334155;}
   .tip:last-child{border-bottom:none;}
@@ -42,8 +73,6 @@
   .tip label{font-size:13px;font-weight:400;margin:0;line-height:1.4;}
   .tip.checked label{color:var(--sub);text-decoration:line-through;}
 
-  .familysize{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
-  .familysize input{width:70px;}
 </style>
 </head>
 <body>
@@ -68,36 +97,212 @@
     <div class="add-row">
       <input type="text" id="itemName" placeholder="Item name">
       <input type="number" id="itemPrice" placeholder="₹" class="price">
-      <button onclick="addItem()">Add</button>
+      <button id="itemSubmitButton" onclick="addItem()">Add</button>
+      <button class="secondary" id="itemCancelButton" onclick="cancelEditItem()" hidden>Cancel</button>
     </div>
     <div class="items-list" id="itemsList"></div>
   </div>
 
   <div class="card">
-    <label>Family Size (for veggie bulk-buy tip)</label>
-    <div class="familysize">
-      <input type="number" id="familySize" value="4" oninput="updateVeggieTip()">
-      <span class="hint" id="veggieTip" style="margin:0;"></span>
+    <label>Best Price Calculator</label>
+    <div class="hint">Compare package prices by price per unit. Entries are saved automatically on this device.</div>
+    <div class="price-fields">
+      <div class="field"><label for="priceItemName">Item Name</label><input type="text" id="priceItemName" placeholder="e.g. Toor Dal"></div>
     </div>
+    <div class="price-fields">
+      <div class="field"><label for="comparePrice">Price (₹)</label><input type="number" id="comparePrice" min="0" step="any" placeholder="e.g. 150"></div>
+      <div class="field"><label for="compareQty">Quantity</label><input type="number" id="compareQty" min="0" step="any" placeholder="e.g. 1"></div>
+      <div class="field">
+        <label for="compareUnit">Unit</label>
+        <select id="compareUnit">
+          <option value="g">grams (g)</option>
+          <option value="kg">kilograms (kg)</option>
+          <option value="ml">millilitres (ml)</option>
+          <option value="l">litres (l)</option>
+          <option value="pcs">pieces</option>
+        </select>
+      </div>
+    </div>
+    <button class="price-add" id="compareAddButton" onclick="addPriceEntry()">+ Add Price</button>
+    <p class="price-status" id="priceStatus" role="status" aria-live="polite"></p>
+    <div id="priceEntries"></div>
   </div>
 
   <div class="card">
     <label>Money-Saving Checklist</label>
     <div id="tipsList"></div>
   </div>
+
+  <div class="card">
+    <label>Save this checklist</label>
+    <div class="hint">Save a dated snapshot of your current checklist on this device.</div>
+    <button class="save-button" onclick="saveNamedList()">Save</button>
+    <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
+    <div class="saved-list" id="savedLists"></div>
+  </div>
 </div>
 
 <script>
 let items = [];
+let checkedTips = [];
+let editingItemIndex = null;
+const DRAFT_KEY = 'dmartChecklistDraft_v1';
+const SAVED_KEY = 'dmartChecklistSaved_v1';
+const PRICE_KEY = 'dmartChecklistPrices_v1';
+let priceEntries = [];
+let editingPriceId = null;
+let nextPriceId = 0;
 const tips = [
   "Checked list before entering — no impulse buys",
   "Reviewed cart for unneeded items before billing",
-  "Bought rice bag from wholesale merchant, not DMart",
-  "Booked gas cylinder with 5% cashback card",
-  "Set only one non-veg/eggs day this week",
-  "Checked per-kg price across veggie varieties before buying",
-  "Considered online filters for water purifier (cheaper than AMC)"
+  "Checked per-kg price across veggie varieties before buying"
 ];
+
+function getState(){
+  return {
+    budget: document.getElementById('budget').value,
+    items,
+    checkedTips
+  };
+}
+
+function isValidState(state){
+  return state && typeof state === 'object'
+    && typeof state.budget === 'string'
+    && Array.isArray(state.items)
+    && state.items.every(item => item && typeof item.name === 'string' && Number.isFinite(item.price))
+    && Array.isArray(state.checkedTips)
+    && state.checkedTips.every(value => typeof value === 'boolean');
+}
+
+function applyState(state){
+  document.getElementById('budget').value = state.budget;
+  items = state.items;
+  cancelEditItem();
+  const savedTipChecks = state.checkedTips.length === 7
+    ? [state.checkedTips[0], state.checkedTips[1], state.checkedTips[5]]
+    : state.checkedTips;
+  checkedTips = tips.map((_, i) => savedTipChecks[i] === true);
+  renderTips();
+  render();
+}
+
+function showSaveStatus(message){
+  document.getElementById('saveStatus').textContent = message;
+}
+
+function saveDraft(){
+  try{
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(getState()));
+  }catch(error){
+    showSaveStatus('Could not save on this device. Check available browser storage.');
+  }
+}
+
+function loadDraft(){
+  try{
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if(!raw) return;
+    const state = JSON.parse(raw);
+    if(!isValidState(state)){
+      showSaveStatus('Saved draft could not be read; starting with a new checklist.');
+      return;
+    }
+    applyState(state);
+  }catch(error){
+    showSaveStatus('Saved draft could not be read; starting with a new checklist.');
+  }
+}
+
+function getSavedLists(){
+  const raw = localStorage.getItem(SAVED_KEY);
+  if(!raw) return {};
+  const saved = JSON.parse(raw);
+  if(!saved || typeof saved !== 'object' || Array.isArray(saved)){
+    throw new Error('Saved checklists have an invalid format.');
+  }
+  return saved;
+}
+
+function renderSavedLists(){
+  const container = document.getElementById('savedLists');
+  const saved = getSavedLists();
+  const names = Object.keys(saved).sort((a, b) => b.localeCompare(a));
+  if(names.length === 0){
+    container.innerHTML = '<div class="saved-empty">No saved checklists yet.</div>';
+    return;
+  }
+  container.replaceChildren(...names.map(name => {
+    const row = document.createElement('div');
+    row.className = 'saved-row';
+    const label = document.createElement('span');
+    label.className = 'saved-name';
+    label.textContent = name;
+    const actions = document.createElement('span');
+    actions.className = 'saved-actions';
+    const loadButton = document.createElement('button');
+    loadButton.textContent = 'Load';
+    loadButton.setAttribute('aria-label', `Load ${name}`);
+    loadButton.onclick = () => loadNamedList(name);
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'delete';
+    deleteButton.textContent = 'Delete';
+    deleteButton.setAttribute('aria-label', `Delete ${name}`);
+    deleteButton.onclick = () => deleteNamedList(name);
+    actions.append(loadButton, deleteButton);
+    row.append(label, actions);
+    return row;
+  }));
+}
+
+function saveNamedList(){
+  try{
+    const saved = getSavedLists();
+    const today = new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date());
+    let name = today;
+    let copy = 2;
+    while(Object.prototype.hasOwnProperty.call(saved, name)){
+      name = `${today} (${copy++})`;
+    }
+    saved[name] = getState();
+    localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+    renderSavedLists();
+    showSaveStatus(`Saved checklist for ${name}.`);
+  }catch(error){
+    showSaveStatus('Could not save the checklist. Check available browser storage.');
+  }
+}
+
+function loadNamedList(name){
+  try{
+    const state = getSavedLists()[name];
+    if(!isValidState(state)){
+      showSaveStatus('That saved checklist could not be read.');
+      return;
+    }
+    applyState(state);
+    showSaveStatus(`Loaded checklist from ${name}.`);
+  }catch(error){
+    showSaveStatus('Could not load the saved checklist.');
+  }
+}
+
+function deleteNamedList(name){
+  if(!confirm(`Delete the saved checklist from ${name}?`)) return;
+  try{
+    const saved = getSavedLists();
+    delete saved[name];
+    localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+    renderSavedLists();
+    showSaveStatus(`Deleted checklist from ${name}.`);
+  }catch(error){
+    showSaveStatus('Could not delete the saved checklist.');
+  }
+}
 
 function render(){
   const budget = parseFloat(document.getElementById('budget').value) || 0;
@@ -111,12 +316,27 @@ function render(){
   barFill.style.background = pct >= 100 ? 'var(--bad)' : pct >= 80 ? 'var(--warn)' : 'var(--acc)';
 
   const list = document.getElementById('itemsList');
-  list.innerHTML = items.map((item, i) => `
-    <div class="item-line">
-      <span>${item.name}</span>
-      <span>₹${item.price.toFixed(0)} <button onclick="removeItem(${i})">✕</button></span>
-    </div>
-  `).join('');
+  list.replaceChildren(...items.map((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'item-line';
+    const name = document.createElement('span');
+    name.textContent = item.name;
+    const price = document.createElement('span');
+    price.append(`₹${item.price.toFixed(0)} `);
+    const editButton = document.createElement('button');
+    editButton.className = 'item-edit';
+    editButton.textContent = '✎';
+    editButton.setAttribute('aria-label', `Edit ${item.name}`);
+    editButton.onclick = () => editItem(i);
+    const removeButton = document.createElement('button');
+    removeButton.textContent = '✕';
+    removeButton.setAttribute('aria-label', `Remove ${item.name}`);
+    removeButton.onclick = () => removeItem(i);
+    price.append(editButton, removeButton);
+    row.append(name, price);
+    return row;
+  }));
+  saveDraft();
 }
 
 function addItem(){
@@ -125,26 +345,51 @@ function addItem(){
   const name = nameEl.value.trim();
   const price = parseFloat(priceEl.value) || 0;
   if(!name) return;
-  items.push({name, price});
+  if(editingItemIndex === null){
+    items.push({name, price});
+  }else{
+    items[editingItemIndex] = {name, price};
+  }
   nameEl.value = '';
   priceEl.value = '';
+  editingItemIndex = null;
+  document.getElementById('itemSubmitButton').textContent = 'Add';
+  document.getElementById('itemCancelButton').hidden = true;
   nameEl.focus();
   render();
 }
 
-function removeItem(i){
-  items.splice(i,1);
-  render();
+function editItem(i){
+  const item = items[i];
+  if(!item) return;
+  editingItemIndex = i;
+  document.getElementById('itemName').value = item.name;
+  document.getElementById('itemPrice').value = item.price;
+  document.getElementById('itemSubmitButton').textContent = 'Update';
+  document.getElementById('itemCancelButton').hidden = false;
+  document.getElementById('itemName').focus();
 }
 
-function updateVeggieTip(){
-  const size = parseFloat(document.getElementById('familySize').value) || 0;
-  const tipEl = document.getElementById('veggieTip');
-  if(size >= 6){
-    tipEl.textContent = 'Bulk-buy veggies weekly — cheaper per kg for your family size.';
-  } else {
-    tipEl.textContent = 'Buy veggies daily/every 2-3 days — bulk may spoil before use.';
+function cancelEditItem(){
+  editingItemIndex = null;
+  const nameEl = document.getElementById('itemName');
+  const priceEl = document.getElementById('itemPrice');
+  if(nameEl) nameEl.value = '';
+  if(priceEl) priceEl.value = '';
+  const submitButton = document.getElementById('itemSubmitButton');
+  const cancelButton = document.getElementById('itemCancelButton');
+  if(submitButton) submitButton.textContent = 'Add';
+  if(cancelButton) cancelButton.hidden = true;
+}
+
+function removeItem(i){
+  items.splice(i,1);
+  if(editingItemIndex === i){
+    cancelEditItem();
+  }else if(editingItemIndex !== null && editingItemIndex > i){
+    editingItemIndex--;
   }
+  render();
 }
 
 function renderTips(){
@@ -155,16 +400,190 @@ function renderTips(){
       <label for="chk-${i}">${t}</label>
     </div>
   `).join('');
+  checkedTips.forEach((checked, i) => {
+    const checkbox = document.getElementById('chk-' + i);
+    if(checkbox) checkbox.checked = checked;
+    const row = document.getElementById('tip-' + i);
+    if(row) row.classList.toggle('checked', checked);
+  });
 }
 
 function toggleTip(i){
   const row = document.getElementById('tip-'+i);
   const chk = document.getElementById('chk-'+i);
+  checkedTips[i] = chk.checked;
   row.classList.toggle('checked', chk.checked);
+  saveDraft();
 }
 
+function priceBaseUnit(quantity, unit){
+  if(unit === 'kg') return { quantity: quantity * 1000, label: 'g' };
+  if(unit === 'l') return { quantity: quantity * 1000, label: 'ml' };
+  return { quantity, label: unit };
+}
+
+function showPriceStatus(message){
+  document.getElementById('priceStatus').textContent = message;
+}
+
+function savePriceEntries(){
+  try{
+    localStorage.setItem(PRICE_KEY, JSON.stringify(priceEntries));
+    return true;
+  }catch(error){
+    showPriceStatus('Could not save price entries. Check available browser storage.');
+    return false;
+  }
+}
+
+function loadPriceEntries(){
+  try{
+    const raw = localStorage.getItem(PRICE_KEY);
+    if(!raw) return;
+    const saved = JSON.parse(raw);
+    if(!Array.isArray(saved) || !saved.every(entry =>
+      entry && (typeof entry.id === 'number' || typeof entry.id === 'string')
+      && typeof entry.name === 'string'
+      && Number.isFinite(entry.price) && entry.price > 0
+      && Number.isFinite(entry.quantity) && entry.quantity > 0
+      && ['g', 'kg', 'ml', 'l', 'pcs'].includes(entry.unit)
+    )){
+      showPriceStatus('Saved price entries could not be read; add a new comparison to start.');
+      return;
+    }
+    priceEntries = saved;
+  }catch(error){
+    showPriceStatus('Saved price entries could not be read; add a new comparison to start.');
+  }
+}
+
+function addPriceEntry(){
+  const nameInput = document.getElementById('priceItemName');
+  const priceInput = document.getElementById('comparePrice');
+  const quantityInput = document.getElementById('compareQty');
+  const name = nameInput.value.trim();
+  const price = Number(priceInput.value);
+  const quantity = Number(quantityInput.value);
+  const unit = document.getElementById('compareUnit').value;
+  if(!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0){
+    showPriceStatus('Enter an item name, a price above zero, and a quantity above zero.');
+    return;
+  }
+
+  const id = editingPriceId ?? `${Date.now()}-${++nextPriceId}`;
+  const entry = { id, name, price, quantity, unit };
+  if(editingPriceId !== null){
+    priceEntries = priceEntries.map(saved => saved.id === editingPriceId ? entry : saved);
+  }else{
+    priceEntries.push(entry);
+  }
+  editingPriceId = null;
+  document.getElementById('compareAddButton').textContent = '+ Add Price';
+  nameInput.value = '';
+  priceInput.value = '';
+  quantityInput.value = '';
+  document.getElementById('compareUnit').value = 'g';
+  savePriceEntries();
+  renderPriceEntries();
+  nameInput.focus();
+}
+
+function editPriceEntry(id){
+  const entry = priceEntries.find(saved => saved.id === id);
+  if(!entry) return;
+  document.getElementById('priceItemName').value = entry.name;
+  document.getElementById('comparePrice').value = entry.price;
+  document.getElementById('compareQty').value = entry.quantity;
+  document.getElementById('compareUnit').value = entry.unit;
+  editingPriceId = id;
+  document.getElementById('compareAddButton').textContent = '✓ Update Price';
+  document.getElementById('priceItemName').focus();
+}
+
+function deletePriceEntry(id){
+  const entry = priceEntries.find(saved => saved.id === id);
+  if(!entry) return;
+  priceEntries = priceEntries.filter(saved => saved.id !== id);
+  if(editingPriceId === id){
+    editingPriceId = null;
+    document.getElementById('compareAddButton').textContent = '+ Add Price';
+  }
+  savePriceEntries();
+  renderPriceEntries();
+}
+
+function renderPriceEntries(){
+  const container = document.getElementById('priceEntries');
+  if(priceEntries.length === 0){
+    container.innerHTML = '<div class="price-empty">No prices saved yet. Add a price above.</div>';
+    return;
+  }
+
+  const groups = new Map();
+  priceEntries.forEach(entry => {
+    const { quantity, label } = priceBaseUnit(entry.quantity, entry.unit);
+    const key = `${entry.name.trim().toLocaleLowerCase()}|${label}`;
+    if(!groups.has(key)) groups.set(key, { name: entry.name, unitLabel: label, entries: [] });
+    groups.get(key).entries.push({ ...entry, unitPrice: entry.price / quantity });
+  });
+
+  container.replaceChildren(...Array.from(groups.values()).sort((a, b) =>
+    a.name.localeCompare(b.name) || a.unitLabel.localeCompare(b.unitLabel)
+  ).map(group => {
+    const section = document.createElement('div');
+    section.className = 'price-group';
+    const title = document.createElement('div');
+    title.className = 'price-group-title';
+    title.textContent = `${group.name} (per ${group.unitLabel})`;
+    section.append(title);
+    const sorted = group.entries.slice().sort((a, b) => a.unitPrice - b.unitPrice);
+    const bestPrice = sorted[0].unitPrice;
+    sorted.forEach((entry, index) => {
+      const row = document.createElement('div');
+      row.className = 'price-entry';
+      const details = document.createElement('span');
+      details.append(`${entry.quantity}${entry.unit} `);
+      const meta = document.createElement('span');
+      meta.className = 'price-meta';
+      meta.textContent = `— ₹${entry.price.toLocaleString('en-IN', {maximumFractionDigits: 2})}`;
+      details.append(meta);
+      if(index === 0 && sorted.length > 1){
+        const tag = document.createElement('span');
+        tag.className = 'price-tag';
+        tag.textContent = 'BEST PRICE';
+        details.append(tag);
+      }
+
+      const actions = document.createElement('span');
+      actions.className = `price-unit${index === 0 ? ' price-best' : ''}`;
+      actions.textContent = `₹${entry.unitPrice.toLocaleString('en-IN', {maximumFractionDigits: 3})}/${group.unitLabel}`;
+      const editButton = document.createElement('button');
+      editButton.className = 'price-action price-edit';
+      editButton.textContent = 'Edit';
+      editButton.setAttribute('aria-label', `Edit ${entry.name} ${entry.quantity}${entry.unit} price`);
+      editButton.onclick = () => editPriceEntry(entry.id);
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'price-action price-delete';
+      deleteButton.textContent = '✕';
+      deleteButton.setAttribute('aria-label', `Delete ${entry.name} ${entry.quantity}${entry.unit} price`);
+      deleteButton.onclick = () => deletePriceEntry(entry.id);
+      actions.append(editButton, deleteButton);
+      row.append(details, actions);
+      section.append(row);
+    });
+    return section;
+  }));
+}
+
+try{
+  renderSavedLists();
+}catch(error){
+  showSaveStatus('Saved checklists could not be read from this device.');
+}
+loadDraft();
+loadPriceEntries();
+renderPriceEntries();
 renderTips();
-updateVeggieTip();
 render();
 </script>
 </body>
