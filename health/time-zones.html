@@ -12,12 +12,12 @@ button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.a
 :focus-visible{outline:2px solid var(--o)}
 @media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
 table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
-.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}</style></head><body>
-<h1>Time Zone Contributions</h1><div class="nav"><a href="tz-today.html">Today's planner</a><a href="tz-monthly.html">Monthly</a><a href="tz-daily.html">Day-wise</a></div>
-<div class="card"><h2>Hours by tag <input id="yr" type="number" style="width:84px" aria-label="Year"></h2><div id="tot"></div></div>
-<div class="card"><h2>DS Review <span id="rd" style="color:var(--d);font-weight:400"></span></h2><div id="rv"></div><a href="tz-daily.html">All day-wise reviews</a></div>
-<div class="card"><h2>Add hours manually</h2><div class="fl"><select id="mt"></select><input id="md" type="date"><input id="mh" type="number" step="0.25" min="0" placeholder="hours" style="width:90px"><button id="ma">Add</button></div></div>
-<div class="card"><h2>Manage tags</h2><div id="tg"></div><div class="fl" style="margin-top:8px"><input id="nt" placeholder="e.g. goal-fitness"><button id="na">Add tag</button></div></div>
+.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}.h{color:var(--d);font-size:13px;margin:-4px 0 8px}</style></head><body>
+<h1>Time Zone Contributions</h1><div class="nav"><a href="time-zones-today.html">Today's planner</a><a href="time-zones-reports.html#month">Monthly</a><a href="time-zones-reports.html#day">Day-wise</a></div>
+<div class="card"><h2>Hours by tag <input id="yr" type="number" style="width:84px" aria-label="Year"></h2><p class="h">Hours come from the blocks you tick on the planner, plus any manual entries.</p><div id="tot"></div></div>
+<div class="card"><h2>Add hours manually</h2><p class="h">For time you did not tick on the planner. Pick a tag, a date and the hours.</p><div class="fl"><select id="mt"></select><input id="md" type="date"><input id="mh" type="number" step="0.25" min="0" placeholder="hours" style="width:90px"><button id="ma">Add</button></div></div>
+<div class="card"><h2>Manual entries</h2><p class="h">Change the hours of an entry, or delete it.</p><div id="man"></div></div>
+<div class="card"><h2>Manage tags</h2><p class="h">Tags group your hours. They appear as choices for each block on the planner.</p><div id="tg"></div><div class="fl" style="margin-top:8px"><input id="nt" placeholder="e.g. goal-fitness"><button id="na">Add tag</button></div></div>
 <div id="toast"></div><script>
 const K='tz_v1',$=s=>document.querySelector(s);
 let D;try{D=JSON.parse(localStorage.getItem(K))||{}}catch(e){D={}}
@@ -33,17 +33,19 @@ let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clea
 let arm=null;const twice=(k,fn)=>{if(arm===k){arm=null;fn()}else{arm=k;toast('Tap again to confirm');setTimeout(()=>{if(arm===k)arm=null},2500)}};
 const RV=['Sleep','Water (L)','Steps','Breakfast','Lunch','Dinner','Vitamin D (hrs)','Snax','Learn','Parenting','Health issue','Graha'];
 const day=iso(new Date());let Y=+day.slice(0,4);
-$('#rd').textContent=fd(day);$('#md').value=day;$('#yr').value=Y;
-$('#rv').innerHTML=RV.map(k=>`<label class="rl">${k}<input data-k="${k}" value="${esc(((D.log[day]||{}).rv||{})[k]||'')}"></label>`).join('');
-$('#rv').oninput=e=>{const k=e.target.dataset.k;if(!k)return;const L=D.log[day]=D.log[day]||{};(L.rv=L.rv||{})[k]=e.target.value;save()};
+$('#md').value=day;$('#yr').value=Y;
 function draw(){const o={};for(const d in D.log)if(d.slice(0,4)==Y){const h=H(d);for(const t in h)o[t]=(o[t]||0)+h[t]}
 D.tags.forEach(t=>o[t]=o[t]||0);const r=Object.entries(o).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...r.map(x=>x[1])),tot=r.reduce((a,x)=>a+x[1],0);
-$('#tot').innerHTML=r.map(([t,h])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>#${esc(t)}</span><b>${f(h)}</b></div><div class="bar" style="width:${h/mx*100}%"></div></div>`).join('')+`<div style="text-align:right;color:var(--d)">Total ${f(tot)}</div>`||'No tags yet.';
+$('#tot').innerHTML=(tot?'':'<div style="color:var(--d);margin-bottom:6px">No hours yet for '+Y+'. Open the <a href="time-zones-today.html">planner</a> and tick a block to start.</div>')+r.map(([t,h])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>#${esc(t)}</span><b>${f(h)}</b></div><div class="bar" style="width:${h/mx*100}%"></div></div>`).join('')+`<div style="text-align:right;color:var(--d)">Total ${f(tot)}</div>`||'No tags yet.';
 $('#tg').innerHTML=D.tags.map(t=>`<span class="chip">#${esc(t)} <button class="g x" data-del="${esc(t)}" style="padding:0 6px" aria-label="Delete tag">✕</button></span>`).join('')||'<span style="color:var(--d)">Add a tag to start tracking.</span>';
 $('#mt').innerHTML=D.tags.map(t=>`<option>${esc(t)}</option>`).join('')}
 $('#yr').onchange=e=>{Y=+e.target.value||Y;draw()};
 $('#tg').onclick=e=>{const t=e.target.dataset.del;if(t==null)return;twice('t'+t,()=>{D.tags=D.tags.filter(x=>x!=t);save();draw();toast('Tag deleted')});if(arm)e.target.classList.add('arm')};
 $('#na').onclick=()=>{const t=$('#nt').value.trim().toLowerCase().replace(/^#/,'').replace(/\s+/g,'-');if(!t)return toast('Enter a tag name');if(D.tags.includes(t))return toast('Tag exists');D.tags.push(t);$('#nt').value='';save();draw();toast('Tag added')};
-$('#ma').onclick=()=>{const t=$('#mt').value,d=$('#md').value,h=parseFloat($('#mh').value);if(!t||!d||!(h>0))return toast('Pick tag, date and hours');const L=D.log[d]=D.log[d]||{};L.man=L.man||{};L.man[t]=(L.man[t]||0)+h;$('#mh').value='';save();draw();toast('Added '+f(h)+' to #'+t+' · '+fd(d))};
-draw();
+function drawMan(){const r=[];for(const d in D.log)for(const t in D.log[d].man||{})r.push([d,t,D.log[d].man[t]]);r.sort((a,b)=>a[0]<b[0]?1:a[0]>b[0]?-1:0);
+$('#man').innerHTML=r.map(([d,t,h])=>`<div class="fl" style="align-items:center;margin:6px 0" data-d="${d}" data-t="${esc(t)}"><span style="flex:1;min-width:150px">${fd(d)} · #${esc(t)}</span><input type="number" step="0.25" min="0" value="${h}" style="width:90px" data-h aria-label="Hours"><button class="g x" data-md aria-label="Delete entry">✕</button></div>`).join('')||'<span style="color:var(--d)">No manual entries yet.</span>'}
+$('#man').oninput=e=>{const r=e.target.closest('[data-d]');if(!r||!e.target.hasAttribute('data-h'))return;const h=parseFloat(e.target.value);if(!(h>=0))return;D.log[r.dataset.d].man[r.dataset.t]=h;save();draw()};
+$('#man').onclick=e=>{const r=e.target.closest('[data-d]');if(!r||!e.target.hasAttribute('data-md'))return;const d=r.dataset.d,t=r.dataset.t;twice('m'+d+t,()=>{delete D.log[d].man[t];save();drawMan();draw();toast('Entry deleted')});if(arm)e.target.classList.add('arm')};
+$('#ma').onclick=()=>{const t=$('#mt').value,d=$('#md').value,h=parseFloat($('#mh').value);if(!t||!d||!(h>0))return toast('Pick tag, date and hours');const L=D.log[d]=D.log[d]||{};L.man=L.man||{};L.man[t]=(L.man[t]||0)+h;$('#mh').value='';save();draw();drawMan();toast('Added '+f(h)+' to #'+t+' · '+fd(d))};
+draw();drawMan();
 </script></body></html>

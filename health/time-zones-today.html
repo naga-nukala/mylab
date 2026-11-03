@@ -1,0 +1,76 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Today · Time Zones</title><style>
+:root{--bg:#0f1412;--c:#17201c;--m:#a7e8c5;--o:#ff8c70;--t:#e8f0ec;--d:#8a9a92}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--t);font:15px/1.4 system-ui,sans-serif;padding:14px;max-width:720px;margin:0 auto}
+a{color:var(--m)}h1{font-size:20px;margin:6px 0}h2{font-size:15px;color:var(--m);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--c);border-radius:14px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:var(--t);background:var(--bg);border:1px solid #2c3a33;border-radius:8px;padding:7px}
+button{cursor:pointer;background:var(--m);color:var(--bg);border:0;font-weight:600}
+button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.arm{background:var(--o);color:var(--bg)}
+.nav{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-bottom:6px}.fl{display:flex;gap:6px;flex-wrap:wrap}
+.bar{height:6px;background:var(--m);border-radius:3px}.chip{display:inline-block;background:var(--bg);border:1px solid #2c3a33;border-radius:12px;padding:3px 10px;margin:3px 4px 0 0;font-size:13px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--m);color:var(--bg);padding:8px 14px;border-radius:20px;opacity:0;transition:opacity .2s;pointer-events:none}#toast.on{opacity:1}
+:focus-visible{outline:2px solid var(--o)}
+@media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
+table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
+.row{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid #22302a;align-items:center}.row .tx{flex:1;min-width:0}.r2{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:28px}.r2 input[type=time]{width:112px}.r2 select{flex:1;min-width:110px}input[type=checkbox]{width:20px;height:20px;accent-color:var(--m)}#tabs{margin:8px 0}#tn{width:100%;font-weight:600}</style></head><body><h1 id="hd"></h1><div class="nav"><a href="time-zones.html">Contributions</a><a href="time-zones-reports.html">Monthly &amp; day-wise</a></div>
+<div class="fl" id="tabs"></div>
+<div class="card" id="tinfo"></div>
+<div class="card"><h2>Today <span id="sum"></span></h2><div id="chips"></div></div>
+<div class="card"><div id="list"></div><div class="fl" style="margin-top:10px"><button id="add">+ Add block</button></div></div>
+<div class="card"><h2>Backup &amp; share</h2><div class="fl"><button class="g" id="ex">Export JSON</button><button class="g" id="im">Import &amp; merge</button><button class="g x" id="ir">Import &amp; replace</button></div><input type="file" id="fi" accept=".json,application/json" hidden></div>
+<div id="toast"></div><script>
+const K='tz_v1',$=s=>document.querySelector(s);
+let D;try{D=JSON.parse(localStorage.getItem(K))||{}}catch(e){D={}}
+D.tags=D.tags||['goal-sleep','goal-mundane','goal-passion','goal-health','goal-parenting','goal-career','goal-relationships','goal-office'];D.log=D.log||{};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}};
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p2=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const fd=s=>{const[y,m,d]=s.split('-');return +d+'th '+MN[m-1]+' '+y};
+const H=d=>{const o={},l=D.log[d]||{};for(const k in l.done||{}){const[t,h]=l.done[k];o[t]=(o[t]||0)+h}for(const t in l.man||{})o[t]=(o[t]||0)+l.man[t];return o};
+const f=h=>(Math.round(h*100)/100).toLocaleString('en-IN')+'h';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clearTimeout(tt);tt=setTimeout(()=>e.className='',1600)};
+let arm=null;const twice=(k,fn)=>{if(arm===k){arm=null;fn()}else{arm=k;toast('Tap again to confirm');setTimeout(()=>{if(arm===k)arm=null},2500)}};
+const RV=['Sleep','Water (L)','Steps','Breakfast','Lunch','Dinner','Vitamin D (hrs)','Snax','Learn','Parenting','Health issue','Graha'];
+const uid=()=>Math.random().toString(36).slice(2,8);
+const mk=s=>s.trim().split('\n').map(l=>{const[a,b,t,g]=l.split('|');return{id:uid(),s:a,e:b,t,g:'goal-'+g}});
+const SL='23:00|07:00|Sleep|sleep\n',DS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+if(!D.tpl){D.tpl={wd:mk(SL),we:mk(SL)};D.tm={wd:{n:'Weekday',d:[1,2,3,4,5]},we:{n:'Weekend',d:[0,6]}};save()}
+else if(!D.tm){const N={office:'Office',wfh:'WFH',sat:'Saturday',sun:'Sunday',basic:'Basic'},wk=D.wk=='wfh'?'wfh':'office';D.tm={};for(const k in D.tpl)D.tm[k]={n:N[k]||k,d:k=='sat'?[6]:k=='sun'?[0]:k==wk?[1,2,3,4,5]:[]};save()}
+const now=new Date(),day=iso(now),dow=now.getDay();
+const lg=()=>D.log[day]=D.log[day]||{};
+const cur=()=>{const t=(D.log[day]||{}).tpl;if(t&&D.tm[t])return t;const ks=Object.keys(D.tm);return ks.find(k=>D.tm[k].d.includes(dow))||ks[0]};
+const mn=s=>{const[h,m]=(s||'').split(':');return h*60+ +m},dur=b=>{let d=mn(b.e)-mn(b.s);if(isNaN(d))return 0;if(d<0)d+=1440;return d/60};
+const opts=g=>[...new Set([...D.tags,g])].map(t=>`<option ${t==g?'selected':''}>${esc(t)}</option>`).join('');
+const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+$('#hd').textContent=DN[dow]+', '+fd(day);
+function stat(){const B=D.tpl[cur()],h=H(day),L=D.log[day]||{},dn=Object.values(L.done||{}).reduce((a,x)=>a+x[1],0),pl=B.reduce((a,b)=>a+dur(b),0);
+$('#sum').textContent=f(dn)+' of '+f(pl);
+$('#chips').innerHTML=Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')||'<span style="color:var(--d)">Tick a block to add its hours.</span>'}
+function draw(){const k=cur(),B=D.tpl[k],m=D.tm[k],L=D.log[day]||{};
+$('#tabs').innerHTML=Object.keys(D.tm).map(x=>`<button class="${x==k?'':'g'}" data-tab="${x}">${esc(D.tm[x].n)}</button>`).join('')+'<button class="g" data-new>+ New</button>';
+$('#tinfo').innerHTML=`<input id="tn" value="${esc(m.n)}" aria-label="Template name"><div class="fl" style="margin-top:8px">${DS.map((n,i)=>`<button class="${m.d.includes(i)?'':'g'}" data-day="${i}">${n}</button>`).join('')}</div><div style="color:var(--d);font-size:13px;margin:6px 0">Loads automatically on the selected days. Use the tabs to switch for today.</div><div class="fl"><button class="g" data-dup>Duplicate</button><button class="g x" data-rm>Delete template</button></div>`;
+$('#list').innerHTML=B.map((b,i)=>`<div class="row" data-i="${i}"><input type="checkbox" data-f="done" aria-label="Done" ${L.done&&L.done[b.id]?'checked':''}><input class="tx" data-f="t" value="${esc(b.t)}"><div class="r2"><input type="time" data-f="s" value="${b.s}"><input type="time" data-f="e" value="${b.e}"><select data-f="g">${opts(b.g)}</select><button class="g x" data-del="${i}" aria-label="Delete">✕</button></div></div>`).join('');
+stat()}
+$('#tabs').onclick=e=>{const d=e.target.dataset;if(d.tab){lg().tpl=d.tab;save();draw()}else if('new' in d){const k='t'+uid();D.tpl[k]=mk(SL);D.tm[k]={n:'New template',d:[]};lg().tpl=k;save();draw();toast('Template added')}};
+$('#tinfo').oninput=e=>{if(e.target.id!='tn')return;const k=cur();D.tm[k].n=e.target.value;const b=$('[data-tab="'+k+'"]');if(b)b.textContent=e.target.value;save()};
+$('#tinfo').onclick=e=>{const d=e.target.dataset,k=cur(),m=D.tm[k];
+if(d.day!=null){const i=+d.day;m.d=m.d.includes(i)?m.d.filter(x=>x!=i):[...m.d,i];save();draw()}
+else if('dup' in d){const n='t'+uid();D.tpl[n]=D.tpl[k].map(b=>({...b,id:uid()}));D.tm[n]={n:m.n+' copy',d:[]};lg().tpl=n;save();draw();toast('Duplicated')}
+else if('rm' in d){if(Object.keys(D.tm).length<2)return toast('Keep at least one template');twice('rt'+k,()=>{delete D.tpl[k];delete D.tm[k];const L=lg();delete L.tpl;save();draw();toast('Template deleted')});if(arm)e.target.classList.add('arm')}};
+$('#list').oninput=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||!fl)return;const b=D.tpl[cur()][r.dataset.i],L=lg();L.done=L.done||{};
+if(fl=='done'){if(e.target.checked)L.done[b.id]=[b.g,dur(b)];else delete L.done[b.id]}else{b[fl]=e.target.value;if(L.done[b.id])L.done[b.id]=[b.g,dur(b)]}
+save();stat()};
+$('#list').onclick=e=>{const i=e.target.dataset.del;if(i==null)return;const B=D.tpl[cur()],b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
+$('#add').onclick=()=>{D.tpl[cur()].push({id:uid(),s:'09:00',e:'10:00',t:'New block',g:D.tags[0]||''});save();draw();toast('Block added')};
+let mode='merge';
+function imp(o){if(!o||typeof o!='object'||!o.tpl||!o.tm)return toast('Not a Time Zones file');
+if(mode=='replace'){D={tags:o.tags||D.tags,log:o.log||{},tpl:o.tpl,tm:o.tm}}
+else{D.tags=[...new Set([...D.tags,...(o.tags||[])])];for(const k in o.tpl){const n=D.tpl[k]?k+'-'+uid():k;D.tpl[n]=o.tpl[k];D.tm[n]=o.tm[k]||{n:k,d:[]}}for(const d in o.log||{})if(!D.log[d])D.log[d]=o.log[d]}
+save();draw();toast('Imported')}
+$('#ex').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,1)],{type:'application/json'}));a.download='my-time-zones.json';a.click();toast('Exported')};
+$('#im').onclick=()=>{mode='merge';$('#fi').click()};
+$('#ir').onclick=()=>twice('ir',()=>{mode='replace';$('#fi').click()});
+$('#fi').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{try{imp(JSON.parse(r.result))}catch(x){toast('Could not read that file')}};r.readAsText(fl);e.target.value=''};
+draw();
+</script></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day-wise · Time Zones</title><style>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reports · Time Zones</title><style>
 :root{--bg:#0f1412;--c:#17201c;--m:#a7e8c5;--o:#ff8c70;--t:#e8f0ec;--d:#8a9a92}
 *{box-sizing:border-box}body{background:var(--bg);color:var(--t);font:15px/1.4 system-ui,sans-serif;padding:14px;max-width:720px;margin:0 auto}
 a{color:var(--m)}h1{font-size:20px;margin:6px 0}h2{font-size:15px;color:var(--m);margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -12,10 +12,10 @@ button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.a
 :focus-visible{outline:2px solid var(--o)}
 @media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
 table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
-</style></head><body>
-<h1>Day-wise Contributions</h1><div class="nav"><a href="tz-main.html">Contributions</a><a href="tz-today.html">Today's planner</a><a href="tz-monthly.html">Monthly</a></div>
-<div id="l"></div>
-<div id="toast"></div><script>
+</style></head><body><h1>Contributions Report</h1><div class="nav"><a href="time-zones.html">Contributions</a><a href="time-zones-today.html">Today's planner</a></div>
+<div class="fl" id="tabs" style="margin:8px 0"><button data-v="month">Monthly</button><button data-v="day">Day-wise</button></div>
+<div class="card" id="mo"><h2>Tag × month <input id="yr" type="number" style="width:84px" aria-label="Year"></h2><div class="sc"><table id="t"></table></div></div>
+<div id="dy"></div><div id="toast"></div><script>
 const K='tz_v1',$=s=>document.querySelector(s);
 let D;try{D=JSON.parse(localStorage.getItem(K))||{}}catch(e){D={}}
 D.tags=D.tags||['goal-sleep','goal-mundane','goal-passion','goal-health','goal-parenting','goal-career','goal-relationships','goal-office'];D.log=D.log||{};
@@ -29,7 +29,17 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clearTimeout(tt);tt=setTimeout(()=>e.className='',1600)};
 let arm=null;const twice=(k,fn)=>{if(arm===k){arm=null;fn()}else{arm=k;toast('Tap again to confirm');setTimeout(()=>{if(arm===k)arm=null},2500)}};
 const RV=['Sleep','Water (L)','Steps','Breakfast','Lunch','Dinner','Vitamin D (hrs)','Snax','Learn','Parenting','Health issue','Graha'];
-const ds=Object.keys(D.log).filter(d=>{const h=H(d),r=D.log[d].rv||{};return Object.values(h).some(x=>x)||Object.values(r).some(x=>x)}).sort().reverse();
-$('#l').innerHTML=ds.map(d=>{const h=H(d),r=D.log[d].rv||{},tot=Object.values(h).reduce((a,x)=>a+x,0);
-return`<div class="card"><h2>${fd(d)} <span>${f(tot)}</span></h2>${Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')}<div style="margin-top:8px;font-size:14px">${RV.filter(k=>r[k]).map(k=>`<div>${k}: <b>${esc(r[k])}</b></div>`).join('')}</div></div>`}).join('')||'<div class="card">Nothing logged yet. Tick blocks on the planner or add hours on the main page.</div>';
+let Y=new Date().getFullYear(),V=location.hash=='#day'?'day':'month';$('#yr').value=Y;
+function month(){const tg=new Set(D.tags),m={};for(const d in D.log){if(d.slice(0,4)!=Y)continue;const mo=+d.slice(5,7)-1,h=H(d);for(const t in h){tg.add(t);(m[t]=m[t]||Array(12).fill(0))[mo]+=h[t]}}
+const col=Array(12).fill(0);
+const rows=[...tg].map(t=>{const a=m[t]||Array(12).fill(0);a.forEach((h,i)=>col[i]+=h);return`<tr><td>#${esc(t)}</td>${a.map(h=>`<td>${h?f(h):'-'}</td>`).join('')}<td><b>${f(a.reduce((x,y)=>x+y,0))}</b></td></tr>`});
+$('#t').innerHTML=`<tr><th>Tag</th>${MN.map(x=>`<th>${x}</th>`).join('')}<th>Total</th></tr>`+rows.join('')+`<tr><td><b>Total</b></td>${col.map(h=>`<td><b>${h?f(h):'-'}</b></td>`).join('')}<td><b>${f(col.reduce((x,y)=>x+y,0))}</b></td></tr>`}
+function day(){const ds=Object.keys(D.log).filter(d=>{const h=H(d),r=D.log[d].rv||{};return Object.values(h).some(x=>x)||Object.values(r).some(x=>x)}).sort().reverse();
+$('#dy').innerHTML=ds.map(d=>{const h=H(d),r=D.log[d].rv||{},tot=Object.values(h).reduce((a,x)=>a+x,0);
+return`<div class="card"><h2>${fd(d)} <span>${f(tot)}</span></h2>${Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')}<div style="margin-top:8px;font-size:14px">${RV.filter(k=>r[k]).map(k=>`<div>${k}: <b>${esc(r[k])}</b></div>`).join('')}</div></div>`}).join('')||'<div class="card">Nothing logged yet. Tick blocks on the planner or add hours on the main page.</div>'}
+function show(){$('#mo').hidden=V!='month';$('#dy').hidden=V!='day';document.querySelectorAll('#tabs button').forEach(b=>b.className=b.dataset.v==V?'':'g');history.replaceState(null,'','#'+V)}
+$('#tabs').onclick=e=>{if(e.target.dataset.v){V=e.target.dataset.v;show()}};
+$('#yr').onchange=e=>{Y=+e.target.value||Y;month()};
+window.onhashchange=()=>{V=location.hash=='#day'?'day':'month';show()};
+month();day();show();
 </script></body></html>
