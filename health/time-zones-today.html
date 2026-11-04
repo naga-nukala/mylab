@@ -41,7 +41,14 @@ if(!D.tpl){D.tpl={wd:mk(SL),we:mk(SL)};D.tm={wd:{n:'Weekday',d:[1,2,3,4,5]},we:{
 else if(!D.tm){const N={office:'Office',wfh:'WFH',sat:'Saturday',sun:'Sunday',basic:'Basic'},wk=D.wk=='wfh'?'wfh':'office';D.tm={};for(const k in D.tpl)D.tm[k]={n:N[k]||k,d:k=='sat'?[6]:k=='sun'?[0]:k==wk?[1,2,3,4,5]:[]};save()}
 let day=iso(new Date()),dow=new Date().getDay();const TD=day;
 const lg=()=>D.log[day]=D.log[day]||{};
-const cur=()=>{const t=(D.log[day]||{}).tpl;if(t&&D.tm[t])return t;const ks=Object.keys(D.tm);return ks.find(k=>D.tm[k].d.includes(dow))||ks[0]};
+const kf=d=>{const t=(D.log[d]||{}).tpl;if(t&&D.tm[t])return t;const[y,m,dd]=d.split('-'),w=new Date(y,m-1,dd).getDay(),ks=Object.keys(D.tm);return ks.find(k=>D.tm[k].d.includes(w))||ks[0]};
+const cur=()=>kf(day);
+const blocksFor=d=>{const L=D.log[d],k=kf(d);return L&&L.ov&&L.ovk==k?L.ov:D.tpl[k]};
+const used=L=>!!L&&!!(L.ov||(L.done&&Object.keys(L.done).length));
+function chain(){const L=D.log[day]||{};if(used(L)||L.chained)return;const[y,m,dd]=day.split('-'),P=D.log[iso(new Date(y,m-1,+dd-1))];if(!used(P))return;
+const pb=fixB(blocksFor(iso(new Date(y,m-1,+dd-1)))),last=pb[pb.length-1],k=cur(),T=fixB(D.tpl[k]),f=T[0];
+if(!last||!f||!(mn(f.e)<mn(f.s))||f.s==last.e)return;
+const o=T.map(b=>({...b}));o[0].s=last.e;const N=lg();N.ov=o;N.ovk=k;N.chained=1;save();toast('Sleep starts at '+last.e+', where the previous day ended')}
 const mn=s=>{const[h,m]=(s||'').split(':');return h*60+ +m},dur=b=>{let d=mn(b.e)-mn(b.s);if(isNaN(d))return 0;if(d<0)d+=1440;return d/60};
 const hm=m=>{m=((m%1440)+1440)%1440;return p2(Math.floor(m/60))+':'+p2(m%60)};
 const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d)};
@@ -85,7 +92,7 @@ fillRv()}
 function fillRv(){const r=(D.log[day]||{}).rv||{};document.querySelectorAll('#rv input').forEach(i=>i.value=r[i.dataset.k]||'')}
 $('#rv').innerHTML=RV.map(k=>`<label class="rl">${k}<input data-k="${k}"></label>`).join('');
 $('#rv').oninput=e=>{const k=e.target.dataset.k;if(!k)return;const L=lg();(L.rv=L.rv||{})[k]=e.target.value;if(L.au)delete L.au[k];save()};
-const setDay=d=>{if(!d)return;day=d;const[y,m,dd]=d.split('-');dow=new Date(y,m-1,dd).getDay();draw()};
+const setDay=d=>{if(!d)return;day=d;const[y,m,dd]=d.split('-');dow=new Date(y,m-1,dd).getDay();chain();draw()};
 const shift=n=>{const[y,m,dd]=day.split('-');setDay(iso(new Date(y,m-1,+dd+n)))};
 $('#pv').onclick=()=>shift(-1);$('#nx').onclick=()=>shift(1);$('#td').onclick=()=>setDay(TD);$('#dp').onchange=e=>setDay(e.target.value);
 let mode='merge';
@@ -97,5 +104,5 @@ $('#ex').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjec
 $('#im').onclick=()=>{mode='merge';$('#fi').click()};
 $('#ir').onclick=()=>twice('ir',()=>{mode='replace';$('#fi').click()});
 $('#fi').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{try{imp(JSON.parse(r.result))}catch(x){toast('Could not read that file')}};r.readAsText(fl);e.target.value=''};
-draw();
+chain();draw();
 </script></body></html>
