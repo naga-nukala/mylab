@@ -140,6 +140,36 @@
     .task-actions button:hover{color:var(--text);}
   }
 
+  #calStrip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;margin-bottom:10px;scrollbar-width:thin;}
+  .cal-day{flex:none;width:54px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:7px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .cal-day small{font-size:10px;color:var(--sub);}
+  .cal-day b{font-size:13px;font-weight:600;white-space:nowrap;}
+  .cal-day .cnt{font-style:normal;font-size:11px;min-height:18px;min-width:18px;line-height:18px;border-radius:9px;color:#0f0f10;font-weight:700;padding:0 5px;text-align:center;}
+  .cal-day.has .cnt{background:var(--mint);}
+  .cal-day.late .cnt{background:var(--coral);}
+  .cal-day.today{border-color:var(--coral);}
+  .cal-day.sel{background:var(--card2);border-color:var(--mint);box-shadow:0 0 0 1px var(--mint);}
+  .cal-day.mstart{margin-left:6px;}
+  #tagToggle{flex:none;width:40px;background:var(--card2);border:1px solid var(--border);color:var(--mint);border-radius:10px;cursor:pointer;}
+  #tagPanel{display:none;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px;}
+  #tagPanel.open{display:block;}
+  #tagPanel .tag-row{display:flex;gap:8px;}
+  #tagPanel .tag-row input[type="text"]{margin-bottom:0;flex:1;}
+  #tagSave{background:var(--mint);color:#0f0f10;border:none;border-radius:10px;padding:0 14px;font-weight:700;cursor:pointer;}
+  .tag-chip{display:inline-flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:3px 4px 3px 10px;font-size:12px;margin:8px 6px 0 0;}
+  .tag-chip button{background:none;border:none;color:var(--sub);cursor:pointer;width:22px;height:22px;border-radius:50%;}
+  .tag-chip button.confirm{background:var(--coral);color:#fff;}
+  .badge-tag{font-size:10px;padding:2px 7px;border-radius:20px;border:1px solid var(--mint);color:var(--mint);}
+  .task-next{font-size:12px;color:var(--mint);margin-top:4px;word-break:break-word;}
+  .grp{margin-bottom:8px;}
+  .grp-h{width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:11px 12px;font-size:14px;cursor:pointer;text-align:left;}
+  .chev{color:var(--sub);transition:transform .15s;}
+  .grp.open .chev{transform:rotate(90deg);}
+  .grp-t{flex:1;}
+  .grp-t.late{color:var(--coral);}
+  .grp-n{background:var(--card2);border-radius:10px;padding:1px 8px;font-size:12px;color:var(--sub);}
+  .grp-b{padding:8px 0 0 10px;}
+  .ov-empty{text-align:center;color:var(--sub);font-size:13px;padding:14px 0;}
   #emptyState{text-align:center;color:var(--sub);font-size:13px;padding:30px 0;display:none;}
 
   #toast{
@@ -158,6 +188,8 @@
     <button id="exportBtn" aria-label="Download backup">⬇</button>
   </header>
 
+  <div id="calStrip"></div>
+
   <div class="date-nav">
     <button id="prevDay" aria-label="Previous day">‹</button>
     <div id="dateLabel">—</div>
@@ -174,14 +206,23 @@
 
   <form id="taskForm">
     <input type="text" id="taskTitle" placeholder="Add a task..." autocomplete="off" required>
+    <input type="text" id="taskNext" placeholder="Next action (optional)" autocomplete="off">
     <div class="form-row">
       <input type="date" id="taskDate">
       <input type="time" id="taskTime">
+    </div>
+    <div class="form-row">
       <select id="taskPriority">
         <option value="low">Low</option>
         <option value="medium" selected>Medium</option>
         <option value="high">High</option>
       </select>
+      <select id="taskTag"></select>
+      <button type="button" id="tagToggle" aria-label="Manage tags">🏷</button>
+    </div>
+    <div id="tagPanel">
+      <div class="tag-row"><input type="text" id="tagInput" placeholder="New tag" autocomplete="off"><button type="button" id="tagSave">Add</button></div>
+      <div id="tagChips"></div>
     </div>
     <label class="remind-label"><input type="checkbox" id="taskRemind"> 🔔 Remind me at that time</label>
     <textarea id="taskNotes" placeholder="Notes (optional)"></textarea>
@@ -195,6 +236,11 @@
   <div id="groupAny"><div class="group-label" id="groupAnyLabel" style="display:none">Anytime</div><div id="listAny"></div></div>
 
   <div id="emptyState">No tasks yet for this day. Add one above.</div>
+
+  <div class="group-label">Pending by tag</div>
+  <div id="ovTag"></div>
+  <div class="group-label">Pending by date</div>
+  <div id="ovDate"></div>
 </div>
 
 <div id="toast"></div>
@@ -230,10 +276,14 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         var parsed = JSON.parse(raw);
-        if(parsed && parsed.days) return parsed;
+        if(parsed && parsed.days){
+          if(!Array.isArray(parsed.tags)) parsed.tags = ["Work","Personal","Home"];
+          if(!parsed.open) parsed.open = {};
+          return parsed;
+        }
       }
     }catch(e){}
-    return { activeDate: todayStr(), days: {} };
+    return { activeDate: todayStr(), days: {}, tags: ["Work","Personal","Home"], open: {} };
   }
   function saveState(){
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -272,7 +322,7 @@
           var delay = target.getTime() - Date.now();
           if(delay > 0 && delay < 2147483000){
             reminderTimeouts[t.id] = setTimeout(function(){
-              try{ new Notification(t.title, { body: t.notes || ("Scheduled for " + formatTime(t.time)), tag: t.id }); }
+              try{ new Notification(t.title, { body: t.next ? ("Next: " + t.next) : (t.notes || ("Scheduled for " + formatTime(t.time))), tag: t.id }); }
               catch(e){}
             }, delay);
           }
@@ -322,8 +372,8 @@
     groupAnyLabel.style.display = noTime.length ? "block" : "none";
     emptyState.style.display = tasks.length ? "none" : "block";
 
-    listTime.innerHTML = withTime.map(renderRow).join("");
-    listAny.innerHTML = noTime.map(renderRow).join("");
+    listTime.innerHTML = withTime.map(function(t){ return renderRow(t, state.activeDate, false); }).join("");
+    listAny.innerHTML = noTime.map(function(t){ return renderRow(t, state.activeDate, false); }).join("");
 
     var total = tasks.length;
     var done = tasks.filter(function(t){ return t.done; }).length;
@@ -331,6 +381,7 @@
     doneCount.textContent = done;
     pendingCount.textContent = total - done;
     progressFill.style.width = total ? Math.round((done/total)*100)+"%" : "0%";
+    renderExtras();
   }
 
   function esc(s){
@@ -339,11 +390,11 @@
     });
   }
 
-  function renderRow(t){
+  function renderRow(t, dk, showDate){
     var confirmClass = (deleteArm === t.id) ? " confirm" : "";
     var deleteLabel = (deleteArm === t.id) ? "✓" : "✕";
     return (
-      '<div class="task-row'+(t.done?' done':'')+'" data-id="'+t.id+'">'+
+      '<div class="task-row'+(t.done?' done':'')+'" data-id="'+t.id+'" data-date="'+dk+'">'+
         '<div class="check" data-action="toggle" data-id="'+t.id+'">'+checkSvg()+'</div>'+
         '<div class="task-body">'+
           '<div class="task-title">'+esc(t.title)+'</div>'+
@@ -351,7 +402,10 @@
             (t.time ? '<span class="badge-time">'+formatTime(t.time)+'</span>' : '')+
             '<span class="badge-priority '+t.priority+'">'+t.priority+'</span>'+
             (t.remind ? '<span class="badge-remind">🔔</span>' : '')+
+            (t.tag ? '<span class="badge-tag">'+esc(t.tag)+'</span>' : '')+
+            (showDate ? '<span class="badge-time">'+formatDateLabel(dk)+'</span>' : '')+
           '</div>'+
+          (t.next ? '<div class="task-next">→ '+esc(t.next)+'</div>' : '')+
           (t.notes ? '<div class="task-notes">'+esc(t.notes)+'</div>' : '')+
         '</div>'+
         '<div class="task-actions">'+
@@ -364,6 +418,7 @@
 
   function renderHeader(){
     dateLabel.textContent = formatDateLabel(state.activeDate);
+    calSync();
   }
 
   function renderAll(){
@@ -378,6 +433,8 @@
     taskPriority.value = "medium";
     taskRemind.checked = false;
     taskNotes.value = "";
+    taskNext.value = "";
+    taskTag.value = "";
     editingId = null;
     editingDate = null;
     submitBtn.textContent = "Add task";
@@ -435,7 +492,7 @@
       var existing = srcArr.find(function(t){ return t.id === editingId; });
       var updated = {
         id: editingId, title:title, time:taskTime.value, priority:taskPriority.value,
-        notes:taskNotes.value.trim(), done: existing ? existing.done : false, remind:remind
+        notes:taskNotes.value.trim(), done: existing ? existing.done : false, remind:remind, next:taskNext.value.trim(), tag:taskTag.value
       };
       setTasksForDate(editingDate, srcArr.filter(function(t){ return t.id !== editingId; }));
       var destArr = getTasksForDate(targetDate).slice();
@@ -444,7 +501,7 @@
       showToast(targetDate === editingDate ? "Task updated" : "Moved to " + formatDateLabel(targetDate));
     } else {
       var arr = getTasksForDate(targetDate).slice();
-      arr.push({ id: uid(), title:title, time:taskTime.value, priority:taskPriority.value, notes:taskNotes.value.trim(), done:false, remind:remind });
+      arr.push({ id: uid(), title:title, time:taskTime.value, priority:taskPriority.value, notes:taskNotes.value.trim(), done:false, remind:remind, next:taskNext.value.trim(), tag:taskTag.value });
       setTasksForDate(targetDate, arr);
       showToast(targetDate === state.activeDate ? "Task added" : "Added to " + formatDateLabel(targetDate));
     }
@@ -483,33 +540,39 @@
     if(!btn) return;
     var action = btn.getAttribute("data-action");
     var id = btn.getAttribute("data-id");
-    var tasks = getTasks();
+    var rowEl = btn.closest(".task-row");
+    var rowDate = rowEl ? rowEl.getAttribute("data-date") : state.activeDate;
+    var tasks = getTasksForDate(rowDate);
 
     if(action === "toggle"){
       tasks = tasks.map(function(t){
         if(t.id === id) return Object.assign({}, t, { done: !t.done });
         return t;
       });
-      setTasks(tasks);
+      setTasksForDate(rowDate, tasks);
       renderList();
     } else if(action === "edit"){
       var t = tasks.find(function(x){ return x.id === id; });
       if(!t) return;
+      if(rowDate !== state.activeDate){ state.activeDate = rowDate; saveState(); renderAll(); }
       taskTitle.value = t.title;
-      taskDate.value = state.activeDate;
+      taskDate.value = rowDate;
+      taskNext.value = t.next || "";
+      taskTag.value = t.tag || "";
       taskTime.value = t.time || "";
       taskPriority.value = t.priority;
       taskRemind.checked = !!t.remind;
       taskNotes.value = t.notes || "";
       editingId = id;
-      editingDate = state.activeDate;
+      editingDate = rowDate;
       submitBtn.textContent = "Update task";
       cancelEdit.style.display = "inline-block";
       taskTitle.focus();
+      taskForm.scrollIntoView({ behavior: "smooth", block: "center" });
     } else if(action === "delete"){
       if(deleteArm === id){
         tasks = tasks.filter(function(t){ return t.id !== id; });
-        setTasks(tasks);
+        setTasksForDate(rowDate, tasks);
         deleteArm = null;
         if(editingId === id) resetForm();
         showToast("Task deleted");
@@ -527,6 +590,148 @@
   listTime.addEventListener("click", handleAction);
   listAny.addEventListener("click", handleAction);
 
+  // ---- Calendar strip (pending count per day, scrollable) ----
+  var calStrip = document.getElementById("calStrip");
+  var DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var _n = new Date(), calBase = new Date(_n.getFullYear(), _n.getMonth(), _n.getDate());
+  var calMin = -30, calMax = 60, calBusy = false;
+  function offDate(o){ var d = new Date(calBase.getTime()); d.setDate(d.getDate()+o); return d; }
+  function pendingOn(ds){ return (state.days[ds]||[]).filter(function(t){ return !t.done; }).length; }
+  function calCell(o){
+    var d = offDate(o), ds = dateToStr(d), first = d.getDate() === 1;
+    return '<div class="cal-day'+(first?' mstart':'')+(ds===todayStr()?' today':'')+'" data-date="'+ds+'">'+
+      '<small>'+DOW[d.getDay()]+'</small><b>'+d.getDate()+(first?' '+MONTHS[d.getMonth()]:'')+'</b><i class="cnt"></i></div>';
+  }
+  function calRange(a,b){ var h=""; for(var o=a;o<=b;o++) h+=calCell(o); return h; }
+  function calBuild(){ calStrip.innerHTML = calRange(calMin, calMax); }
+  function calCounts(){
+    var ts = todayStr();
+    Array.prototype.forEach.call(calStrip.children, function(el){
+      var ds = el.getAttribute("data-date"), n = pendingOn(ds);
+      el.querySelector(".cnt").textContent = n || "";
+      el.classList.toggle("has", n>0);
+      el.classList.toggle("late", n>0 && ds<ts);
+      el.classList.toggle("sel", ds===state.activeDate);
+    });
+  }
+  function calSync(){
+    var diff = Math.round((new Date(state.activeDate+"T00:00:00") - calBase)/86400000);
+    if(diff < calMin+5){ calMin = diff-30; calBuild(); }
+    if(diff > calMax-5){ calMax = diff+30; calBuild(); }
+    calCounts();
+    var el = calStrip.querySelector('[data-date="'+state.activeDate+'"]');
+    if(el) el.scrollIntoView({ inline:"center", block:"nearest", behavior:"smooth" });
+  }
+  calStrip.addEventListener("scroll", function(){
+    if(calBusy) return; calBusy = true;
+    requestAnimationFrame(function(){
+      calBusy = false;
+      var s = calStrip;
+      if(s.scrollLeft < 120){
+        var w = s.scrollWidth, a = calMin-30;
+        s.insertAdjacentHTML("afterbegin", calRange(a, calMin-1)); calMin = a;
+        s.scrollLeft += s.scrollWidth - w; calCounts();
+      } else if(s.scrollWidth - s.scrollLeft - s.clientWidth < 120){
+        s.insertAdjacentHTML("beforeend", calRange(calMax+1, calMax+30)); calMax += 30; calCounts();
+      }
+    });
+  }, { passive:true });
+  calStrip.addEventListener("click", function(e){
+    var c = e.target.closest("[data-date]"); if(!c) return;
+    state.activeDate = c.getAttribute("data-date"); saveState(); deleteArm = null;
+    if(!editingId) taskDate.value = state.activeDate;
+    renderAll();
+  });
+
+  // ---- Tags (user managed) ----
+  var taskNext = document.getElementById("taskNext");
+  var taskTag = document.getElementById("taskTag");
+  var tagPanel = document.getElementById("tagPanel");
+  var tagInput = document.getElementById("tagInput");
+  var tagSaveBtn = document.getElementById("tagSave");
+  var tagChips = document.getElementById("tagChips");
+  var tagEditing = null, tagDeleteArm = null;
+  function renderTags(){
+    var cur = taskTag.value;
+    taskTag.innerHTML = '<option value="">No tag</option>' + state.tags.map(function(t){ return '<option value="'+esc(t)+'">'+esc(t)+'</option>'; }).join("");
+    taskTag.value = cur;
+    tagChips.innerHTML = state.tags.map(function(t){
+      var arm = tagDeleteArm === t;
+      return '<span class="tag-chip">'+esc(t)+'<button type="button" data-tact="rename" data-tag="'+esc(t)+'">✎</button><button type="button" class="'+(arm?'confirm':'')+'" data-tact="del" data-tag="'+esc(t)+'">'+(arm?'✓':'✕')+'</button></span>';
+    }).join("") || '<div class="ov-empty">No tags yet</div>';
+  }
+  function tagReset(){ tagEditing = null; tagInput.value = ""; tagSaveBtn.textContent = "Add"; }
+  function tagSave(){
+    var n = tagInput.value.trim(); if(!n) return;
+    if(state.tags.some(function(t){ return t.toLowerCase() === n.toLowerCase() && t !== tagEditing; })){ showToast("Tag already exists"); return; }
+    var cur = taskTag.value;
+    if(tagEditing){
+      var old = tagEditing;
+      state.tags = state.tags.map(function(t){ return t === old ? n : t; });
+      Object.keys(state.days).forEach(function(k){ state.days[k].forEach(function(t){ if(t.tag === old) t.tag = n; }); });
+      if(state.open["tag:"+old]){ state.open["tag:"+n] = true; delete state.open["tag:"+old]; }
+      if(cur === old) cur = n;
+      showToast("Tag renamed");
+    } else { state.tags.push(n); showToast("Tag added"); }
+    tagReset(); saveState(); renderTags(); taskTag.value = cur; renderList();
+  }
+  document.getElementById("tagToggle").addEventListener("click", function(){ tagPanel.classList.toggle("open"); });
+  tagSaveBtn.addEventListener("click", tagSave);
+  tagInput.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); tagSave(); } });
+  tagChips.addEventListener("click", function(e){
+    var b = e.target.closest("[data-tact]"); if(!b) return;
+    var name = b.getAttribute("data-tag");
+    if(b.getAttribute("data-tact") === "rename"){
+      tagEditing = name; tagInput.value = name; tagSaveBtn.textContent = "Save"; tagInput.focus();
+    } else if(tagDeleteArm === name){
+      state.tags = state.tags.filter(function(t){ return t !== name; });
+      Object.keys(state.days).forEach(function(k){ state.days[k].forEach(function(t){ if(t.tag === name) t.tag = ""; }); });
+      delete state.open["tag:"+name];
+      if(tagEditing === name) tagReset();
+      tagDeleteArm = null; saveState(); renderTags(); renderList(); showToast("Tag deleted");
+    } else {
+      tagDeleteArm = name; renderTags();
+      setTimeout(function(){ if(tagDeleteArm === name){ tagDeleteArm = null; renderTags(); } }, 3000);
+    }
+  });
+
+  // ---- Pending overview (collapsible) ----
+  var ovTag = document.getElementById("ovTag");
+  var ovDate = document.getElementById("ovDate");
+  function allPending(){
+    var out = [];
+    Object.keys(state.days).sort().forEach(function(dk){
+      state.days[dk].filter(function(t){ return !t.done; })
+        .sort(function(a,b){ var x = a.time||"99", y = b.time||"99"; return x<y?-1:x>y?1:0; })
+        .forEach(function(t){ out.push({ t:t, dk:dk }); });
+    });
+    return out;
+  }
+  function groupHtml(key, title, items, showDate, late){
+    var open = !!state.open[key];
+    return '<div class="grp'+(open?' open':'')+'"><button type="button" class="grp-h" data-action="toggleGroup" data-key="'+esc(key)+'"><span class="chev">›</span><span class="grp-t'+(late?' late':'')+'">'+esc(title)+'</span><span class="grp-n">'+items.length+'</span></button>'+
+      (open ? '<div class="grp-b">'+items.map(function(x){ return renderRow(x.t, x.dk, showDate); }).join("")+'</div>' : '')+'</div>';
+  }
+  function renderExtras(){
+    calCounts();
+    var items = allPending(), ts = todayStr(), empty = '<div class="ov-empty">No pending tasks 🎉</div>';
+    var byTag = {}, order = state.tags.concat([""]);
+    items.forEach(function(x){ var k = state.tags.indexOf(x.t.tag) > -1 ? x.t.tag : ""; (byTag[k] = byTag[k] || []).push(x); });
+    ovTag.innerHTML = order.filter(function(k){ return byTag[k]; }).map(function(k){ return groupHtml("tag:"+k, k || "Untagged", byTag[k], true, false); }).join("") || empty;
+    var byDate = {}, dates = [];
+    items.forEach(function(x){ if(!byDate[x.dk]){ byDate[x.dk] = []; dates.push(x.dk); } byDate[x.dk].push(x); });
+    ovDate.innerHTML = dates.map(function(dk){
+      return groupHtml("date:"+dk, formatDateLabel(dk) + (dk===ts ? " · Today" : dk<ts ? " · Overdue" : ""), byDate[dk], false, dk<ts);
+    }).join("") || empty;
+  }
+  function ovClick(e){
+    var b = e.target.closest('[data-action="toggleGroup"]'); if(!b) return;
+    var k = b.getAttribute("data-key"); state.open[k] = !state.open[k]; saveState(); renderExtras();
+  }
+  [ovTag, ovDate].forEach(function(el){ el.addEventListener("click", ovClick); el.addEventListener("click", handleAction); });
+
+  calBuild();
+  renderTags();
   scheduleReminders();
   taskDate.value = state.activeDate;
   renderAll();
