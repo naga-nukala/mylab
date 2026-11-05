@@ -8,7 +8,7 @@
 <style>
 :root{--bg:#0f1412;--card:#18201c;--line:#26332c;--tx:#e8f1ec;--mu:#8fa398;--mint:#a7e8c5;--coral:#ff8c70;color-scheme:dark}
 *{box-sizing:border-box}[hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:640px;margin:0 auto}
+body{margin:0 auto;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:640px}
 h1{font-size:20px;margin:4px 0 14px;color:var(--mint)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
@@ -18,19 +18,22 @@ button{font:inherit;border:1px solid var(--line);background:var(--card);color:va
 button.p{background:var(--mint);color:#0f1412;border-color:var(--mint);font-weight:600}
 button.d{color:var(--coral)}button.d.arm{background:var(--coral);color:#0f1412;border-color:var(--coral)}
 @media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}button.d:hover{border-color:var(--coral)}}
-input,textarea{font:inherit;width:100%;background:#0f1412;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px}
+input,textarea{font:inherit;width:100%;background:#0f1412;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0}
 input:focus,textarea:focus{outline:2px solid var(--mint);outline-offset:-1px}
 label{font-size:12px;color:var(--mu);display:block;margin-bottom:3px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.row{display:grid;grid-template-columns:1fr 56px 82px 34px;gap:6px;margin-bottom:6px}
-.row.h{font-size:11px;color:var(--mu)}.row button{padding:0}
+h3{font-size:13px;color:var(--mu);margin:12px 0 6px;font-weight:600}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr 36px;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.row input[data-role=n]{grid-column:1/-1}.row button{padding:0}
 #stat{color:var(--mu);font-size:13px;margin:-4px 0 10px;min-height:18px}
 #chk{font-size:13px;margin:8px 0}.ok{color:var(--mint)}.bad{color:var(--coral)}
 details summary{cursor:pointer;color:var(--mu);font-size:13px}
 textarea{min-height:110px;margin:8px 0;font-size:13px}
 .bill{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.bill small{color:var(--mu)}.items{margin:8px 0 0;font-size:13px;color:var(--mu)}
-.items div{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.bill small,.meta{color:var(--mu)}.meta{font-size:12px;margin-top:6px}
+.items{margin:8px 0 0;font-size:13px}
+.items div{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.items small{display:block;color:var(--mu);font-size:11px}
 .acts{display:flex;gap:6px;margin-top:8px}.acts button{padding:6px 11px;font-size:13px}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
@@ -56,16 +59,11 @@ textarea{min-height:110px;margin:8px 0;font-size:13px}
 </details>
 
 <div class="card" id="draft" hidden>
-  <div class="two">
-    <div><label>Store</label><input data-f="store" id="f-store"></div>
-    <div><label>Date</label><input type="date" data-f="date" id="f-date"></div>
-  </div>
-  <div class="row h"><span>Item</span><span>Qty</span><span>Amount</span><span></span></div>
+  <div class="two" id="fields"></div>
+  <h3>Items</h3>
   <div id="rows"></div>
-  <button data-act="addrow">+ Add row</button>
+  <button data-act="addrow">+ Add item</button>
   <div id="chk"></div>
-  <label>Bill total (optional, used to cross-check)</label>
-  <input data-f="total" id="f-total" inputmode="decimal" placeholder="e.g. 1,245.50">
   <div class="acts"><button class="p" data-act="save">Save bill</button><button data-act="cancel">Cancel</button></div>
 </div>
 
@@ -75,6 +73,7 @@ textarea{min-height:110px;margin:8px 0;font-size:13px}
 <script>
 const KEY='grocery_bills_v1';
 const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FIELDS=[['store','Store'],['place','Place / branch'],['date','Date','date'],['time','Time'],['billNo','Bill no.'],['pay','Paid by'],['saved','You saved on MRP ₹','num'],['gst','GST ₹','num'],['total','Bill total ₹','num']];
 const $=s=>document.querySelector(s);
 let bills=[];try{bills=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
 let draft=null,armed=null,tT,aT;
@@ -82,84 +81,162 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(bills))}catch(e){toa
 const inr=n=>Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fd=s=>{const p=(s||'').split('-');return p.length<3?'—':`${+p[2]}th ${M[p[1]-1]} ${p[0]}`};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
 const num=v=>parseFloat(String(v).replace(/,/g,''))||0;
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),2200)}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),2400)}
 const stat=m=>$('#stat').textContent=m||'';
 
 /* ---------- parsing ---------- */
-const SKIP=/(gst|cgst|sgst|igst|cess|tax|invoice|bill\s*no|cash|card|upi|change|saving|round|mrp|hsn|thank|visit|avenue|supermarts|fssai|customer|phone|tel\b|time|tender|paid)/i;
-const TOT=/(net\s*(amount|payable|total)|grand\s*total|total\s*(amount|payable|value)|amount\s*payable|^\s*total\b)/i;
+const NUM=/^\d[\d,]*(?:\.\d+)?$/;
+const MONEY=/\d[\d,]*\.\d{2}(?!\d)/g;
+const toN=s=>parseFloat(String(s).replace(/,/g,''))||0;
+const r2=n=>String(Math.round(n*100)/100),r3q=n=>String(Math.round(n*1000)/1000);
+const cap=t=>t.replace(/[A-Za-z]+/g,w=>w.length<=3?w:w[0]+w.slice(1).toLowerCase());
+const close=(a,b)=>Math.abs(a-b)<=Math.max(.1,Math.abs(b)*.005);
+const STOPL=/(created|helped|thank|visit|printed|invoice|bill|gstin|tax|date|\bcin\b|fssai|phone|description|items|total|cash|paid|saved|tender|end\s*doc|sno\b|particulars)/i;
+const SK=/(cgst|sgst|igst|cess|gstin|breakup|taxable|invoice|bill\s*(no|dt)|cashier|\bvol\b|phone|fssai|\bcin\b|subtotal|sub\s*total|grand|net\s*amount|items\s*:|items\/qty|round(ed)?\s*off|tender|\bchange\b|paid|payment|received|saved|discount|thank|visit|printed|created|helped|\bdate\b|\btime\b|\buid\b|particulars|description|\bhsn\b|\bsno\b|end\s*doc|inclusive|\btotal\b|^[T1Il]\s*[:;])/i;
+const lastMoney=l=>{const a=l.match(MONEY);return a?toN(a[a.length-1]):null};
 function parse(text){
-  const lines=text.split('\n').map(l=>l.replace(/[|_]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
-  const items=[];let total=null,date=null;
-  const store=/d\s*-?\s*mart|avenue\s*supermarts/i.test(text)?'DMart':'';
-  for(const l of lines){
-    const dm=l.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
-    if(dm&&!date&&+dm[2]<=12&&+dm[1]<=31){let y=+dm[3];if(y<100)y+=2000;date=`${y}-${String(dm[2]).padStart(2,'0')}-${String(dm[1]).padStart(2,'0')}`}
-    const nums=(l.match(/\d[\d,]*[.,]\d{2}(?!\d)/g)||[]).map(x=>parseFloat(x.replace(/,(?=\d{3})/g,'').replace(',','.')));
-    if(!nums.length)continue;
-    if(TOT.test(l)){total=nums[nums.length-1];continue}
-    if(SKIP.test(l))continue;
-    const tk=l.split(' ');const tail=[];
-    while(tk.length>1&&/^[\d.,]+$/.test(tk[tk.length-1]))tail.unshift(tk.pop());
-    const name=tk.join(' ').replace(/^\d+[.)]?\s+/,'').trim();
-    const amount=nums[nums.length-1];
-    if(name.length<2||!/[A-Za-z]{2}/.test(name)||!(amount>0))continue;
-    let q=1;
-    if(nums.length>=2&&nums[nums.length-2]>0){const r=amount/nums[nums.length-2];if(r>=0.01&&r<=1000)q=Math.round(r*1000)/1000}
-    items.push({n:name,q:String(q),a:String(amount)});
+  const lines=text.split('\n').map(l=>l.replace(/[|_~]/g,' ').replace(/(\d)\s+(\.\d{2})\b/g,'$1$2').replace(/\s+/g,' ').trim()).filter(Boolean);
+  const T=lines.join('\n');
+  const o={store:'',place:'',date:'',time:'',billNo:'',pay:'',saved:'',gst:'',total:'',items:[]};
+  let m;
+  /* store / place */
+  if(m=T.match(/\bD[ \t]?MART[ \t]+([A-Za-z][A-Za-z ]{3,})/i)){o.store='DMart';o.place=m[1].trim().toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())}
+  else if(/avenue\s*supermarts|\bd\s?mart\b/i.test(T))o.store='DMart';
+  else{
+    const si=lines.findIndex(l=>/^[A-Za-z][A-Za-z &.'\-]{5,}$/.test(l)&&l.split(' ').length>=2&&!STOPL.test(l));
+    if(si>=0){o.store=cap(lines[si]);
+      const nx=lines[si+1];if(nx&&/[A-Za-z]{3}/.test(nx)&&!STOPL.test(nx))o.place=cap(nx)}
   }
-  return {store,date:date||today(),total:total==null?'':String(total),items};
+  /* bill no */
+  m=T.match(/(?:invoice|bill)[ \t]*no\.?[ \t]*[:\-]?[ \t]*([A-Z0-9][A-Z0-9\/\-]{4,})/i)||T.match(/\bbill[ \t]*:[ \t]*([A-Z0-9][A-Z0-9\/\-]{4,})/i);
+  if(m)o.billNo=m[1];
+  /* date + time */
+  const dre=/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/,tre=/(\d{1,2}):(\d{2})(?::\d{2})?[ \t]*([AP]M)?/i;
+  const dl=lines.find(l=>dre.test(l)&&/\b(date|dt)\b/i.test(l))||lines.find(l=>dre.test(l));
+  if(dl){const d=dl.match(dre);let y=+d[3];if(y<100)y+=2000;if(+d[2]<=12&&+d[1]<=31)o.date=`${y}-${pad(d[2])}-${pad(d[1])}`;
+    let t=dl.match(tre);if(!t){const tl=lines.find(l=>/\btime\b/i.test(l)&&tre.test(l));t=tl&&tl.match(tre)}
+    if(t)o.time=`${+t[1]}:${t[2]}${t[3]?' '+t[3].toUpperCase():''}`}
+  /* payment */
+  m=T.match(/paid\s*through[ \t]*[:\-]?[ \t]*([A-Za-z]+)/i)||T.match(/tendered[ \t]*[-:][ \t]*([A-Za-z]+)/i)||T.match(/\b(card|upi)[ \t]*payment/i)||T.match(/\b(phonepe|gpay|paytm)\b/i);
+  if(m)o.pay=({phonepe:'PhonePe (UPI)',gpay:'GPay (UPI)',paytm:'Paytm',cash:'Cash',card:'Card',upi:'UPI'})[m[1].toLowerCase()]||m[1];
+  /* savings (last one wins: top of a photo can show the previous bill) */
+  const sv=[...T.matchAll(/sav(?:ed|ings?)[ \t]*(?:rs|inr|₹)?[ .:]*([\d,]+(?:\.\d+)?)/gi)];
+  if(sv.length)o.saved=r2(toN(sv[sv.length-1][1]));
+  /* total */
+  const tryTotal=re=>{for(let i=lines.length-1;i>=0;i--){const l=lines[i];if(re.test(l)&&!/sub\s*total|discount|taxable/i.test(l)){let v=lastMoney(l);if(v==null&&lines[i+1]&&/^[\d.,\s]+$/.test(lines[i+1]))v=lastMoney(lines[i+1]);if(v!=null)return v}}return null};
+  let tot=tryTotal(/grand\s*total|net\s*(amount|payable|total)|amount\s*payable|total\s*(amount|payable)/i);
+  if(tot==null)tot=tryTotal(/items\s*:?\s*\d+\s*qty/i);
+  if(tot==null)tot=tryTotal(/\btotal\b/i);
+  if(tot==null)tot=tryTotal(/card\s*payment|amount\s*received|tendered/i);
+  /* GST (DMart summary row: taxable, cgst, sgst, …, total) */
+  const gl=lines.find(l=>{const a=(l.match(MONEY)||[]).map(toN);return a.length>=4&&a[1]===a[2]&&tot!=null&&close(a[a.length-1],tot)});
+  if(gl){const a=gl.match(MONEY).map(toN);o.gst=r2(a[1]+a[2])}
+  /* items */
+  let rateFirst=null,pend=null;
+  const nm=s=>s.replace(/^\(?\d+\)?[.)]?\s+/,'').replace(/^[0-9A-Z]{5,7}\s+(?=[A-Za-z])/,m=>/\d{4}/.test(m)?'':m).trim();
+  const r3=(x,y,z)=>{let [q,r]=rateFirst===true?[y,x]:rateFirst===false?[x,y]:(x<=y?[x,y]:[y,x]);
+    if(!close(q*r,z)&&close(x*y,z))[q,r]=[r,q];
+    if(!close(q*r,z)&&q>0)r=z/q;return {q,r}};
+  const add=(n,q,r,a,mrp,d)=>{o.items.push({n,q:r3q(q),r:r2(r),a:r2(a),m:mrp>r?r2(mrp):'',d:d>0?r2(d):''})};
+  for(let i=0;i<lines.length;i++){
+    const l=lines[i];
+    if(/\b(qty|quantity)\b/i.test(l)&&/\b(rate|price)\b/i.test(l)){rateFirst=l.search(/\b(rate|price)\b/i)<l.search(/\b(qty|quantity)\b/i);pend=null;continue}
+    const tk=l.split(' ');
+    if(tk.length>=3&&tk.length<=5&&tk.every(t=>NUM.test(t))){
+      if(pend){const v=tk.map(toN),n=nm(pend);
+        if(v.length===3){const {q,r}=r3(v[0],v[1],v[2]);add(n,q,r,v[2],0,0)}
+        else{const mrp=v[0],pr=v[1],q=v[2],a=v[v.length-1],d=v.length===5?v[3]:Math.max(0,(mrp-pr)*q);
+          add(n,q,close(pr*q,a)||!q?pr:a/q,a,mrp,d)}}
+      pend=null;continue}
+    if(SK.test(l)){pend=null;continue}
+    const t=[];while(tk.length>1&&t.length<3&&NUM.test(tk[tk.length-1]))t.unshift(tk.pop());
+    const n=nm(tk.join(' '));
+    if(t.length===3&&/[A-Za-z]{2}/.test(n)){const v=t.map(toN);if(v[2]>0){const {q,r}=r3(v[0],v[1],v[2]);add(n,q,r,v[2],0,0)}pend=null}
+    else if(!MONEY.test(l)&&/[A-Za-z]{2}/.test(l)){pend=l}else pend=null;
+    MONEY.lastIndex=0;
+  }
+  const sum=o.items.reduce((s,i)=>s+toN(i.a),0);
+  o.total=r2(tot!=null?tot:sum);
+  if(!o.date)o.date=today();
+  return o;
 }
 
 /* ---------- OCR (lazy-loaded, runs in the browser) ---------- */
 const TSRC='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
 const loadLib=()=>new Promise((res,rej)=>{if(window.Tesseract)return res();const s=document.createElement('script');s.src=TSRC;s.onload=res;s.onerror=()=>rej(new Error('lib'));document.head.appendChild(s)});
-async function prep(file){
-  const b=await createImageBitmap(file);
-  const sc=Math.max(.5,Math.min(2,1800/b.width));
-  const c=document.createElement('canvas');c.width=Math.round(b.width*sc);c.height=Math.round(b.height*sc);
-  const x=c.getContext('2d');x.filter='grayscale(1) contrast(1.4)';x.drawImage(b,0,0,c.width,c.height);return c;
+function crop(c){ /* bills are photographed on dark surfaces: keep only the bright paper area */
+  const w=200,h=Math.max(1,Math.round(c.height*w/c.width)),t=document.createElement('canvas');t.width=w;t.height=h;
+  const x=t.getContext('2d');x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data;
+  const cs=new Array(w).fill(0),rs=new Array(h).fill(0);
+  for(let y=0;y<h;y++)for(let i=0;i<w;i++){const p=(y*w+i)*4;if((d[p]+d[p+1]+d[p+2])/3>135){cs[i]++;rs[y]++}}
+  const f=(a,min)=>{const i=a.findIndex(v=>v>=min),j=a.length-1-[...a].reverse().findIndex(v=>v>=min);return i<0?null:[i,j]};
+  const X=f(cs,h*.05),Y=f(rs,w*.05);if(!X||!Y)return c;
+  const k=c.width/w,mg=4,x0=Math.max(0,(X[0]-mg)*k),x1=Math.min(c.width,(X[1]+mg)*k),y0=Math.max(0,(Y[0]-mg)*k),y1=Math.min(c.height,(Y[1]+mg)*k);
+  if(x1-x0<c.width*.15||y1-y0<c.height*.15)return c;
+  const o=document.createElement('canvas');o.width=Math.round(x1-x0);o.height=Math.round(y1-y0);
+  o.getContext('2d').drawImage(c,x0,y0,x1-x0,y1-y0,0,0,o.width,o.height);return o;
 }
+async function prep(file){
+  const b=await createImageBitmap(file),s=Math.min(1,3000/Math.max(b.width,b.height));
+  let c=document.createElement('canvas');c.width=Math.round(b.width*s);c.height=Math.round(b.height*s);
+  c.getContext('2d').drawImage(b,0,0,c.width,c.height);c=crop(c);
+  const k=Math.min(2.5,Math.max(1,1300/Math.min(c.width,c.height)),5000/Math.max(c.width,c.height));
+  const o=document.createElement('canvas');o.width=Math.round(c.width*k);o.height=Math.round(c.height*k);
+  const x=o.getContext('2d');x.filter='grayscale(1) contrast(1.4)';x.drawImage(c,0,0,o.width,o.height);return o;
+}
+function rot(c,deg){const o=document.createElement('canvas'),sw=deg%180;o.width=sw?c.height:c.width;o.height=sw?c.width:c.height;
+  const x=o.getContext('2d');x.translate(o.width/2,o.height/2);x.rotate(deg*Math.PI/180);x.drawImage(c,-c.width/2,-c.height/2);return o}
 async function scan(file){
+  let w;
   try{
     stat('Loading reader (first time needs internet)…');
     await loadLib();
     stat('Preparing image…');
-    const c=await prep(file);
-    const r=await Tesseract.recognize(c,'eng',{logger:m=>{if(m.status==='recognizing text')stat('Reading bill… '+Math.round(m.progress*100)+'%')}});
-    $('#txt').value=r.data.text;
-    stat('');
-    openDraft(parse(r.data.text));
-    if(!draft.items.length)toast('No items found — add rows or fix the raw text');
-    else toast(draft.items.length+' items read — please check them');
-  }catch(e){stat('');toast(e.message==='lib'?'Could not load reader — check internet':'Could not read this image')}
+    const c=await prep(file);let lab='';
+    w=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')stat(`Reading bill${lab}… ${Math.round(m.progress*100)}%`)}});
+    await w.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
+    let best=null;
+    for(const deg of [0,90,270,180]){
+      lab=deg?` (turned ${deg}°)`:'';
+      const r=await w.recognize(deg?rot(c,deg):c),p=parse(r.data.text),sc=p.items.length*1000+r.data.confidence;
+      if(!best||sc>best.sc)best={sc,text:r.data.text,p};
+      if(p.items.length&&r.data.confidence>=55)break;
+    }
+    await w.terminate();stat('');
+    $('#txt').value=best.text;
+    openDraft(best.p);
+    toast(best.p.items.length?best.p.items.length+' items read — please check them':'No items found — add rows or fix the raw text');
+  }catch(e){try{w&&await w.terminate()}catch(_){}stat('');toast(e.message==='lib'?'Could not load reader — check internet':'Could not read this image')}
 }
 
 /* ---------- draft ---------- */
+$('#fields').innerHTML=FIELDS.map(([k,l,t])=>`<div><label>${l}</label><input data-f="${k}" id="f-${k}"${t==='date'?' type="date"':t==='num'?' inputmode="decimal"':''}></div>`).join('');
 function openDraft(d){
   draft=d;$('#draft').hidden=false;
-  $('#f-store').value=d.store||'';$('#f-date').value=d.date||today();$('#f-total').value=d.total||'';
+  FIELDS.forEach(([k])=>$('#f-'+k).value=d[k]??'');
   rows();chk();$('#draft').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function rows(){
-  $('#rows').innerHTML=draft.items.map((it,i)=>`<div class="row" data-i="${i}"><input data-role="n" value="${esc(it.n)}" aria-label="Item"><input data-role="q" inputmode="decimal" value="${esc(it.q)}" aria-label="Qty"><input data-role="a" inputmode="decimal" value="${esc(it.a)}" aria-label="Amount"><button class="d" data-act="rm" aria-label="Remove row">✕</button></div>`).join('');
+  $('#rows').innerHTML=draft.items.map((it,i)=>`<div class="row" data-i="${i}"><input data-role="n" value="${esc(it.n)}" placeholder="Item" aria-label="Item"><input data-role="q" inputmode="decimal" value="${esc(it.q)}" placeholder="Qty" aria-label="Qty"><input data-role="r" inputmode="decimal" value="${esc(it.r)}" placeholder="Rate" aria-label="Rate"><input data-role="a" inputmode="decimal" value="${esc(it.a)}" placeholder="Amount" aria-label="Amount"><button class="d" data-act="rm" aria-label="Remove item">✕</button></div>`).join('');
 }
 function chk(){
   const sum=draft.items.reduce((s,i)=>s+num(i.a),0),t=num(draft.total),el=$('#chk');
-  let h=`Items total: <b>₹${inr(sum)}</b>`;
-  if(t){const d=Math.abs(sum-t);h+=d<=1?` · <span class="ok">matches bill total ✓</span>`:` · <span class="bad">differs from bill total by ₹${inr(d)} — check rows</span>`}
+  let h=`${draft.items.length} items · total <b>₹${inr(sum)}</b>`;
+  if(t){const d=Math.abs(sum-t);h+=d<=1?` · <span class="ok">matches bill total ✓</span>`:` · <span class="bad">differs from bill total by ₹${inr(d)} — check items</span>`}
   el.innerHTML=h;
 }
 
 /* ---------- render ---------- */
 function render(){
-  const ym=today().slice(0,7),mt=bills.filter(b=>b.date.startsWith(ym)).reduce((s,b)=>s+b.total,0);
-  const all=bills.reduce((s,b)=>s+b.total,0);
-  $('#sum').innerHTML=`<div><b>₹${inr(mt)}</b><span>This month</span></div><div><b>${bills.length}</b><span>Bills</span></div><div><b>₹${inr(bills.length?all/bills.length:0)}</b><span>Avg bill</span></div>`;
-  const s=[...bills].sort((a,b)=>b.date.localeCompare(a.date));
-  $('#list').innerHTML=s.length?s.map(b=>`<div class="card"><div class="bill"><div><b>${esc(b.store||'Grocery')}</b><br><small>${fd(b.date)} · ${b.items.length} items</small></div><b style="color:var(--mint)">₹${inr(b.total)}</b></div><details><summary>Items</summary><div class="items">${b.items.map(i=>`<div><span>${esc(i.n)}${i.q!=1?' × '+i.q:''}</span><span>₹${inr(i.a)}</span></div>`).join('')}</div></details><div class="acts"><button data-act="edit" data-id="${b.id}">Edit</button><button class="d${armed===b.id?' arm':''}" data-act="del" data-id="${b.id}">${armed===b.id?'Tap again':'Delete'}</button></div></div>`).join(''):'<div class="empty">No bills yet — tap “Scan bill” to start.</div>';
+  const ym=today().slice(0,7),mb=bills.filter(b=>b.date.startsWith(ym));
+  $('#sum').innerHTML=`<div><b>₹${inr(mb.reduce((s,b)=>s+b.total,0))}</b><span>This month</span></div><div><b>${bills.length}</b><span>Bills</span></div><div><b>₹${inr(mb.reduce((s,b)=>s+(b.saved||0),0))}</b><span>Saved this month</span></div>`;
+  const s=[...bills].sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));
+  $('#list').innerHTML=s.length?s.map(b=>{
+    const meta=[b.billNo&&'Bill no. '+esc(b.billNo),b.pay&&'Paid by '+esc(b.pay),b.gst&&'GST ₹'+inr(b.gst),b.saved&&'Saved ₹'+inr(b.saved)].filter(Boolean).join(' · ');
+    return `<div class="card"><div class="bill"><div><b>${esc(b.store||'Grocery')}</b>${b.place?` <small>· ${esc(b.place)}</small>`:''}<br><small>${fd(b.date)}${b.time?' · '+esc(b.time):''} · ${b.items.length} items</small></div><b style="color:var(--mint)">₹${inr(b.total)}</b></div>${meta?`<div class="meta">${meta}</div>`:''}<details><summary>Items</summary><div class="items">${b.items.map(i=>`<div><span>${esc(i.n)}<small>${i.q} × ₹${inr(i.r)}${i.m?' · MRP ₹'+inr(i.m):''}</small></span><span>₹${inr(i.a)}</span></div>`).join('')}</div></details><div class="acts"><button data-act="edit" data-id="${b.id}">Edit</button><button class="d${armed===b.id?' arm':''}" data-act="del" data-id="${b.id}">${armed===b.id?'Tap again':'Delete'}</button></div></div>`}).join(''):'<div class="empty">No bills yet — tap “Scan bill” to start.</div>';
 }
 
 /* ---------- events (delegated) ---------- */
@@ -172,20 +249,21 @@ $('#file').addEventListener('change',e=>{const f=e.target.files[0];e.target.valu
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,id=b.dataset.id;
   if(a==='scan')$('#file').click();
-  else if(a==='manual')openDraft({id:null,store:'',date:today(),total:'',items:[{n:'',q:'1',a:''}]});
+  else if(a==='manual')openDraft({id:null,store:'',place:'',date:today(),time:'',billNo:'',pay:'',saved:'',gst:'',total:'',items:[{n:'',q:'1',r:'',a:''}]});
   else if(a==='parse'){const t=$('#txt').value.trim();if(!t)return toast('Nothing to parse');openDraft(parse(t));if(!draft.items.length)toast('No items found')}
-  else if(a==='addrow'){draft.items.push({n:'',q:'1',a:''});rows();chk();const r=$('#rows').lastElementChild;r&&r.querySelector('input').focus()}
+  else if(a==='addrow'){draft.items.push({n:'',q:'1',r:'',a:''});rows();chk();const r=$('#rows').lastElementChild;r&&r.querySelector('input').focus()}
   else if(a==='rm'){draft.items.splice(+b.closest('.row').dataset.i,1);rows();chk()}
   else if(a==='cancel'){draft=null;$('#draft').hidden=true}
   else if(a==='save'){
-    const items=draft.items.filter(i=>i.n.trim()||num(i.a)).map(i=>({n:i.n.trim()||'Item',q:num(i.q)||1,a:num(i.a)}));
+    const items=draft.items.filter(i=>i.n.trim()||num(i.a)).map(i=>{const q=num(i.q)||1,a=num(i.a);return {n:i.n.trim()||'Item',q,r:num(i.r)||(q?a/q:a),a,m:num(i.m)||0,d:num(i.d)||0}});
     if(!items.length)return toast('Add at least one item');
-    const sum=items.reduce((s,i)=>s+i.a,0);
-    const bill={id:draft.id||Date.now().toString(36),store:(draft.store||'').trim(),date:draft.date||today(),total:num(draft.total)||sum,items};
+    const sum=items.reduce((s,i)=>s+i.a,0),bn=(draft.billNo||'').trim();
+    if(bn&&bills.some(x=>x.billNo===bn&&x.id!==draft.id))return toast('A bill with this bill no. is already saved');
+    const bill={id:draft.id||Date.now().toString(36),store:(draft.store||'').trim(),place:(draft.place||'').trim(),billNo:bn,date:draft.date||today(),time:(draft.time||'').trim(),pay:(draft.pay||'').trim(),saved:num(draft.saved),gst:num(draft.gst),total:num(draft.total)||sum,items};
     const k=bills.findIndex(x=>x.id===bill.id);k>=0?bills[k]=bill:bills.push(bill);
     save();draft=null;$('#draft').hidden=true;render();toast('Bill saved');
   }
-  else if(a==='edit'){const x=bills.find(v=>v.id===id);if(x)openDraft({id:x.id,store:x.store,date:x.date,total:String(x.total),items:x.items.map(i=>({n:i.n,q:String(i.q),a:String(i.a)}))})}
+  else if(a==='edit'){const x=bills.find(v=>v.id===id);if(x)openDraft({id:x.id,store:x.store,place:x.place||'',date:x.date,time:x.time||'',billNo:x.billNo||'',pay:x.pay||'',saved:x.saved?String(x.saved):'',gst:x.gst?String(x.gst):'',total:String(x.total),items:x.items.map(i=>({n:i.n,q:String(i.q),r:String(Math.round(i.r*100)/100),a:String(i.a),m:i.m||'',d:i.d||''}))})}
   else if(a==='del'){
     if(armed===id){bills=bills.filter(v=>v.id!==id);armed=null;save();render();toast('Bill deleted')}
     else{armed=id;render();toast('Tap again to delete');clearTimeout(aT);aT=setTimeout(()=>{armed=null;render()},3000)}
