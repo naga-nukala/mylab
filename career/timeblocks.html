@@ -158,6 +158,37 @@
     pointer-events:none;z-index:50;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* --- saved plans + compare --- */
+  .save-row{display:flex;gap:10px;}
+  .save-row input{flex:1;min-width:0;}
+  .save-row .btn-primary{flex:0 0 auto;}
+  .txt-btn{width:auto;padding:0 10px;font-size:0.75rem;font-weight:600;}
+  .txt-btn.pending-load{background:rgba(127,214,208,0.15);border-color:var(--teal);color:var(--teal);}
+  .stack{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--border);margin-top:7px;}
+  .stack span{display:block;height:100%;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .chip{
+    background:transparent;border:1px solid var(--border);color:var(--text-dim);
+    border-radius:999px;padding:6px 12px;font-size:0.78rem;font-weight:550;
+  }
+  .chip.on{border-color:var(--teal);color:var(--teal);background:rgba(127,214,208,0.1);}
+  .cmp-scroll{overflow-x:auto;}
+  table.cmp{width:100%;border-collapse:collapse;font-size:0.78rem;}
+  table.cmp th{text-align:left;font-weight:600;color:var(--text);padding:0 8px 8px 0;min-width:84px;}
+  table.cmp td{padding:7px 8px 7px 0;vertical-align:top;border-top:1px solid var(--border);}
+  .cmp-name{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cmp-type{white-space:nowrap;color:var(--text-dim);min-width:96px;}
+  .cmp-type .dot{display:inline-block;margin-right:6px;}
+  .cmp-val{color:var(--text-dim);}
+  .cmp-val.lead{color:var(--teal);font-weight:650;}
+  .cmp-bar{height:5px;border-radius:3px;background:var(--border);margin-top:5px;overflow:hidden;}
+  .cmp-bar span{display:block;height:100%;}
+  tr.cmp-total td{color:var(--text);font-weight:650;}
+  tr.cmp-total .cmp-val{color:var(--text);}
+  @media (hover:hover) and (pointer:fine){
+    .chip:hover{border-color:var(--text-dim);color:var(--text);}
+  }
 </style>
 </head>
 <body>
@@ -231,6 +262,17 @@
   </div>
 
   <div id="listWrap"></div>
+
+  <div class="card">
+    <p class="form-title">Save this plan</p>
+    <div class="save-row">
+      <input type="text" id="planName" placeholder="e.g. Office day, WFH day" maxlength="40">
+      <button class="btn-primary" id="savePlanBtn">Save</button>
+    </div>
+  </div>
+
+  <div id="plansWrap"></div>
+  <div id="compareWrap"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -281,6 +323,10 @@
     donutSegments: document.getElementById("donutSegments"),
     totalHoursNum: document.getElementById("totalHoursNum"),
     emptyNote: document.getElementById("emptyNote"),
+    planName: document.getElementById("planName"),
+    savePlanBtn: document.getElementById("savePlanBtn"),
+    plansWrap: document.getElementById("plansWrap"),
+    compareWrap: document.getElementById("compareWrap"),
     toast: document.getElementById("toast")
   };
 
@@ -456,6 +502,7 @@
   function renderAll(){
     renderSummary();
     renderList();
+    renderCompare();
   }
 
   // ---- form lifecycle ----
@@ -557,10 +604,209 @@
     }, 2000);
   }
 
+  // ---- saved plans + compare ----
+  var PLANS_KEY = "as_timeblocks_plans_v1";
+  var plans = loadPlans();
+  var compareSel = {};      // id -> false when deselected; missing = selected
+  var pendingPlan = null;   // {action:"load"|"delete", id}
+  var pendingPlanTimer = null;
+
+  function loadPlans(){
+    try {
+      var raw = localStorage.getItem(PLANS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch(e){ return []; }
+  }
+  function savePlans(){
+    try { localStorage.setItem(PLANS_KEY, JSON.stringify(plans)); } catch(e){}
+  }
+
+  function totalsFor(arr){
+    var t = {}, grand = 0;
+    arr.forEach(function(b){
+      var h = durationHours(b.start,b.end);
+      t[b.type] = (t[b.type]||0)+h;
+      grand += h;
+    });
+    return {t:t, grand:grand};
+  }
+
+  function sig(arr){
+    return JSON.stringify(arr.map(function(b){ return [b.start,b.end,b.task,b.type]; }));
+  }
+
+  function lastBlockOf(arr){
+    return arr.slice().sort(function(a,b){
+      return toMinutes(a.start) - toMinutes(b.start);
+    }).pop() || null;
+  }
+
+  function clearPendingPlan(){
+    clearTimeout(pendingPlanTimer);
+    pendingPlan = null;
+  }
+  function setPendingPlan(action, id){
+    clearTimeout(pendingPlanTimer);
+    pendingPlan = {action:action, id:id};
+    renderPlans();
+    pendingPlanTimer = setTimeout(function(){
+      pendingPlan = null;
+      renderPlans();
+    }, 3000);
+  }
+
+  function renderPlans(){
+    if (!plans.length){ els.plansWrap.innerHTML = ""; return; }
+    var html = '<div class="list-head"><span>Saved plans</span></div>';
+    plans.forEach(function(p){
+      var tt = totalsFor(p.blocks);
+      var seg = "";
+      Object.keys(TYPES).forEach(function(k){
+        if (!tt.t[k]) return;
+        seg += '<span style="width:'+(tt.t[k]/tt.grand*100).toFixed(2)+'%;background:'+TYPES[k].color+'"></span>';
+      });
+      var pa = pendingPlan && pendingPlan.id === p.id ? pendingPlan.action : "";
+      html += '<div class="block-item">' +
+        '<div class="block-main">' +
+          '<div class="block-task">'+escapeHtml(p.name)+'</div>' +
+          '<div class="block-dur" style="margin-top:3px">'+p.blocks.length+' block'+(p.blocks.length===1?'':'s')+' · '+formatDur(tt.grand)+'</div>' +
+          '<div class="stack">'+seg+'</div>' +
+        '</div>' +
+        '<div class="block-actions">' +
+          '<button class="icon-btn txt-btn'+(pa==="load"?' pending-load':'')+'" data-action="load-plan" data-id="'+p.id+'">'+(pa==="load"?'Replace?':'Load')+'</button>' +
+          '<button class="icon-btn danger'+(pa==="delete"?' pending':'')+'" data-action="delete-plan" data-id="'+p.id+'" aria-label="Delete plan">'+(pa==="delete"?'?':'✕')+'</button>' +
+        '</div>' +
+      '</div>';
+    });
+    els.plansWrap.innerHTML = html;
+  }
+
+  function renderCompare(){
+    var items = [];
+    if (blocks.length) items.push({id:"current", name:"Current", blocks:blocks});
+    items = items.concat(plans);
+    if (!items.length){ els.compareWrap.innerHTML = ""; return; }
+
+    var html = '<div class="card"><p class="form-title">Compare by type</p>';
+    if (items.length < 2){
+      html += '<div class="empty-note">Save more than one plan to compare them side by side.</div></div>';
+      els.compareWrap.innerHTML = html;
+      return;
+    }
+
+    html += '<div class="chips">';
+    items.forEach(function(it){
+      var on = compareSel[it.id] !== false;
+      html += '<button class="chip'+(on?' on':'')+'" data-action="toggle-compare" data-id="'+it.id+'">'+escapeHtml(it.name)+'</button>';
+    });
+    html += '</div>';
+
+    var sel = items.filter(function(it){ return compareSel[it.id] !== false; });
+    if (!sel.length){
+      html += '<div class="empty-note">Pick plans above to compare.</div></div>';
+      els.compareWrap.innerHTML = html;
+      return;
+    }
+
+    var tots = sel.map(function(it){ return totalsFor(it.blocks); });
+    var keys = Object.keys(TYPES).filter(function(k){
+      return tots.some(function(x){ return x.t[k] > 0; });
+    });
+
+    html += '<div class="cmp-scroll"><table class="cmp"><thead><tr><th></th>';
+    sel.forEach(function(it){ html += '<th><div class="cmp-name">'+escapeHtml(it.name)+'</div></th>'; });
+    html += '</tr></thead><tbody>';
+    keys.forEach(function(k){
+      var vals = tots.map(function(x){ return x.t[k] || 0; });
+      var max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
+      html += '<tr><td class="cmp-type"><span class="dot" style="background:'+TYPES[k].color+'"></span>'+TYPES[k].label+'</td>';
+      vals.forEach(function(v){
+        var lead = vals.length > 1 && max !== min && v === max;
+        html += '<td><div class="cmp-val'+(lead?' lead':'')+'">'+(v?formatDur(v):'—')+'</div>' +
+          '<div class="cmp-bar"><span style="width:'+(max?(v/max*100).toFixed(1):0)+'%;background:'+TYPES[k].color+'"></span></div></td>';
+      });
+      html += '</tr>';
+    });
+    html += '<tr class="cmp-total"><td class="cmp-type">Total</td>';
+    tots.forEach(function(x){ html += '<td><div class="cmp-val">'+formatDur(x.grand)+'</div></td>'; });
+    html += '</tr></tbody></table></div></div>';
+    els.compareWrap.innerHTML = html;
+  }
+
+  els.savePlanBtn.addEventListener("click", function(){
+    var name = els.planName.value.trim();
+    if (!blocks.length){ showToast("Add some blocks first"); return; }
+    if (!name){ showToast("Give the plan a name"); return; }
+    var copy = blocks.map(function(b){
+      return {id:b.id, start:b.start, end:b.end, task:b.task, type:b.type};
+    });
+    var existing = plans.find(function(p){ return p.name.toLowerCase() === name.toLowerCase(); });
+    if (existing){
+      existing.name = name;
+      existing.blocks = copy;
+      showToast("Plan updated");
+    } else {
+      plans.push({id:uid(), name:name, blocks:copy});
+      showToast("Plan saved");
+    }
+    savePlans();
+    renderPlans();
+    renderCompare();
+  });
+
+  els.plansWrap.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    var id = btn.getAttribute("data-id");
+    var action = btn.getAttribute("data-action");
+    var p = plans.find(function(x){ return x.id === id; });
+    if (!p) return;
+
+    if (action === "load-plan"){
+      var needsConfirm = blocks.length && sig(blocks) !== sig(p.blocks);
+      var confirmed = pendingPlan && pendingPlan.action === "load" && pendingPlan.id === id;
+      if (needsConfirm && !confirmed){ setPendingPlan("load", id); return; }
+      clearPendingPlan();
+      blocks = p.blocks.map(function(b){
+        return {id:uid(), start:b.start, end:b.end, task:b.task, type:b.type};
+      });
+      save(blocks);
+      els.planName.value = p.name;
+      resetFormForNext(lastBlockOf(blocks));
+      renderAll();
+      renderPlans();
+      showToast("Plan loaded");
+      return;
+    }
+    if (action === "delete-plan"){
+      if (pendingPlan && pendingPlan.action === "delete" && pendingPlan.id === id){
+        clearPendingPlan();
+        plans = plans.filter(function(x){ return x.id !== id; });
+        delete compareSel[id];
+        savePlans();
+        renderPlans();
+        renderCompare();
+        showToast("Plan deleted");
+      } else {
+        setPendingPlan("delete", id);
+      }
+    }
+  });
+
+  els.compareWrap.addEventListener("click", function(e){
+    var btn = e.target.closest('[data-action="toggle-compare"]');
+    if (!btn) return;
+    var id = btn.getAttribute("data-id");
+    compareSel[id] = compareSel[id] === false ? true : false;
+    renderCompare();
+  });
+
   // ---- init ----
   var last = blocks.slice().sort(function(a,b){
     return toMinutes(a.start) - toMinutes(b.start);
   }).pop();
+  renderPlans();
   resetFormForNext(last || null);
   renderAll();
 })();
