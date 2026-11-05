@@ -12,7 +12,8 @@ button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.a
 :focus-visible{outline:2px solid var(--o)}
 @media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
 table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
-.row{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid #22302a;align-items:center}.row .tx{flex:1;min-width:0}.r2{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:28px}.r2 input[type=time]{width:112px}.r2 select{flex:1;min-width:110px}input[type=checkbox]{width:20px;height:20px;accent-color:var(--m)}#tabs{margin:8px 0}#tn{width:100%;font-weight:600}.h{color:var(--d);font-size:13px;margin:-4px 0 8px}.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}.dt{font-size:17px;font-weight:600;margin:6px 0}.tb{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tb a{padding:7px 14px;border-radius:8px;border:1px solid #2c3a33;color:var(--m);text-decoration:none;font-weight:600}.tb a.on{background:var(--m);color:var(--bg)}</style></head><body>
+.row{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid #22302a;align-items:center}.row .tx{flex:1;min-width:0}.r2{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:28px}.r2 input[type=time]{width:112px}.r2 select{flex:1;min-width:110px}input[type=checkbox]{width:20px;height:20px;accent-color:var(--m)}#tabs{margin:8px 0}#tn{width:100%;font-weight:600}.h{color:var(--d);font-size:13px;margin:-4px 0 8px}.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}.rvs{display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-left:28px}.rvc{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid #2c3a33;border-radius:8px;padding:2px 4px;font-size:13px}.rvc input{width:80px;padding:4px}.rvc button{padding:0 6px}.bk{display:inline-block;font-size:14px;text-decoration:none;padding:4px 0}.dt{font-size:17px;font-weight:600;margin:6px 0}.tb{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tb a{padding:7px 14px;border-radius:8px;border:1px solid #2c3a33;color:var(--m);text-decoration:none;font-weight:600}.tb a.on{background:var(--m);color:var(--bg)}</style></head><body>
+<a href="../index.html" class="bk">← Home</a>
 <h1>Time Zone</h1>
 <nav class="tb" id="nav"><a href="#planner" data-v="today">Planner</a><a href="#contributions" data-v="main">Contributions</a><a href="#month" data-v="rep">Reports</a></nav>
 <section id="v-today"><div id="hd" class="dt"></div>
@@ -65,6 +66,12 @@ const pb=fixB(blocksFor(iso(new Date(y,m-1,+dd-1)))),last=pb[pb.length-1],k=cur(
 if(!last||!f||!(mn(f.e)<mn(f.s))||f.s==last.e)return;
 const o=T.map(b=>({...b}));o[0].s=last.e;const N=lg();N.ov=o;N.ovk=k;N.chained=1;save();toast('Sleep starts at '+last.e+', where the previous day ended')}
 const mn=s=>{const[h,m]=(s||'').split(':');return h*60+ +m},dur=b=>{let d=mn(b.e)-mn(b.s);if(isNaN(d))return 0;if(d<0)d+=1440;return d/60};
+const rl=b=>Array.isArray(b.r)?b.r:(b.r?[b.r]:[]);
+function migR(){const m={},fx=b=>{if(typeof b.r=='string'){m[b.id]=b.r;b.r=b.r?[b.r]:[]}else if(!b.r)b.r=[]};
+for(const k in D.tpl)D.tpl[k].forEach(fx);for(const d in D.log)if(D.log[d].ov)D.log[d].ov.forEach(fx);
+for(const d in D.log){const bv=D.log[d].bv;if(bv)for(const id in bv)if(typeof bv[id]=='string'){if(m[id])bv[id]={[m[id]]:bv[id]};else delete bv[id]}}save()}
+const rvh=(b,L)=>{const a=rl(b),bv=(L.bv||{})[b.id]||{},rest=RVn().filter(x=>!a.includes(x));
+return `<div class="rvs">${a.map(k=>`<span class="rvc"><b>${esc(k)}</b><input data-f="v" data-k="${esc(k)}" placeholder="value" value="${esc(bv[k]||'')}"><button class="g x" data-rrm="${esc(k)}" aria-label="Remove review">✕</button></span>`).join('')}${rest.length?`<select data-f="radd" aria-label="Add review"><option value="">+ Review</option>${rest.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:''}</div>`};
 const hm=m=>{m=((m%1440)+1440)%1440;return p2(Math.floor(m/60))+':'+p2(m%60)};
 const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d)};
 const fixB=B=>{for(let n=0;n<B.length;n++){const f=B[0];if(f&&B.length>1&&mn(f.e)<mn(f.s)&&dur(f)<4)B.push(B.shift());else break}return B};
@@ -78,7 +85,7 @@ $('#chips').innerHTML=Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).m
 function draw(){const k=cur(),B=fixB(blocks()),m=D.tm[k],L=D.log[day]||{};$('#hd').textContent=DN[dow]+', '+fd(day);$('#dp').value=day;
 $('#tabs').innerHTML=Object.keys(D.tm).map(x=>`<button class="${x==k?'':'g'}" data-tab="${x}">${esc(D.tm[x].n)}</button>`).join('')+'<button class="g" data-new>+ New</button>';
 $('#tinfo').innerHTML=`<input id="tn" value="${esc(m.n)}" aria-label="Template name"><div class="fl" style="margin-top:8px">${DS.map((n,i)=>`<button class="${m.d.includes(i)?'':'g'}" data-day="${i}">${n}</button>`).join('')}</div><div style="color:var(--d);font-size:13px;margin:6px 0">Loads automatically on the selected days. Use the tabs to switch for today.</div><div class="fl"><button class="g" data-dup>Duplicate</button><button class="g x" data-rm>Delete template</button></div>`;
-$('#list').innerHTML=B.map((b,i)=>`<div class="row" data-i="${i}"><input type="checkbox" data-f="done" aria-label="Done" ${L.done&&L.done[b.id]?'checked':''}><input class="tx" data-f="t" value="${esc(b.t)}"><div class="r2"><input type="time" data-f="s" data-p="${b.s}" value="${b.s}"><input type="time" data-f="e" data-p="${b.e}" value="${b.e}"><select data-f="g">${opts(b.g)}</select><select data-f="r" aria-label="Review field"><option value="">Review: none</option>${RVn().map(x=>`<option ${x==b.r?'selected':''}>${esc(x)}</option>`).join('')}</select>${b.r?`<input data-f="v" placeholder="value" value="${esc((L.bv||{})[b.id]||'')}" style="width:90px">`:''}<button class="g" data-ins="${i}" aria-label="Add block after this">＋</button><button class="g x" data-del="${i}" aria-label="Delete">✕</button></div></div>`).join('');
+$('#list').innerHTML=B.map((b,i)=>`<div class="row" data-i="${i}"><input type="checkbox" data-f="done" aria-label="Done" ${L.done&&L.done[b.id]?'checked':''}><input class="tx" data-f="t" value="${esc(b.t)}"><div class="r2"><input type="time" data-f="s" data-p="${b.s}" value="${b.s}"><input type="time" data-f="e" data-p="${b.e}" value="${b.e}"><select data-f="g">${opts(b.g)}</select><button class="g" data-ins="${i}" aria-label="Add block after this">＋</button><button class="g x" data-del="${i}" aria-label="Delete">✕</button></div>${rvh(b,L)}</div>`).join('');
 const ov=isOv();$('#scope').innerHTML=`<div class="fl"><button class="${ov?'g':''}" data-scope="tpl">Template</button><button class="${ov?'':'g'}" data-scope="day">This day only</button></div><p class="h" style="margin:6px 0 4px">Time and block changes apply to ${ov?'this date only':'every day that uses this template'}.</p>`;
 stat();fillRv()}
 $('#tabs').onclick=e=>{const d=e.target.dataset;if(d.tab){lg().tpl=d.tab;save();draw()}else if('new' in d){const k='t'+uid();D.tpl[k]=mk(SL);D.tm[k]={n:'New template',d:[]};lg().tpl=k;save();draw();toast('Template added')}};
@@ -88,8 +95,8 @@ if(d.day!=null){const i=+d.day;m.d=m.d.includes(i)?m.d.filter(x=>x!=i):[...m.d,i
 else if('dup' in d){const n='t'+uid();D.tpl[n]=D.tpl[k].map(b=>({...b,id:uid()}));D.tm[n]={n:m.n+' copy',d:[]};lg().tpl=n;save();draw();toast('Duplicated')}
 else if('rm' in d){if(Object.keys(D.tm).length<2)return toast('Keep at least one template');twice('rt'+k,()=>{delete D.tpl[k];delete D.tm[k];const L=lg();delete L.tpl;save();draw();toast('Template deleted')});if(arm)e.target.classList.add('arm')}};
 $('#list').oninput=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||!fl||fl=='s'||fl=='e')return;const b=blocks()[r.dataset.i],L=lg();L.done=L.done||{};
-if(fl=='done'){if(e.target.checked)L.done[b.id]=[b.g,dur(b)];else delete L.done[b.id]}else if(fl=='v'){(L.bv=L.bv||{})[b.id]=e.target.value}else{b[fl]=e.target.value;if(L.done[b.id])L.done[b.id]=[b.g,dur(b)]}
-syncRv();save();if(fl=='r')draw();else stat()};
+if(fl=='done'){if(e.target.checked)L.done[b.id]=[b.g,dur(b)];else delete L.done[b.id]}else if(fl=='v'){L.bv=L.bv||{};(L.bv[b.id]=L.bv[b.id]||{})[e.target.dataset.k]=e.target.value}else if(fl=='radd'){if(!e.target.value)return;b.r=[...rl(b),e.target.value]}else{b[fl]=e.target.value;if(L.done[b.id])L.done[b.id]=[b.g,dur(b)]}
+syncRv();save();if(fl=='radd')draw();else stat()};
 $('#list').onchange=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||(fl!='s'&&fl!='e'))return;const B=blocks(),i=+r.dataset.i,b=B[i],o=e.target.dataset.p,n=e.target.value;if(!n){e.target.value=o;return}
 let d=mn(n)-mn(o);d=((d+720)%1440+1440)%1440-720;if(!d)return;
 if(fl=='s')shiftB(b,d);else b.e=n;
@@ -97,23 +104,23 @@ for(let j=i+1;j<B.length;j++)shiftB(B[j],d);
 const L=lg();if(L.done&&L.done[b.id])L.done[b.id]=[b.g,dur(b)];syncRv();save();draw();toast('Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
 function ins(i){const B=blocks(),a=B[i],d=15;for(let j=i+1;j<B.length;j++)shiftB(B[j],d);B.splice(i+1,0,{id:uid(),s:a.e,e:hm(mn(a.e)+d),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added, later blocks moved 15 min')}
 $('#scope').onclick=e=>{const c=e.target.dataset.scope;if(!c)return;const L=lg(),k=cur();if(c=='day'&&!isOv()){L.ov=D.tpl[k].map(b=>({...b}));L.ovk=k;save();draw();toast('Changes now apply to this day only')}else if(c=='tpl'&&isOv())twice('so',()=>{delete L.ov;delete L.ovk;syncRv();save();draw();toast('Day changes discarded')})};
-$('#list').onclick=e=>{const B=blocks();if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
+$('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];b.r=rl(b).filter(x=>x!=rk);syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
 $('#add').onclick=()=>{const B=blocks(),a=B[B.length-1],st=a?a.e:'09:00';B.push({id:uid(),s:st,e:hm(mn(st)+30),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added')};
 function syncRv(){const L=lg(),B=blocks(),a={},mp=new Set,F={};D.rvf.forEach(x=>F[x.n]=x);L.rv=L.rv||{};L.au=L.au||{};
-for(const b of B){const x=F[b.r];if(!x)continue;mp.add(b.r);if(!(L.done&&L.done[b.id]))continue;let v=String((L.bv||{})[b.id]||'').trim();if(!v&&x.a)v=x.u?dur(b):f(dur(b));if(v!=='')(a[b.r]=a[b.r]||[]).push(v)}
+for(const b of B)for(const n of rl(b)){const x=F[n];if(!x)continue;mp.add(n);if(!(L.done&&L.done[b.id]))continue;let v=String((((L.bv||{})[b.id])||{})[n]||'').trim();if(!v&&x.a)v=x.u?dur(b):f(dur(b));if(v!=='')(a[n]=a[n]||[]).push(v)}
 for(const k of mp){if(a[k]){L.rv[k]=F[k].u?String(Math.round(a[k].reduce((p,q)=>p+(+q||0),0)*100)/100):a[k].join(', ');L.au[k]=1}else if(L.au[k]){delete L.rv[k];delete L.au[k]}}
 fillRv()}
 function fillRv(){const r=(D.log[day]||{}).rv||{};document.querySelectorAll('#rv input').forEach(i=>i.value=r[i.dataset.k]||'')}
 function drawRv(){$('#rv').innerHTML=RVn().map(k=>`<label class="rl">${esc(k)}<input data-k="${esc(k)}"></label>`).join('');fillRv();drawRvm()}
 function drawRvm(){$('#rvm').innerHTML=D.rvf.map((x,i)=>`<div class="fl" data-i="${i}" style="align-items:center;margin:6px 0"><input data-rn value="${esc(x.n)}" style="flex:1;min-width:120px" aria-label="Review tag name"><button class="${x.u?'':'g'}" data-sum>Sum</button><button class="${x.a?'':'g'}" data-auto>Time</button><button class="g x" data-rdel aria-label="Delete review tag">✕</button></div>`).join('')+'<p class="h" style="margin:4px 0 0">Sum: add up numbers from ticked blocks. Time: use the block duration when its value is blank.</p>'}
 $('#rvm').onchange=e=>{const r=e.target.closest('[data-i]');if(!r||!e.target.hasAttribute('data-rn'))return;const x=D.rvf[+r.dataset.i],o=x.n,n=e.target.value.trim();if(!n||n==o||D.rvf.some(y=>y.n==n)){e.target.value=o;return}
-x.n=n;for(const k in D.tpl)D.tpl[k].forEach(b=>{if(b.r==o)b.r=n});
-for(const d in D.log){const L=D.log[d];if(L.ov)L.ov.forEach(b=>{if(b.r==o)b.r=n});for(const q of['rv','au'])if(L[q]&&o in L[q]){L[q][n]=L[q][o];delete L[q][o]}}
+x.n=n;const fx=b=>{b.r=rl(b).map(z=>z==o?n:z)};for(const k in D.tpl)D.tpl[k].forEach(fx);
+for(const d in D.log){const L=D.log[d];if(L.ov)L.ov.forEach(fx);if(L.bv)for(const id in L.bv)if(L.bv[id]&&o in L.bv[id]){L.bv[id][n]=L.bv[id][o];delete L.bv[id][o]}for(const q of['rv','au'])if(L[q]&&o in L[q]){L[q][n]=L[q][o];delete L[q][o]}}
 save();drawRv();draw();toast('Renamed everywhere')};
 $('#rvm').onclick=e=>{const r=e.target.closest('[data-i]');if(!r)return;const i=+r.dataset.i,x=D.rvf[i],d=e.target.dataset;
 if('sum' in d){x.u=x.u?0:1;save();syncRv();drawRvm()}
 else if('auto' in d){x.a=x.a?0:1;save();syncRv();drawRvm()}
-else if('rdel' in d){twice('rv'+x.n,()=>{D.rvf.splice(i,1);for(const k in D.tpl)D.tpl[k].forEach(b=>{if(b.r==x.n)delete b.r});for(const q in D.log){const o=D.log[q].ov;if(o)o.forEach(b=>{if(b.r==x.n)delete b.r})}save();drawRv();draw();toast('Review tag deleted')});if(arm)e.target.classList.add('arm')}};
+else if('rdel' in d){twice('rv'+x.n,()=>{D.rvf.splice(i,1);const fx=b=>{b.r=rl(b).filter(z=>z!=x.n)};for(const k in D.tpl)D.tpl[k].forEach(fx);for(const q in D.log){const o=D.log[q].ov;if(o)o.forEach(fx)}save();drawRv();draw();toast('Review tag deleted')});if(arm)e.target.classList.add('arm')}};
 $('#nra').onclick=()=>{const n=$('#nr').value.trim();if(!n)return toast('Enter a name');if(D.rvf.some(x=>x.n.toLowerCase()==n.toLowerCase()))return toast('Already exists');D.rvf.push({n});$('#nr').value='';save();drawRv();draw();toast('Review tag added')};
 $('#rv').oninput=e=>{const k=e.target.dataset.k;if(!k)return;const L=lg();(L.rv=L.rv||{})[k]=e.target.value;if(L.au)delete L.au[k];save()};
 const setDay=d=>{if(!d)return;day=d;const[y,m,dd]=d.split('-');dow=new Date(y,m-1,dd).getDay();chain();draw()};
@@ -123,12 +130,12 @@ let mode='merge';
 function imp(o){if(!o||typeof o!='object'||!o.tpl||!o.tm)return toast('Not a Time Zones file');
 if(mode=='replace'){D={tags:o.tags||D.tags,log:o.log||{},tpl:o.tpl,tm:o.tm,rvf:o.rvf||D.rvf}}
 else{D.tags=[...new Set([...D.tags,...(o.tags||[])])];(o.rvf||[]).forEach(x=>{if(!D.rvf.some(y=>y.n==x.n))D.rvf.push(x)});for(const k in o.tpl){const n=D.tpl[k]?k+'-'+uid():k;D.tpl[n]=o.tpl[k];D.tm[n]=o.tm[k]||{n:k,d:[]}}for(const d in o.log||{})if(!D.log[d])D.log[d]=o.log[d]}
-save();draw();toast('Imported')}
+migR();draw();toast('Imported')}
 $('#ex').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,1)],{type:'application/json'}));a.download='my-time-zones.json';a.click();toast('Exported')};
 $('#im').onclick=()=>{mode='merge';$('#fi').click()};
 $('#ir').onclick=()=>twice('ir',()=>{mode='replace';$('#fi').click()});
 $('#fi').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{try{imp(JSON.parse(r.result))}catch(x){toast('Could not read that file')}};r.readAsText(fl);e.target.value=''};
-R.today=()=>{drawRv();draw()};drawRv();chain();draw();
+R.today=()=>{drawRv();draw()};migR();drawRv();chain();draw();
 })();
 (()=>{const day=iso(new Date());let Y=+day.slice(0,4);
 $('#md').value=day;$('#myr').value=Y;
