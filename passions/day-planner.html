@@ -148,6 +148,7 @@
   .cal-day.has .cnt{background:var(--mint);}
   .cal-day.late .cnt{background:var(--coral);}
   .cal-day.today{border-color:var(--coral);}
+  .cal-day.today small{color:var(--coral);font-weight:700;}
   .cal-day.sel{background:var(--card2);border-color:var(--mint);box-shadow:0 0 0 1px var(--mint);}
   .cal-day.mstart{margin-left:6px;}
   #tagToggle{flex:none;width:40px;background:var(--card2);border:1px solid var(--border);color:var(--mint);border-radius:10px;cursor:pointer;}
@@ -733,8 +734,13 @@
   calBuild();
   renderTags();
   scheduleReminders();
+  state.activeDate = todayStr();
   taskDate.value = state.activeDate;
   renderAll();
+  setTimeout(function(){
+    var el = calStrip.querySelector('[data-date="'+state.activeDate+'"]');
+    if(el) el.scrollIntoView({ inline:"center", block:"nearest" });
+  }, 50);
 })();
 </script>
 </body>
