@@ -37,6 +37,14 @@
   .bd-row .bv{font-weight:600;}
   .bd-row.hilite .bv{color:var(--accent); font-size:15px;}
   .warn{background:#2e1a1a; border:1px solid #5a2d2d; color:var(--danger); border-radius:8px; padding:10px 12px; font-size:12px; margin-bottom:14px;}
+  .linked-savings{background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; font-size:12px;}
+  .linked-savings .title{color:var(--muted); margin-bottom:6px;}
+  .linked-savings .values{display:flex; flex-wrap:wrap; gap:6px 16px;}
+  .linked-savings strong{color:var(--text); font-weight:600;}
+  .source-option{display:flex; align-items:center; gap:6px; margin:0; color:var(--text); cursor:pointer;}
+  .source-option input{width:14px; height:14px; margin:0; accent-color:var(--accent);}
+  .source-option a{color:var(--accent); text-decoration:none;}
+  .source-option a:hover{text-decoration:underline;}
   .empty{color:var(--muted); text-align:center; padding:20px; font-size:13px;}
   .note{color:var(--muted); font-size:11px; text-align:center; margin-top:10px; line-height:1.5;}
 </style>
@@ -65,8 +73,16 @@
   </div>
 
   <div class="section-title">Existing Savings</div>
+  <div class="linked-savings" aria-live="polite">
+    <div class="title">Linked tracker balances</div>
+    <div class="values">
+      <label class="source-option"><input type="checkbox" id="includeEpf" checked oninput="calc()"><span><a href="epf-tracker.html">EPF</a> <strong id="epfBalance">₹0</strong></span></label>
+      <label class="source-option"><input type="checkbox" id="includePpf" checked oninput="calc()"><span><a href="ppf-contributions.html">PPF</a> <strong id="ppfBalance">₹0</strong></span></label>
+      <label class="source-option"><input type="checkbox" id="includeNps" checked oninput="calc()"><span><a href="nps-contributions.html">NPS</a> <strong id="npsBalance">₹0</strong></span></label>
+    </div>
+  </div>
   <div class="row">
-    <div><label>Current Retirement Savings (₹)</label><input type="number" id="currentSavings" placeholder="0" oninput="calc()"></div>
+    <div><label>Other Retirement Savings (₹)</label><input type="number" id="currentSavings" placeholder="0" oninput="calc()"></div>
     <div><label>Existing Monthly SIP (₹)</label><input type="number" id="existingSip" placeholder="0" oninput="calc()"></div>
   </div>
 </div>
@@ -79,7 +95,78 @@
 <script>
 function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
 
-function calc(){
+function storedState(key){
+  try{return JSON.parse(localStorage.getItem(key)||'null');}catch(e){return null;}
+}
+function amount(value){
+  const n=parseFloat(value);
+  return Number.isFinite(n)?n:0;
+}
+function hasAmount(value){return value!==''&&value!=null&&Number.isFinite(parseFloat(value));}
+function ppfAccountBalance(account){
+  let balance=amount(account.opening);
+  const years=Array.isArray(account.years)?account.years.slice().sort((a,b)=>{
+    const fyA=hasAmount(a.fy)?parseInt(a.fy,10):9999;
+    const fyB=hasAmount(b.fy)?parseInt(b.fy,10):9999;
+    return fyA-fyB;
+  }):[];
+  years.forEach(year=>{
+    const months=Array.isArray(year.months)?year.months:[];
+    const count=hasAmount(year.n)?Math.max(0,Math.min(12,parseInt(year.n,10))):12;
+    const principal=year.mode==='each'
+      ? months.reduce((sum,value)=>sum+amount(value),0)
+      : amount(year.same)*count;
+    const calculated=balance+principal+amount(year.interest)-amount(year.withdrawn);
+    balance=hasAmount(year.balance)?amount(year.balance):calculated;
+  });
+  return balance;
+}
+function npsTierBalance(tier,index){
+  let balance=amount(tier.opening);
+  const years=Array.isArray(tier.years)?tier.years.slice().sort((a,b)=>{
+    const fyA=hasAmount(a.fy)?parseInt(a.fy,10):9999;
+    const fyB=hasAmount(b.fy)?parseInt(b.fy,10):9999;
+    return fyA-fyB;
+  }):[];
+  years.forEach(year=>{
+    const months=Array.isArray(year.months)?year.months:[];
+    const count=hasAmount(year.n)?Math.max(0,Math.min(12,parseInt(year.n,10))):12;
+    const own=year.mode==='each'
+      ? months.reduce((sum,value)=>sum+amount(value),0)
+      : amount(year.same)*count;
+    const calculated=balance+own+(index===0?amount(year.employer):0)+amount(year.interest);
+    balance=hasAmount(year.balance)?amount(year.balance):calculated;
+  });
+  if(hasAmount(tier.cur))return amount(tier.cur);
+  const funds=Array.isArray(tier.funds)?tier.funds.reduce((sum,fund)=>sum+amount(fund.value),0):0;
+  if(funds>0)return funds;
+  return years.length||amount(tier.opening)>0?balance:0;
+}
+function linkedBalances(){
+  const epf=storedState('as_epf_tracker_v1');
+  const epfBalance=Array.isArray(epf&&epf.items)?epf.items.reduce((sum,item)=>{
+    return sum+(item.emp===undefined?amount(item.balance):amount(item.emp))+amount(item.er);
+  },0):0;
+
+  const ppf=storedState('ppf_contributions_v1');
+  const ppfBalance=Array.isArray(ppf&&ppf.accs)?ppf.accs.reduce((sum,account)=>sum+ppfAccountBalance(account),0):0;
+
+  const nps=storedState('nps_contributions_v2');
+  const npsBalance=Array.isArray(nps&&nps.accs)?nps.accs.reduce((sum,account)=>{
+    const tiers=Array.isArray(account.tiers)?account.tiers:[];
+    return sum+tiers.reduce((tierSum,tier,index)=>tierSum+npsTierBalance(tier,index),0);
+  },0):0;
+  return {epf:epfBalance,ppf:ppfBalance,nps:npsBalance,total:epfBalance+ppfBalance+npsBalance};
+}
+function refreshLinkedBalances(){
+  const balances=linkedBalances();
+  document.getElementById('epfBalance').textContent=fmt(balances.epf);
+  document.getElementById('ppfBalance').textContent=fmt(balances.ppf);
+  document.getElementById('npsBalance').textContent=fmt(balances.nps);
+  calc();
+}
+
+function calc(linkedSavings){
   const currentAge = parseFloat(document.getElementById('currentAge').value);
   const retireAge = parseFloat(document.getElementById('retireAge').value);
   const lifeExp = parseFloat(document.getElementById('lifeExp').value);
@@ -87,7 +174,11 @@ function calc(){
   const inflation = parseFloat(document.getElementById('inflation').value);
   const preReturn = parseFloat(document.getElementById('preReturn').value);
   const postReturn = parseFloat(document.getElementById('postReturn').value);
-  const currentSavings = parseFloat(document.getElementById('currentSavings').value) || 0;
+  const balances=linkedBalances();
+  const selectedSavings=(document.getElementById('includeEpf').checked?balances.epf:0)+
+    (document.getElementById('includePpf').checked?balances.ppf:0)+
+    (document.getElementById('includeNps').checked?balances.nps:0);
+  const currentSavings = (parseFloat(document.getElementById('currentSavings').value) || 0) + selectedSavings;
   const existingSip = parseFloat(document.getElementById('existingSip').value) || 0;
 
   const warnBox = document.getElementById('warnBox');
@@ -162,15 +253,17 @@ function calc(){
   const K='as_retirementcorpus';
   try{
     const d=JSON.parse(localStorage.getItem(K)||'{}');
-    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el)el.value=d[id];});
+    Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el){if(el.type==='checkbox')el.checked=!!d[id];else el.value=d[id];}});
   }catch(e){}
   document.addEventListener('input',()=>{
     const d={};
-    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.value;});
+    document.querySelectorAll('input[id],select[id]').forEach(el=>{d[el.id]=el.type==='checkbox'?el.checked:el.value;});
     try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}
   });
+  window.addEventListener('focus',refreshLinkedBalances);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLinkedBalances();});
+  refreshLinkedBalances();
 })();
-calc();
 </script>
 </body>
 </html>
