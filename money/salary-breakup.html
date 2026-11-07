@@ -52,6 +52,17 @@ th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:
 th{color:var(--mint);font-weight:600}
 tr.sec td{color:var(--mint);font-weight:600;padding-top:12px}
 td .mb{height:4px;border-radius:3px;background:var(--mint);margin-top:3px;min-width:1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+#cmp h3{font-size:13px;color:var(--mint);margin:14px 0 8px}
+.vg{display:flex;gap:16px;min-width:min-content;padding-bottom:4px}
+.g{display:flex;flex-direction:column;align-items:center}
+.cols{display:flex;align-items:flex-end;gap:3px;height:128px;border-bottom:1px solid var(--line)}
+.c{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:30px}
+.v{font-size:10px;color:var(--mut);margin-bottom:2px;white-space:nowrap}
+.b{width:100%;border-radius:4px 4px 0 0}
+.gl{font-size:12px;color:var(--mut);margin-top:6px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rst{width:100%;margin-top:10px;color:var(--coral);border-color:var(--coral)}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
 #toast.on{opacity:1}
 </style>
@@ -63,6 +74,7 @@ td .mb{height:4px;border-radius:3px;background:var(--mint);margin-top:3px;min-wi
 <div class="card">
   <div class="sal"><label for="salary">Salary</label><input id="salary" data-f="salary" inputmode="decimal" placeholder="Monthly salary"></div>
   <div class="sum" id="sum"></div>
+  <button class="rst" data-act="reset">Reset all entries</button>
 </div>
 
 <div id="lists"></div>
@@ -132,25 +144,24 @@ function renderSaved(){
   $('savedCount').textContent=S.saved.length?S.saved.length+' saved':'';
   $('saved').innerHTML=S.saved.length?S.saved.map(s=>{const c=calc(s.data);return `<div class="sv"><input type="checkbox" data-act="cmp" data-id="${s.id}" ${S.cmp.includes(s.id)?'checked':''} aria-label="Compare"><div>${esc(s.name)}<small>${dstr(s.id)} · Residual ${fmt(c.r)}</small></div><button data-act="load" data-id="${s.id}">Edit</button><button data-act="delsaved" data-id="${s.id}">✕</button></div>`}).join(''):'<div class="empty">Nothing saved yet — name this break up and tap Save.</div>';
 }
+const PAL=['#a7e8c5','#ff8c70','#f5c26b','#7fc8e8','#c9a7ff','#f3a6c8'];
+const short=v=>{const a=Math.abs(v),m=v<0?'−':'';return m+(a>=1e7?+(a/1e7).toFixed(2)+'Cr':a>=1e5?+(a/1e5).toFixed(2)+'L':a>=1e3?+(a/1e3).toFixed(1)+'k':Math.round(a))};
+function vchart(groups){
+  const max=Math.max(1,...groups.flatMap(g=>g.vals.map(Math.abs)));
+  return `<div class="scroll"><div class="vg">${groups.map(g=>`<div class="g"><div class="cols">${g.vals.map((v,i)=>`<div class="c"><span class="v">${short(v)}</span><div class="b" style="height:${Math.max(2,Math.round(Math.abs(v)/max*110))}px;background:${PAL[i%6]};${v<0?'opacity:.5;outline:1px dashed '+PAL[i%6]:''}"></div></div>`).join('')}</div><div class="gl" title="${esc(g.t)}">${esc(g.t)}</div></div>`).join('')}</div></div>`;
+}
 function renderCompare(){
   const sel=S.cmp.map(id=>S.saved.find(s=>s.id===id)).filter(Boolean);
   if(sel.length<2){$('cmp').innerHTML='<div class="empty">Tick two or more saved break ups to compare them.</div>';return}
-  const cs=sel.map(s=>calc(s.data)),two=sel.length===2;
-  const cell=(v,max)=>`<td>${fmt(v)}<div class="mb" style="width:${max?Math.min(100,Math.abs(v)/max*100):0}%;${v<0?'background:var(--coral)':''}"></div></td>`;
-  const dcell=d=>`<td class="${d>0?'pos':d<0?'neg':''}">${d>0?'+':d<0?'−':''}${fmt(Math.abs(d))}</td>`;
-  let h=`<div class="scroll"><table><tr><th></th>${sel.map(s=>`<th>${esc(s.name)}</th>`).join('')}${two?'<th>Δ</th>':''}</tr>`;
-  [['Salary','sal'],['Loans','l'],['House expenses','h'],['Savings & Investments','s'],['Residual','r'],['Planned','p'],['Unplanned','u']].forEach(([t,k])=>{
-    const vals=cs.map(c=>c[k]),max=Math.max(...vals.map(Math.abs));
-    h+=`<tr><td>${t}</td>${vals.map(v=>cell(v,max)).join('')}${two?dcell(vals[1]-vals[0]):''}</tr>`});
+  const cs=sel.map(s=>calc(s.data));
+  let h='<div class="legend">'+sel.map((s,i)=>`<span><i style="background:${PAL[i%6]}"></i>${esc(s.name)}</span>`).join('')+'</div>';
+  h+='<h3>Overview</h3>'+vchart([['Salary','sal'],['Loans','l'],['House','h'],['Savings','s'],['Residual','r'],['Planned','p']].map(([t,k])=>({t,vals:cs.map(c=>c[k])})));
   LISTS.forEach(x=>{
     const names=[];sel.forEach(s=>s.data[x.k].forEach(i=>{const n=(i.n||'').trim().toLowerCase();if(n&&num(i.a)>0&&!names.some(m=>m.k===n))names.push({k:n,t:i.n.trim()})}));
     if(!names.length)return;
-    h+=`<tr class="sec"><td colspan="${sel.length+1+(two?1:0)}">${x.t}</td></tr>`;
-    names.forEach(m=>{
-      const vals=sel.map(s=>s.data[x.k].filter(i=>(i.n||'').trim().toLowerCase()===m.k).reduce((a,i)=>a+num(i.a),0)),max=Math.max(...vals);
-      h+=`<tr><td>${esc(m.t)}</td>${vals.map(v=>cell(v,max)).join('')}${two?dcell(vals[1]-vals[0]):''}</tr>`});
+    h+=`<h3>${x.t}</h3>`+vchart(names.map(m=>({t:m.t,vals:sel.map(s=>s.data[x.k].filter(i=>(i.n||'').trim().toLowerCase()===m.k).reduce((a,i)=>a+num(i.a),0))})));
   });
-  $('cmp').innerHTML=h+'</table></div>';
+  $('cmp').innerHTML=h;
 }
 
 /* ---------- events (delegated) ---------- */
@@ -186,6 +197,9 @@ document.addEventListener('click',e=>{
   }else if(a==='del'){
     if(!arm(b,k+':'+b.dataset.i,'Tap again to delete'))return;
     S[k].splice(+b.dataset.i,1);persist();buildLists();toast('Deleted');
+  }else if(a==='reset'){
+    S.salary='';S.name='';S.loans=[];S.house=[];S.savings=[];S.plans=[];
+    persist();buildLists();toast('Cleared');
   }else if(a==='save'){
     const name=S.name.trim();
     if(!name){toast('Give it a name first');$('name').focus();return}

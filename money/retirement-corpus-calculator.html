@@ -33,7 +33,25 @@
   .sip-total{color:var(--accent); text-transform:none; white-space:nowrap;}
   @media(max-width:900px){.top-blocks{grid-template-columns:minmax(0,1fr); gap:0;}.top-block:first-child{padding-right:0; border-right:0;}}
   @media(max-width:620px){.row,.row.four-col{grid-template-columns:repeat(2,minmax(0,1fr));}}
-  @media(max-width:360px){.row,.row.two-col,.row.four-col{grid-template-columns:minmax(0,1fr);}}
+  @media(max-width:620px){
+    body{padding:12px 12px 40px;}
+    .form-card{padding:12px;}
+    .section-title{margin:9px 0 6px;}
+    .top-blocks{gap:6px;}
+    .top-block:first-child{padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:2px;}
+    .row{gap:6px; margin-bottom:6px;}
+    .row label{min-height:2.3em; font-size:10px;}
+    .row.age-row{grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px;}
+    .row.four-col{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .linked-savings{padding:9px 10px;}
+    .linked-savings .values{gap:6px 12px;}
+    input{padding:9px;}
+  }
+  @media(max-width:360px){
+    .row,.row.two-col{grid-template-columns:minmax(0,1fr);}
+    .row.age-row{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .row.four-col{grid-template-columns:repeat(2,minmax(0,1fr));}
+  }
   .result-card{background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
     border-radius:14px; padding:18px; text-align:center; margin-bottom:12px;}
   .result-card .label{color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em;}
@@ -69,7 +87,7 @@
   <div class="top-blocks">
     <section class="top-block">
       <div class="section-title">Timeline</div>
-      <div class="row">
+      <div class="row age-row">
         <div><label>Current Age</label><input type="number" id="currentAge" placeholder="30" oninput="calc()"></div>
         <div><label>Retirement Age</label><input type="number" id="retireAge" placeholder="60" oninput="calc()"></div>
         <div><label>Life Expectancy</label><input type="number" id="lifeExp" placeholder="85" oninput="calc()"></div>
