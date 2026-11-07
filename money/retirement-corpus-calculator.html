@@ -17,12 +17,17 @@
   .form-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
   .section-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:12px 0 8px;}
   .section-title:first-child{margin-top:0;}
-  .row{display:flex; gap:8px; margin-bottom:8px;}
-  .row > *{flex:1;}
+  .row{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:8px;}
+  .row.two-col{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .row > *{min-width:0;}
   label{font-size:11px; color:var(--muted); display:block; margin-bottom:4px;}
+  .row label{min-height:2.5em; display:flex; align-items:flex-end;}
   input{width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
     background:var(--card2); color:var(--text); font-size:14px;}
   input:focus{outline:none; border-color:var(--accent);}
+  input[readonly]{color:var(--accent); font-weight:700;}
+  @media(max-width:620px){.row{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  @media(max-width:360px){.row,.row.two-col{grid-template-columns:minmax(0,1fr);}}
   .result-card{background:linear-gradient(135deg,#1a2e22,#132018); border:1px solid #2d5a3d;
     border-radius:14px; padding:18px; text-align:center; margin-bottom:12px;}
   .result-card .label{color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em;}
@@ -81,9 +86,16 @@
       <label class="source-option"><input type="checkbox" id="includeNps" checked oninput="calc()"><span><a href="nps-contributions.html">NPS</a> <strong id="npsBalance">₹0</strong></span></label>
     </div>
   </div>
-  <div class="row">
+  <div class="row two-col">
     <div><label>Other Retirement Savings (₹)</label><input type="number" id="currentSavings" placeholder="0" oninput="calc()"></div>
-    <div><label>Existing Monthly SIP (₹)</label><input type="number" id="existingSip" placeholder="0" oninput="calc()"></div>
+  </div>
+  <div class="section-title">Existing Monthly SIP</div>
+  <div class="row">
+    <div><label>NPS SIP (₹)</label><input type="number" id="npsSip" placeholder="0" oninput="calc()"></div>
+    <div><label>PPF SIP (₹)</label><input type="number" id="ppfSip" placeholder="0" oninput="calc()"></div>
+    <div><label>EPF SIP (₹)</label><input type="number" id="epfSip" placeholder="0" oninput="calc()"></div>
+    <div><label>Other SIP (₹)</label><input type="number" id="otherSip" placeholder="0" oninput="calc()"></div>
+    <div><label>Total Monthly SIP (₹)</label><input type="number" id="existingSip" readonly aria-label="Total monthly SIP"></div>
   </div>
 </div>
 
@@ -179,7 +191,10 @@ function calc(linkedSavings){
     (document.getElementById('includePpf').checked?balances.ppf:0)+
     (document.getElementById('includeNps').checked?balances.nps:0);
   const currentSavings = (parseFloat(document.getElementById('currentSavings').value) || 0) + selectedSavings;
-  const existingSip = parseFloat(document.getElementById('existingSip').value) || 0;
+  const existingSip = ['npsSip','ppfSip','epfSip','otherSip'].reduce((sum,id)=>{
+    return sum+(parseFloat(document.getElementById(id).value)||0);
+  },0);
+  document.getElementById('existingSip').value=existingSip;
 
   const warnBox = document.getElementById('warnBox');
   const resultsBox = document.getElementById('resultsBox');
@@ -253,6 +268,7 @@ function calc(linkedSavings){
   const K='as_retirementcorpus';
   try{
     const d=JSON.parse(localStorage.getItem(K)||'{}');
+    if(d.otherSip===undefined&&d.existingSip!==undefined)d.otherSip=d.existingSip;
     Object.keys(d).forEach(id=>{const el=document.getElementById(id);if(el){if(el.type==='checkbox')el.checked=!!d[id];else el.value=d[id];}});
   }catch(e){}
   document.addEventListener('input',()=>{
