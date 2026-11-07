@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1412">
+<title>Salary Break up</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#26312b;--tx:#e8f0ec;--mut:#8a9a92;--mint:#a7e8c5;--coral:#ff8c70;--amber:#f5c26b;--sky:#7fc8e8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px 14px 80px;padding-top:max(16px,env(safe-area-inset-top))}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-size:20px;margin:0 0 12px;color:var(--mint)}
+h2{font-size:15px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:8px}
+.tot{font-weight:600;color:var(--mint)}
+input{background:#0f1512;color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;min-width:0;width:100%}
+input:focus{outline:2px solid var(--mint);outline-offset:-1px}
+.row{display:grid;grid-template-columns:1fr 110px 36px;gap:6px;margin-bottom:6px}
+button{font:inherit;border:1px solid var(--line);background:#0f1512;color:var(--tx);border-radius:9px;padding:9px 12px;cursor:pointer}
+button.pri{background:var(--mint);color:#0f1412;border-color:var(--mint);font-weight:600}
+.add{width:100%;border-style:dashed;color:var(--mint);margin-top:2px}
+.del{padding:0;color:var(--mut)}
+.del.armed,.armed{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+@media (hover:hover) and (pointer:fine){button:hover{border-color:var(--mint)}.del:hover{color:var(--coral)}}
+.sal{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;margin-bottom:12px}
+.sal label{color:var(--mut)}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sum div{background:#0f1512;border-radius:10px;padding:8px 10px}
+.sum small{display:block;color:var(--mut);font-size:12px}
+.sum b{font-size:16px}
+.neg{color:var(--coral)}
+.pos{color:var(--mint)}
+.note{color:var(--mut);font-size:13px;margin-bottom:8px}
+.chart{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.bar{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;margin:5px 0;font-size:13px}
+.bar .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut)}
+.bar .tr{background:#0f1512;border-radius:6px;height:14px;overflow:hidden}
+.bar .fl{height:100%;border-radius:6px;min-width:2px}
+.empty{color:var(--mut);font-size:13px}
+.save{display:grid;grid-template-columns:1fr auto;gap:6px}
+.sv{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.sv:last-child{border:0}
+.sv small{color:var(--mut);display:block}
+.sv input[type=checkbox]{width:20px;height:20px;accent-color:var(--mint)}
+.sv button{padding:7px 10px;font-size:13px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+th{color:var(--mint);font-weight:600}
+tr.sec td{color:var(--mint);font-weight:600;padding-top:12px}
+td .mb{height:4px;border-radius:3px;background:var(--mint);margin-top:3px;min-width:1px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:9px 16px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Salary Break up</h1>
+
+<div class="card">
+  <div class="sal"><label for="salary">Salary</label><input id="salary" data-f="salary" inputmode="decimal" placeholder="Monthly salary"></div>
+  <div class="sum" id="sum"></div>
+</div>
+
+<div id="lists"></div>
+
+<div class="card">
+  <div class="hd"><h2>Save this break up</h2></div>
+  <div class="save"><input id="name" placeholder="Name, e.g. Nov 2026 plan"><button class="pri" data-act="save">Save</button></div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Saved</h2><span class="tot" id="savedCount"></span></div>
+  <div id="saved"></div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Compare</h2></div>
+  <div id="cmp"></div>
+</div>
+</div>
+<div id="toast"></div>
+
+<script>
+const KEY='salary_breakup_v1';
+const LISTS=[{k:'loans',t:'Loans',c:'#ff8c70'},{k:'house',t:'House expenses',c:'#f5c26b'},{k:'savings',t:'Savings & Investments',c:'#a7e8c5'},{k:'plans',t:'Plan for residual',c:'#7fc8e8'}];
+const $=id=>document.getElementById(id);
+const def=()=>({salary:'',name:'',loans:[],house:[],savings:[],plans:[],saved:[],cmp:[]});
+let S=(()=>{try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object')return Object.assign(def(),s)}catch(e){}return def()})();
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const num=v=>parseFloat(String(v).replace(/,/g,''))||0;
+const fmt=n=>'₹'+num(n).toLocaleString('en-IN');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum=a=>a.reduce((s,x)=>s+num(x.a),0);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dstr=t=>{const d=new Date(t);return d.getDate()+'th '+MON[d.getMonth()]+' '+d.getFullYear()};
+function calc(d){const l=sum(d.loans),h=sum(d.house),s=sum(d.savings),sal=num(d.salary),r=sal-l-h-s,p=sum(d.plans);return{sal,l,h,s,r,p,u:r-p}}
+let toastT;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1800)}
+
+/* ---------- structure (rebuilt only on add/remove/load) ---------- */
+const rowHtml=(k,it,i)=>`<div class="row"><input data-list="${k}" data-i="${i}" data-f="n" placeholder="Name" value="${esc(it.n)}"><input data-list="${k}" data-i="${i}" data-f="a" inputmode="decimal" placeholder="Amount" value="${esc(it.a)}"><button class="del" data-act="del" data-list="${k}" data-i="${i}" aria-label="Delete">✕</button></div>`;
+function buildLists(){
+  $('lists').innerHTML=LISTS.map(x=>`<section class="card"><div class="hd"><h2>${x.t}</h2><span class="tot" data-tot="${x.k}"></span></div>${x.k==='plans'?'<div class="note" data-note></div>':''}<div>${S[x.k].map((it,i)=>rowHtml(x.k,it,i)).join('')}</div><button class="add" data-act="add" data-list="${x.k}">+ Add</button><div class="chart" data-chart="${x.k}"></div></section>`).join('');
+  $('salary').value=S.salary;$('name').value=S.name;
+  updateAll();
+}
+
+/* ---------- in-place updates (typing) ---------- */
+function chartHtml(x,c){
+  const items=S[x.k].filter(i=>num(i.a)>0);
+  if(!items.length)return '<div class="empty">Add amounts to see the chart</div>';
+  const max=Math.max(...items.map(i=>num(i.a)));
+  const den=x.k==='plans'?(c.r>0?c.r:max):(c.sal>0?c.sal:max);
+  return items.map(i=>{const a=num(i.a),w=Math.min(100,a/den*100);
+    return `<div class="bar"><span class="nm">${esc(i.n||'—')}</span><div class="tr"><div class="fl" style="width:${w}%;background:${x.c}"></div></div><span>${fmt(a)} · ${Math.round(a/den*100)}%</span></div>`}).join('');
+}
+function updateAll(){
+  const c=calc(S);
+  $('sum').innerHTML=[['Loans',c.l],['House expenses',c.h],['Savings & Investments',c.s]].map(a=>`<div><small>${a[0]}</small><b>${fmt(a[1])}</b></div>`).join('')+`<div><small>Residual</small><b class="${c.r<0?'neg':'pos'}">${fmt(c.r)}</b></div>`;
+  document.querySelectorAll('[data-tot]').forEach(e=>{const k=e.dataset.tot;e.textContent=fmt(sum(S[k]))});
+  const n=document.querySelector('[data-note]');
+  if(n)n.innerHTML=`Residual <b class="${c.r<0?'neg':'pos'}">${fmt(c.r)}</b> · Unplanned <b class="${c.u<0?'neg':'pos'}">${fmt(c.u)}</b>`;
+  document.querySelectorAll('[data-chart]').forEach(e=>{const x=LISTS.find(l=>l.k===e.dataset.chart);e.innerHTML=chartHtml(x,c)});
+}
+
+/* ---------- saved + compare ---------- */
+function renderSaved(){
+  $('savedCount').textContent=S.saved.length?S.saved.length+' saved':'';
+  $('saved').innerHTML=S.saved.length?S.saved.map(s=>{const c=calc(s.data);return `<div class="sv"><input type="checkbox" data-act="cmp" data-id="${s.id}" ${S.cmp.includes(s.id)?'checked':''} aria-label="Compare"><div>${esc(s.name)}<small>${dstr(s.id)} · Residual ${fmt(c.r)}</small></div><button data-act="load" data-id="${s.id}">Edit</button><button data-act="delsaved" data-id="${s.id}">✕</button></div>`}).join(''):'<div class="empty">Nothing saved yet — name this break up and tap Save.</div>';
+}
+function renderCompare(){
+  const sel=S.cmp.map(id=>S.saved.find(s=>s.id===id)).filter(Boolean);
+  if(sel.length<2){$('cmp').innerHTML='<div class="empty">Tick two or more saved break ups to compare them.</div>';return}
+  const cs=sel.map(s=>calc(s.data)),two=sel.length===2;
+  const cell=(v,max)=>`<td>${fmt(v)}<div class="mb" style="width:${max?Math.min(100,Math.abs(v)/max*100):0}%;${v<0?'background:var(--coral)':''}"></div></td>`;
+  const dcell=d=>`<td class="${d>0?'pos':d<0?'neg':''}">${d>0?'+':d<0?'−':''}${fmt(Math.abs(d))}</td>`;
+  let h=`<div class="scroll"><table><tr><th></th>${sel.map(s=>`<th>${esc(s.name)}</th>`).join('')}${two?'<th>Δ</th>':''}</tr>`;
+  [['Salary','sal'],['Loans','l'],['House expenses','h'],['Savings & Investments','s'],['Residual','r'],['Planned','p'],['Unplanned','u']].forEach(([t,k])=>{
+    const vals=cs.map(c=>c[k]),max=Math.max(...vals.map(Math.abs));
+    h+=`<tr><td>${t}</td>${vals.map(v=>cell(v,max)).join('')}${two?dcell(vals[1]-vals[0]):''}</tr>`});
+  LISTS.forEach(x=>{
+    const names=[];sel.forEach(s=>s.data[x.k].forEach(i=>{const n=(i.n||'').trim().toLowerCase();if(n&&num(i.a)>0&&!names.some(m=>m.k===n))names.push({k:n,t:i.n.trim()})}));
+    if(!names.length)return;
+    h+=`<tr class="sec"><td colspan="${sel.length+1+(two?1:0)}">${x.t}</td></tr>`;
+    names.forEach(m=>{
+      const vals=sel.map(s=>s.data[x.k].filter(i=>(i.n||'').trim().toLowerCase()===m.k).reduce((a,i)=>a+num(i.a),0)),max=Math.max(...vals);
+      h+=`<tr><td>${esc(m.t)}</td>${vals.map(v=>cell(v,max)).join('')}${two?dcell(vals[1]-vals[0]):''}</tr>`});
+  });
+  $('cmp').innerHTML=h+'</table></div>';
+}
+
+/* ---------- events (delegated) ---------- */
+let armed=null,armT;
+function arm(btn,key,msg){
+  if(armed===key){armed=null;return true}
+  armed=key;btn.classList.add('armed');toast(msg);
+  clearTimeout(armT);armT=setTimeout(()=>{armed=null;btn.classList.remove('armed')},2500);
+  return false;
+}
+document.addEventListener('input',e=>{
+  const t=e.target,f=t.dataset.f;
+  if(t.id==='name'){S.name=t.value;persist();return}
+  if(f==='salary'){S.salary=t.value}
+  else if(t.dataset.list){S[t.dataset.list][+t.dataset.i][f]=t.value}
+  else return;
+  persist();updateAll();
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.act==='cmp'){
+    const id=+t.dataset.id;
+    S.cmp=t.checked?[...S.cmp,id]:S.cmp.filter(x=>x!==id);
+    persist();renderCompare();
+  }
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');if(!b)return;
+  const a=b.dataset.act,k=b.dataset.list;
+  if(a==='add'){
+    S[k].push({n:'',a:''});persist();buildLists();
+    const r=document.querySelectorAll(`[data-list="${k}"][data-f="n"]`);r[r.length-1].focus();
+  }else if(a==='del'){
+    if(!arm(b,k+':'+b.dataset.i,'Tap again to delete'))return;
+    S[k].splice(+b.dataset.i,1);persist();buildLists();toast('Deleted');
+  }else if(a==='save'){
+    const name=S.name.trim();
+    if(!name){toast('Give it a name first');$('name').focus();return}
+    const data=JSON.parse(JSON.stringify({salary:S.salary,loans:S.loans,house:S.house,savings:S.savings,plans:S.plans}));
+    const ex=S.saved.find(s=>s.name.toLowerCase()===name.toLowerCase());
+    if(ex){ex.data=data;ex.name=name;toast('Updated "'+name+'"')}
+    else{S.saved.unshift({id:Date.now(),name,data});toast('Saved "'+name+'"')}
+    persist();renderSaved();renderCompare();
+  }else if(a==='load'){
+    const s=S.saved.find(x=>x.id===+b.dataset.id);if(!s)return;
+    Object.assign(S,JSON.parse(JSON.stringify(s.data)),{name:s.name});
+    persist();buildLists();window.scrollTo({top:0,behavior:'smooth'});toast('Loaded — edit, then Save to update');
+  }else if(a==='delsaved'){
+    if(!arm(b,'s'+b.dataset.id,'Tap again to delete'))return;
+    const id=+b.dataset.id;S.saved=S.saved.filter(x=>x.id!==id);S.cmp=S.cmp.filter(x=>x!==id);
+    persist();renderSaved();renderCompare();toast('Deleted');
+  }
+});
+
+buildLists();renderSaved();renderCompare();
+</script>
+</body>
+</html>

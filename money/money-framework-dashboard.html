@@ -34,10 +34,10 @@
 
   .row{display:flex;gap:8px;margin-bottom:8px;}
   .field{flex:1;min-width:0;}
-  .btn-row{display:flex;gap:8px;margin-bottom:6px;}
-  .btn{flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+  .btn-row{display:flex;justify-content:flex-start;gap:8px;margin-bottom:6px;}
+  .btn{flex:0 0 auto;padding:8px 13px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;}
   .btn.primary{background:var(--acc);color:#052e16;}
-  .btn.ghost{background:transparent;border:1px solid #475569;color:var(--txt);flex:0 0 auto;padding:11px 16px;}
+  .btn.ghost{background:transparent;border:1px solid #475569;color:var(--txt);padding:7px 11px;}
   .btn.blue{background:var(--blue);color:#fff;}
 
   .list-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #334155;}
@@ -47,11 +47,20 @@
   .li-meta{font-size:11px;color:var(--sub);margin-top:2px;}
   .li-amt{font-weight:700;font-size:14px;white-space:nowrap;}
   .li-actions{display:flex;gap:6px;}
+  .action-menu{position:relative;flex:0 0 auto;}
+  .action-menu summary{list-style:none;display:grid;place-items:center;width:32px;height:32px;border:1px solid #334155;border-radius:7px;background:#0f172a;color:var(--sub);font-size:20px;line-height:1;cursor:pointer;}
+  .action-menu summary::-webkit-details-marker{display:none;}
+  .action-menu summary:hover,.action-menu[open] summary{color:var(--txt);border-color:#64748b;}
+  .action-menu-pop{position:absolute;z-index:5;right:0;top:calc(100% + 4px);min-width:120px;padding:4px;background:#0f172a;border:1px solid #334155;border-radius:7px;box-shadow:0 8px 20px rgba(0,0,0,.35);}
+  .menu-action{display:block;width:100%;padding:8px 10px;border:0;border-radius:4px;background:transparent;color:var(--txt);font-size:12px;text-align:left;cursor:pointer;}
+  .menu-action:hover{background:#1e293b;}
+  .menu-action.del{color:var(--bad);}
+  .menu-action.confirming{background:var(--warn);color:#1c1917;}
+  .menu-action.del.confirming{background:var(--bad);color:#fff;}
   .icon-btn{background:#0f172a;border:1px solid #334155;color:var(--txt);border-radius:6px;padding:6px 9px;font-size:12px;cursor:pointer;}
   .icon-btn.edit{color:var(--blue);}
-  .icon-btn.del{color:var(--bad);}
-  .icon-btn.confirming{background:var(--warn);color:#1c1917;border-color:var(--warn);}
-  .icon-btn.del.confirming{background:var(--bad);color:#fff;border-color:var(--bad);}
+  .save-row{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:8px;}
+  .saved-note{text-align:right;color:var(--sub);font-size:11px;margin:0;}
   .tag{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--bad);font-weight:700;margin-left:6px;}
   .empty{text-align:center;color:var(--sub);font-size:13px;padding:14px 0;}
   .priority{margin-top:10px;font-size:13px;color:var(--warn);}
@@ -128,8 +137,10 @@
     <div id="sec-invest"></div>
   </div>
 
-  <button class="btn primary" style="width:100%;" data-action="save">💾 Save</button>
-  <div class="saved-note" id="savedNote"></div>
+  <div class="save-row">
+    <div class="saved-note" id="savedNote"></div>
+    <button class="btn primary" data-action="save">Save</button>
+  </div>
 
   <div class="card" style="margin-top:14px;">
     <h2>Saved sets</h2>
@@ -146,7 +157,7 @@
     <div class="li-meta" id="recoveryHint" style="margin-bottom:6px;line-height:1.5;"></div>
     <div id="recoveryList"></div>
   </div>
-  <button class="btn ghost" style="width:100%;margin-top:10px;" data-action="recover-toggle">🔍 Recover earlier data</button>
+  <button class="btn ghost" style="display:block;margin:10px 0 0 auto;" data-action="recover-toggle">Recover earlier data</button>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -321,8 +332,12 @@ function renderItems(sec){
         <div class="li-main"><div class="li-name">${esc(x.name)}</div></div>
         <div class="li-amt">${fmt(x.amount)}</div>
         <div class="li-actions">
-          <button class="icon-btn edit" data-action="edit-item" data-sec="${sec}" data-id="${x.id}">Edit</button>
-          <button class="icon-btn del" data-action="delete-item" data-sec="${sec}" data-id="${x.id}" aria-label="Delete">✕</button>
+          <details class="action-menu"><summary title="More actions" aria-label="More actions">⋯</summary>
+            <div class="action-menu-pop">
+              <button class="menu-action edit" data-action="edit-item" data-sec="${sec}" data-id="${x.id}">Edit</button>
+              <button class="menu-action del" data-action="delete-item" data-sec="${sec}" data-id="${x.id}">Delete</button>
+            </div>
+          </details>
         </div>
       </div>`).join('');
   }
@@ -345,8 +360,12 @@ function renderExpenses(){
         <div class="li-main"><div class="li-name">${esc(e.name)}</div></div>
         <div class="li-amt">${fmt(e.amount)}</div>
         <div class="li-actions">
-          <button class="icon-btn edit" data-action="edit-expense" data-id="${e.id}">Edit</button>
-          <button class="icon-btn del" data-action="delete-expense" data-id="${e.id}" aria-label="Delete">✕</button>
+          <details class="action-menu"><summary title="More actions" aria-label="More actions">⋯</summary>
+            <div class="action-menu-pop">
+              <button class="menu-action edit" data-action="edit-expense" data-id="${e.id}">Edit</button>
+              <button class="menu-action del" data-action="delete-expense" data-id="${e.id}">Delete</button>
+            </div>
+          </details>
         </div>
       </div>`).join('');
   }
@@ -369,8 +388,12 @@ function renderDebts(){
         </div>
         <div class="li-amt">${fmt(d.amount)}</div>
         <div class="li-actions">
-          <button class="icon-btn edit" data-action="edit-debt" data-id="${d.id}">Edit</button>
-          <button class="icon-btn del" data-action="delete-debt" data-id="${d.id}" aria-label="Delete">✕</button>
+          <details class="action-menu"><summary title="More actions" aria-label="More actions">⋯</summary>
+            <div class="action-menu-pop">
+              <button class="menu-action edit" data-action="edit-debt" data-id="${d.id}">Edit</button>
+              <button class="menu-action del" data-action="delete-debt" data-id="${d.id}">Delete</button>
+            </div>
+          </details>
         </div>
       </div>`).join('');
   }
@@ -649,8 +672,12 @@ function renderSnaps(){
           <div class="li-meta">${fmtDate(new Date(s.savedAt))} · Inflow ${fmt(t.inflow)} · Net ${net}</div>
         </div>
         <div class="li-actions">
-          <button class="icon-btn edit" data-action="load-snap" data-id="${s.id}">Load</button>
-          <button class="icon-btn del" data-action="delete-snap" data-id="${s.id}" aria-label="Delete">✕</button>
+          <details class="action-menu"><summary title="More actions" aria-label="More actions">⋯</summary>
+            <div class="action-menu-pop">
+              <button class="menu-action edit" data-action="load-snap" data-id="${s.id}">Load</button>
+              <button class="menu-action del" data-action="delete-snap" data-id="${s.id}">Delete</button>
+            </div>
+          </details>
         </div>
       </div>`;
   }).join('');
@@ -737,6 +764,8 @@ document.addEventListener('click', ev => {
       break;
     }
   }
+  const menu = t.closest('.action-menu');
+  if(menu && !t.classList.contains('confirming')) menu.open = false;
 });
 
 document.addEventListener('keydown', ev => {
