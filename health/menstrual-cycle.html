@@ -104,7 +104,8 @@ details form{margin-top:10px}
         <label>Cycle length (days)<input type="number" id="dc" min="20" max="45"></label>
         <label>Period length (days)<input type="number" id="dp" min="1" max="10"></label>
       </form>
-      <p class="note">Used until you have logged two periods. After that, your own average is used.</p>
+      <label style="margin-top:10px;display:flex;gap:8px;align-items:center;color:var(--tx);font-size:14px"><input type="checkbox" id="fx"> Always use these values (ignore my history)</label>
+      <p class="note">Unchecked: these are used only until you log two periods, then your own average is used. Check it to match another app, e.g. 31 days if that app predicts a 31-day cycle.</p>
     </details>
   </div>
 
@@ -116,14 +117,15 @@ details form{margin-top:10px}
 (function(){
 'use strict';
 var KEY='as_menstrual_v1', MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-var S={entries:[],defCycle:28,defPeriod:5}, editId=null, armId=null, armT=null, sel=null, view=null, C=null;
+var S={entries:[],defCycle:28,defPeriod:5,fixed:'false'}, editId=null, armId=null, armT=null, sel=null, view=null, C=null;
 var $=function(i){return document.getElementById(i)};
 
-function load(){try{var r=JSON.parse(localStorage.getItem(KEY)||'null');if(r&&Array.isArray(r.entries)){S.entries=r.entries;S.defCycle=+r.defCycle||28;S.defPeriod=+r.defPeriod||5}}catch(e){}}
+function load(){try{var r=JSON.parse(localStorage.getItem(KEY)||'null');if(r&&Array.isArray(r.entries)){S.entries=r.entries;S.defCycle=+r.defCycle||28;S.defPeriod=+r.defPeriod||5;S.fixed=r.fixed==='true'?'true':'false'}}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function dn(s){var p=s.split('-').map(Number);return Date.UTC(p[0],p[1]-1,p[2])/864e5}
 function iso(n){return new Date(n*864e5).toISOString().slice(0,10)}
-function fmt(n){var d=new Date(n*864e5);return d.getUTCDate()+'th '+MON[d.getUTCMonth()]+' '+d.getUTCFullYear()}
+function ord(d){var r=d%100;if(r>=11&&r<=13)return d+'th';return d+(['th','st','nd','rd'][d%10]||'th')}
+function fmt(n){var d=new Date(n*864e5);return ord(d.getUTCDate())+' '+MON[d.getUTCMonth()]+' '+d.getUTCFullYear()}
 function today(){var d=new Date();return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5}
 function avg(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)}
 function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on')},1800)}
@@ -133,7 +135,7 @@ function compute(){
   var gaps=[],lens=[],i;
   for(i=1;i<es.length;i++)gaps.push(es[i].s-es[i-1].s);
   es.forEach(function(e){if(e.e!=null&&e.e>=e.s)lens.push(e.e-e.s+1)});
-  var ac=gaps.length?avg(gaps.slice(-6)):S.defCycle, ap=lens.length?avg(lens.slice(-6)):S.defPeriod, cy=[];
+  var fx=S.fixed==='true', ac=(!fx&&gaps.length)?avg(gaps.slice(-6)):S.defCycle, ap=(!fx&&lens.length)?avg(lens.slice(-6)):S.defPeriod, cy=[];
   es.forEach(function(e,k){
     var nx=k<es.length-1?es[k+1].s:e.s+ac;
     cy.push({id:e.id,s:e.s,pl:(e.e!=null&&e.e>=e.s)?e.e-e.s+1:ap,nx:nx,act:true,last:k===es.length-1,gap:k<es.length-1?nx-e.s:null});
@@ -162,7 +164,7 @@ function renderSum(){
   el.innerHTML='<div><small>Next period</small><b>'+fmt(nc.s)+'</b><small>'+(d>=0?'in '+d+' day'+(d===1?'':'s'):'')+'</small></div>'+
    '<div><small>Next ovulation</small><b>'+fmt(cur.ov)+'</b></div>'+
    '<div class="full"><small>Fertile window</small><b>'+fmt(cur.fs)+' to '+fmt(cur.fe)+'</b></div>'+
-   '<div><small>Avg cycle</small><b>'+C.ac+' days</b></div><div><small>Avg period</small><b>'+C.ap+' days</b></div>';
+   '<div><small>'+(S.fixed==='true'?'Cycle (fixed)':'Avg cycle')+'</small><b>'+C.ac+' days</b></div><div><small>'+(S.fixed==='true'?'Period (fixed)':'Avg period')+'</small><b>'+C.ap+' days</b></div>';
 }
 function renderCal(){
   var y=view.y,m=view.m,first=Date.UTC(y,m,1)/864e5,dim=new Date(Date.UTC(y,m+1,0)).getUTCDate(),off=new Date(first*864e5).getUTCDay(),t=today();
@@ -236,6 +238,7 @@ $('f').addEventListener('submit',function(ev){
   if(upsert(s,$('fe').value)){var wasEdit=!!editId;resetForm();toast(wasEdit?'Updated':'Saved');
     var d=new Date(dn(s)*864e5);view={y:d.getUTCFullYear(),m:d.getUTCMonth()};renderAll()}
 });
+$('fx').addEventListener('change',function(){S.fixed=this.checked?'true':'false';save();renderAll()});
 ['dc','dp'].forEach(function(id){$(id).addEventListener('input',function(){
   var v=+this.value;if(!v)return;
   if(id==='dc')S.defCycle=Math.min(45,Math.max(20,v));else S.defPeriod=Math.min(10,Math.max(1,v));
@@ -243,7 +246,7 @@ $('f').addEventListener('submit',function(ev){
 
 load();
 var t0=new Date();view={y:t0.getFullYear(),m:t0.getMonth()};sel=today();
-$('dc').value=S.defCycle;$('dp').value=S.defPeriod;
+$('fx').checked=S.fixed==='true';$('dc').value=S.defCycle;$('dp').value=S.defPeriod;
 renderAll();
 })();
 </script>
