@@ -52,7 +52,7 @@ const f=h=>(Math.round(h*100)/100).toLocaleString('en-IN')+'h';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clearTimeout(tt);tt=setTimeout(()=>e.className='',1600)};
 let arm=null;const twice=(k,fn)=>{if(arm===k){arm=null;fn()}else{arm=k;toast('Tap again to confirm');setTimeout(()=>{if(arm===k)arm=null},2500)}};
-D.rvf=D.rvf||[{n:'Sleep',a:1},{n:'Water (L)',u:1},{n:'Steps',u:1},{n:'Breakfast'},{n:'Lunch'},{n:'Dinner'},{n:'Vitamin D (hrs)',u:1,a:1},{n:'Snax'},{n:'Learn'},{n:'Parenting'},{n:'Health issue'},{n:'Graha'}];const RVn=()=>D.rvf.map(x=>x.n);
+D.rvf=D.rvf||[{n:'Sleep',a:1},{n:'Water (L)',u:1},{n:'Steps',u:1},{n:'Breakfast'},{n:'Lunch'},{n:'Dinner'},{n:'Vitamin D (min)',u:1,a:1},{n:'Snax'},{n:'Learn'},{n:'Parenting'},{n:'Health issue'},{n:'Graha'}];const RVn=()=>D.rvf.map(x=>x.n);
 const R={};
 (()=>{const uid=()=>Math.random().toString(36).slice(2,8);
 const mk=s=>s.trim().split('\n').map(l=>{const[a,b,t,g]=l.split('|');return{id:uid(),s:a,e:b,t,g:'goal-'+g}});
@@ -78,6 +78,11 @@ for(const k in D.tpl)D.tpl[k].forEach(fx);for(const d in D.log)if(D.log[d].ov)D.
 for(const d in D.log){const bv=D.log[d].bv;if(bv)for(const id in bv)if(typeof bv[id]=='string'){if(m[id])bv[id]={[m[id]]:bv[id]};else delete bv[id]}}save()}
 const rvh=(b,L)=>{const a=rn(b,L),bv=(L.bv||{})[b.id]||{},rest=RVn().filter(x=>!a.includes(x));
 return `<div class="rvs">${a.map(k=>`<span class="rvc"><b>${esc(k)}</b><input data-f="v" data-k="${esc(k)}" placeholder="value" value="${esc(bv[k]||'')}"><button class="g x" data-rrm="${esc(k)}" aria-label="Remove review">✕</button></span>`).join('')}${rest.length?`<select data-f="radd" aria-label="Add review"><option value="">+ Review</option>${rest.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:''}</div>`};
+function migVd(){const O='Vitamin D (hrs)',N='Vitamin D (min)',v=D.rvf.find(x=>x.n==O);if(!v)return;v.n=N;
+const fb=b=>{if(Array.isArray(b.r))b.r=b.r.map(z=>z==O?N:z);else if(b.r==O)b.r=N};
+const cv=(o,sc)=>{if(o&&typeof o=='object'&&O in o){const n=parseFloat(o[O]);o[N]=sc&&!isNaN(n)?String(Math.round(n*60)):o[O];delete o[O]}};
+for(const k in D.tpl)D.tpl[k].forEach(fb);
+for(const d in D.log){const L=D.log[d];if(L.ov)L.ov.forEach(fb);cv(L.rv,0);cv(L.au,0);if(L.bv)for(const id in L.bv)cv(L.bv[id],0)}save()}
 const hm=m=>{m=((m%1440)+1440)%1440;return p2(Math.floor(m/60))+':'+p2(m%60)};
 const snap=b=>[b.g,dur(b),b.s,b.e];
 const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d);const L=D.log[day];if(L&&L.done&&L.done[b.id])L.done[b.id]=snap(b)};
@@ -118,12 +123,12 @@ else if(c=='reset'){twice('so',()=>{delete L.ov;delete L.ovk;delete L.sc;syncRv(
 $('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];setR(b,rl(b).filter(x=>x!=rk));{const L=lg();if(L.bv&&L.bv[b.id])delete L.bv[b.id][rk]}syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
 $('#add').onclick=()=>{const B=blocks(),a=B[B.length-1],st=a?a.e:'09:00';B.push({id:uid(),s:st,e:hm(mn(st)+30),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added')};
 function syncRv(){const L=lg(),B=blocks(),a={},mp=new Set,F={};D.rvf.forEach(x=>F[x.n]=x);L.rv=L.rv||{};L.au=L.au||{};
-for(const b of B)for(const n of rn(b,L)){const x=F[n];if(!x)continue;mp.add(n);if(!(L.done&&L.done[b.id]))continue;let v=String((((L.bv||{})[b.id])||{})[n]||'').trim();if(!v&&x.a)v=x.u?dur(b):f(dur(b));if(v!=='')(a[n]=a[n]||[]).push(v)}
+for(const b of B)for(const n of rn(b,L)){const x=F[n];if(!x)continue;mp.add(n);if(!(L.done&&L.done[b.id]))continue;let v=String((((L.bv||{})[b.id])||{})[n]||'').trim();if(!v&&x.a)v=x.u?(/\(min/i.test(x.n)?Math.round(dur(b)*60):dur(b)):f(dur(b));if(v!=='')(a[n]=a[n]||[]).push(v)}
 for(const k of mp){if(a[k]){L.rv[k]=F[k].u?String(Math.round(a[k].reduce((p,q)=>p+(+q||0),0)*100)/100):a[k].join(', ');L.au[k]=1}else if(L.au[k]){delete L.rv[k];delete L.au[k]}}
 fillRv()}
 function fillRv(){const r=(D.log[day]||{}).rv||{};document.querySelectorAll('#rv input').forEach(i=>i.value=r[i.dataset.k]||'')}
 function drawRv(){$('#rv').innerHTML=RVn().map(k=>`<label class="rl">${esc(k)}<input data-k="${esc(k)}"></label>`).join('');fillRv();drawRvm()}
-function drawRvm(){$('#rvm').innerHTML=D.rvf.map((x,i)=>`<div class="fl" data-i="${i}" style="align-items:center;margin:6px 0"><input data-rn value="${esc(x.n)}" style="flex:1;min-width:120px" aria-label="Review tag name"><button class="${x.u?'':'g'}" data-sum>Sum</button><button class="${x.a?'':'g'}" data-auto>Time</button><button class="g x" data-rdel aria-label="Delete review tag">✕</button></div>`).join('')+'<p class="h" style="margin:4px 0 0">Sum: add up numbers from ticked blocks. Time: use the block duration when its value is blank.</p>'}
+function drawRvm(){$('#rvm').innerHTML=D.rvf.map((x,i)=>`<div class="fl" data-i="${i}" style="align-items:center;margin:6px 0"><input data-rn value="${esc(x.n)}" style="flex:1;min-width:120px" aria-label="Review tag name"><button class="${x.u?'':'g'}" data-sum>Sum</button><button class="${x.a?'':'g'}" data-auto>Time</button><button class="g x" data-rdel aria-label="Delete review tag">✕</button></div>`).join('')+'<p class="h" style="margin:4px 0 0">Sum: add up numbers from ticked blocks. Time: use the block duration when its value is blank (in minutes if the name has (min)).</p>'}
 $('#rvm').onchange=e=>{const r=e.target.closest('[data-i]');if(!r||!e.target.hasAttribute('data-rn'))return;const x=D.rvf[+r.dataset.i],o=x.n,n=e.target.value.trim();if(!n||n==o||D.rvf.some(y=>y.n==n)){e.target.value=o;return}
 x.n=n;const fx=b=>{b.r=rl(b).map(z=>z==o?n:z)};for(const k in D.tpl)D.tpl[k].forEach(fx);
 for(const d in D.log){const L=D.log[d];if(L.ov)L.ov.forEach(fx);if(L.bv)for(const id in L.bv)if(L.bv[id]&&o in L.bv[id]){L.bv[id][n]=L.bv[id][o];delete L.bv[id][o]}for(const q of['rv','au'])if(L[q]&&o in L[q]){L[q][n]=L[q][o];delete L[q][o]}}
@@ -141,12 +146,12 @@ let mode='merge';
 function imp(o){if(!o||typeof o!='object'||!o.tpl||!o.tm)return toast('Not a Time Zones file');
 if(mode=='replace'){D={tags:o.tags||D.tags,log:o.log||{},tpl:o.tpl,tm:o.tm,rvf:o.rvf||D.rvf}}
 else{D.tags=[...new Set([...D.tags,...(o.tags||[])])];(o.rvf||[]).forEach(x=>{if(!D.rvf.some(y=>y.n==x.n))D.rvf.push(x)});for(const k in o.tpl){const n=D.tpl[k]?k+'-'+uid():k;D.tpl[n]=o.tpl[k];D.tm[n]=o.tm[k]||{n:k,d:[]}}for(const d in o.log||{})if(!D.log[d])D.log[d]=o.log[d]}
-migR();draw();toast('Imported')}
+migR();migVd();drawRv();draw();toast('Imported')}
 $('#ex').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(D,null,1)],{type:'application/json'}));a.download='my-time-zones.json';a.click();toast('Exported')};
 $('#im').onclick=()=>{mode='merge';$('#fi').click()};
 $('#ir').onclick=()=>twice('ir',()=>{mode='replace';$('#fi').click()});
 $('#fi').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=()=>{try{imp(JSON.parse(r.result))}catch(x){toast('Could not read that file')}};r.readAsText(fl);e.target.value=''};
-R.today=()=>{drawRv();draw()};migR();drawRv();chain();draw();
+R.today=()=>{drawRv();draw()};migR();migVd();drawRv();chain();draw();
 })();
 (()=>{const day=iso(new Date());let Y=+day.slice(0,4);
 $('#md').value=day;$('#myr').value=Y;
