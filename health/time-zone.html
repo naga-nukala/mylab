@@ -83,7 +83,8 @@ const snap=b=>[b.g,dur(b),b.s,b.e];
 const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d);const L=D.log[day];if(L&&L.done&&L.done[b.id])L.done[b.id]=snap(b)};
 function resnap(){const L=D.log[day];if(!L||!L.done)return;[...Object.values(D.tpl).flat(),...(L.ov||[])].forEach(b=>{const x=L.done[b.id];if(x&&x.length<4)L.done[b.id]=snap(b)})}
 const fixB=B=>{for(let n=0;n<B.length;n++){const f=B[0];if(f&&B.length>1&&mn(f.e)<mn(f.s)&&dur(f)<4)B.push(B.shift());else break}return B};
-const isOv=()=>{const L=D.log[day];return !!(L&&L.ov&&L.ovk==cur())};
+const hasOv=()=>{const L=D.log[day];return !!(L&&L.ov&&L.ovk==cur())};
+const isOv=()=>hasOv()&&D.log[day].sc!='tpl';
 const blocks=()=>isOv()?D.log[day].ov:D.tpl[cur()];
 const opts=g=>[...new Set([...D.tags,g])].map(t=>`<option ${t==g?'selected':''}>${esc(t)}</option>`).join('');
 const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -94,7 +95,7 @@ function draw(){const k=cur(),B=fixB(blocks()),m=D.tm[k],L=D.log[day]||{};$('#hd
 $('#tabs').innerHTML=Object.keys(D.tm).map(x=>`<button class="${x==k?'':'g'}" data-tab="${x}">${esc(D.tm[x].n)}</button>`).join('')+'<button class="g" data-new>+ New</button>';
 $('#tinfo').innerHTML=`<input id="tn" value="${esc(m.n)}" aria-label="Template name"><div class="fl" style="margin-top:8px">${DS.map((n,i)=>`<button class="${m.d.includes(i)?'':'g'}" data-day="${i}">${n}</button>`).join('')}</div><div style="color:var(--d);font-size:13px;margin:6px 0">Loads automatically on the selected days. Use the tabs to switch for today.</div><div class="fl"><button class="g" data-dup>Duplicate</button><button class="g x" data-rm>Delete template</button></div>`;
 $('#list').innerHTML=B.map((b,i)=>`<div class="row" data-i="${i}"><input type="checkbox" data-f="done" aria-label="Done" ${L.done&&L.done[b.id]?'checked':''}><input class="tx" data-f="t" value="${esc(b.t)}"><div class="r2"><input type="time" data-f="s" data-p="${b.s}" value="${b.s}"><input type="time" data-f="e" data-p="${b.e}" value="${b.e}"><select data-f="g">${opts(b.g)}</select><button class="g" data-ins="${i}" aria-label="Add block after this">＋</button><button class="g x" data-del="${i}" aria-label="Delete">✕</button></div>${rvh(b,L)}</div>`).join('');
-const ov=isOv();$('#scope').innerHTML=`<div class="fl"><button class="${ov?'g':''}" data-scope="tpl">Template</button><button class="${ov?'':'g'}" data-scope="day">This day only</button></div><p class="h" style="margin:6px 0 4px">Time and block changes apply to ${ov?'this date only':'every day that uses this template'}.</p>`;
+const ov=isOv(),ho=hasOv();$('#scope').innerHTML=`<div class="fl"><button class="${ov?'g':''}" data-scope="tpl">Template</button><button class="${ov?'':'g'}" data-scope="day">This day only</button>${ho?'<button class="g x" data-scope="reset">Reset day</button>':''}</div><p class="h" style="margin:6px 0 4px">Time and block changes apply to ${ov?'this date only':'every day that uses this template'}.${ho&&!ov?' This day\'s own changes are kept.':''}</p>`;
 stat();fillRv()}
 $('#tabs').onclick=e=>{const d=e.target.dataset;if(d.tab){lg().tpl=d.tab;save();draw()}else if('new' in d){const k='t'+uid();D.tpl[k]=mk(SL);D.tm[k]={n:'New template',d:[]};lg().tpl=k;save();draw();toast('Template added')}};
 $('#tinfo').oninput=e=>{if(e.target.id!='tn')return;const k=cur();D.tm[k].n=e.target.value;const b=$('[data-tab="'+k+'"]');if(b)b.textContent=e.target.value;save()};
@@ -110,7 +111,10 @@ let d=mn(n)-mn(o);d=((d+720)%1440+1440)%1440-720;if(!d)return;
 if(fl=='s')b.s=n;else{b.e=n;for(let j=i+1;j<B.length;j++)shiftB(B[j],d)}
 const L=lg();if(L.done&&L.done[b.id])L.done[b.id]=snap(b);syncRv();save();draw();toast(fl=='s'?'Start changed, hours updated':'Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
 function ins(i){const B=blocks(),a=B[i],d=15;for(let j=i+1;j<B.length;j++)shiftB(B[j],d);B.splice(i+1,0,{id:uid(),s:a.e,e:hm(mn(a.e)+d),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added, later blocks moved 15 min')}
-$('#scope').onclick=e=>{const c=e.target.dataset.scope;if(!c)return;const L=lg(),k=cur();if(c=='day'&&!isOv()){L.ov=D.tpl[k].map(b=>({...b}));L.ovk=k;save();draw();toast('Changes now apply to this day only')}else if(c=='tpl'&&isOv())twice('so',()=>{delete L.ov;delete L.ovk;syncRv();save();draw();toast('Day changes discarded')})};
+$('#scope').onclick=e=>{const c=e.target.dataset.scope;if(!c)return;const L=lg(),k=cur();
+if(c=='day'&&!isOv()){if(hasOv())delete L.sc;else{L.ov=D.tpl[k].map(b=>({...b}));L.ovk=k;delete L.sc}save();draw();toast('Changes now apply to this day only')}
+else if(c=='tpl'&&isOv()){L.sc='tpl';save();draw();toast('Showing the template. This day\'s changes are kept')}
+else if(c=='reset'){twice('so',()=>{delete L.ov;delete L.ovk;delete L.sc;syncRv();save();draw();toast('Day changes discarded')});if(arm)e.target.classList.add('arm')}};
 $('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];setR(b,rl(b).filter(x=>x!=rk));{const L=lg();if(L.bv&&L.bv[b.id])delete L.bv[b.id][rk]}syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
 $('#add').onclick=()=>{const B=blocks(),a=B[B.length-1],st=a?a.e:'09:00';B.push({id:uid(),s:st,e:hm(mn(st)+30),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added')};
 function syncRv(){const L=lg(),B=blocks(),a={},mp=new Set,F={};D.rvf.forEach(x=>F[x.n]=x);L.rv=L.rv||{};L.au=L.au||{};
