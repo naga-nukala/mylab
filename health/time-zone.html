@@ -107,9 +107,8 @@ if(fl=='done'){if(e.target.checked)L.done[b.id]=snap(b);else delete L.done[b.id]
 syncRv();save();if(fl=='radd')draw();else stat()};
 $('#list').onchange=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||(fl!='s'&&fl!='e'))return;const B=blocks(),i=+r.dataset.i,b=B[i],o=e.target.dataset.p,n=e.target.value;if(!n){e.target.value=o;return}
 let d=mn(n)-mn(o);d=((d+720)%1440+1440)%1440-720;if(!d)return;
-if(fl=='s')shiftB(b,d);else b.e=n;
-for(let j=i+1;j<B.length;j++)shiftB(B[j],d);
-const L=lg();if(L.done&&L.done[b.id])L.done[b.id]=snap(b);syncRv();save();draw();toast('Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
+if(fl=='s')b.s=n;else{b.e=n;for(let j=i+1;j<B.length;j++)shiftB(B[j],d)}
+const L=lg();if(L.done&&L.done[b.id])L.done[b.id]=snap(b);syncRv();save();draw();toast(fl=='s'?'Start changed, hours updated':'Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
 function ins(i){const B=blocks(),a=B[i],d=15;for(let j=i+1;j<B.length;j++)shiftB(B[j],d);B.splice(i+1,0,{id:uid(),s:a.e,e:hm(mn(a.e)+d),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added, later blocks moved 15 min')}
 $('#scope').onclick=e=>{const c=e.target.dataset.scope;if(!c)return;const L=lg(),k=cur();if(c=='day'&&!isOv()){L.ov=D.tpl[k].map(b=>({...b}));L.ovk=k;save();draw();toast('Changes now apply to this day only')}else if(c=='tpl'&&isOv())twice('so',()=>{delete L.ov;delete L.ovk;syncRv();save();draw();toast('Day changes discarded')})};
 $('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];setR(b,rl(b).filter(x=>x!=rk));{const L=lg();if(L.bv&&L.bv[b.id])delete L.bv[b.id][rk]}syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
