@@ -79,8 +79,8 @@ const isOv=()=>{const L=D.log[day];return !!(L&&L.ov&&L.ovk==cur())};
 const blocks=()=>isOv()?D.log[day].ov:D.tpl[cur()];
 const opts=g=>[...new Set([...D.tags,g])].map(t=>`<option ${t==g?'selected':''}>${esc(t)}</option>`).join('');
 const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-function stat(){const B=blocks(),h=H(day),L=D.log[day]||{},dn=Object.values(L.done||{}).reduce((a,x)=>a+x[1],0),pl=B.reduce((a,b)=>a+dur(b),0);
-$('#sum').textContent=f(dn)+' of '+f(pl);
+function stat(){const B=blocks(),h=H(day),L=D.log[day]||{},dn=Object.values(L.done||{}).reduce((a,x)=>a+x[1],0);
+$('#sum').textContent=f(dn)+' logged';
 $('#chips').innerHTML=Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')||'<span style="color:var(--d)">Tick a block to add its hours.</span>'}
 function draw(){const k=cur(),B=fixB(blocks()),m=D.tm[k],L=D.log[day]||{};$('#hd').textContent=DN[dow]+', '+fd(day);$('#dp').value=day;
 $('#tabs').innerHTML=Object.keys(D.tm).map(x=>`<button class="${x==k?'':'g'}" data-tab="${x}">${esc(D.tm[x].n)}</button>`).join('')+'<button class="g" data-new>+ New</button>';

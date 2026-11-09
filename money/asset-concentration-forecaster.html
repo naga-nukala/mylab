@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#a7e8c5">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="pwa.js" defer></script>
+<title>Asset Concentration & Future Forecaster</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+  .meter{position:relative;height:10px;border-radius:6px;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e)}
+  .meter.rev{background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)}
+  .meter i{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:#f8fafc;box-shadow:0 0 0 2px #0f172a;transition:left .3s}
+  input[type=range]{height:18px}
+  :focus-visible{outline:2px solid #a7e8c5;outline-offset:2px}
+</style>
+</head>
+<body class="p-4 pb-16">
+<div class="max-w-6xl mx-auto">
+  <header class="mb-5">
+    <h1 class="text-xl sm:text-2xl font-bold">🏙️ Asset Concentration &amp; Future Forecaster</h1>
+    <p class="text-sm text-slate-400 mt-1">See how your property and liquid holdings behave over 30 years: liquidity, water stress, ageing, and what to rebalance. <span id="asOf"></span></p>
+  </header>
+
+  <div class="grid lg:grid-cols-5 gap-4">
+    <!-- INPUTS -->
+    <section class="lg:col-span-2 space-y-4" aria-label="Portfolio inputs">
+      <div id="inputs" class="space-y-4"></div>
+      <button id="reset" class="w-full rounded-lg border border-slate-600 py-2 text-sm text-slate-300 hover:border-emerald-400">Reset to sample portfolio</button>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="lg:col-span-3 space-y-4" aria-label="Forecast results">
+      <div id="sum" class="grid grid-cols-3 gap-3"></div>
+
+      <div class="rounded-xl bg-slate-800 p-4">
+        <h2 class="font-semibold mb-2">Where your money sits today</h2>
+        <div class="h-64"><canvas id="cDonut"></canvas></div>
+      </div>
+
+      <div class="rounded-xl bg-slate-800 p-4">
+        <h2 class="font-semibold">30-year projection</h2>
+        <p class="text-xs text-slate-400 mb-2" id="projNote"></p>
+        <div class="h-64"><canvas id="cProj"></canvas></div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-3" id="impact"></div>
+
+      <div class="rounded-xl bg-slate-800 p-4">
+        <h2 class="font-semibold">Value of each property type in today's rupees</h2>
+        <p class="text-xs text-slate-400 mb-2">100 = what it is worth today. Dips show ageing and inflation outrunning the asset.</p>
+        <div class="h-56"><canvas id="cObs"></canvas></div>
+      </div>
+
+      <div>
+        <h2 class="font-semibold mb-2">Recommendation matrix</h2>
+        <div class="grid md:grid-cols-3 gap-3" id="recs"></div>
+      </div>
+      <p class="text-xs text-slate-500">Planning estimates built on the growth, depreciation and liquidity assumptions in this page. Not investment advice. Check local rules and values with a registered advisor before acting.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ---------- Formatting (shared conventions) ---------- */
+const fmt = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const fmtS = n => { const a = Math.abs(n), s = n < 0 ? '-' : ''; return a >= 1e7 ? s + '₹' + (a/1e7).toFixed(2) + ' Cr' : a >= 1e5 ? s + '₹' + (a/1e5).toFixed(1) + ' L' : s + '₹' + Math.round(a).toLocaleString('en-IN'); };
+const ord = d => d + (d % 100 >= 11 && d % 100 <= 13 ? 'th' : (['th','st','nd','rd'][d % 10] || 'th'));
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = d => `${ord(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+const pc = x => Math.round(x * 100) + '%';
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- Model ---------- */
+const TYPES = {
+  uVilla:{g:'Urban',n:'Villa',kind:'prop',gL:7,s:.3,life:70,liq:25,water:60,d:{v:20000000,age:8,yld:2.5,drag:1.2}},
+  uHouse:{g:'Urban',n:'Individual house',kind:'prop',gL:6.5,s:.4,life:60,liq:35,water:55,d:{v:10000000,age:15,yld:3,drag:1.5}},
+  uApt:{g:'Urban',n:'Mid-level apartment',kind:'prop',gL:5.5,s:.6,life:45,liq:45,water:50,d:{v:6000000,age:20,yld:3.2,drag:2}},
+  mf:{g:'Liquid',n:'Mutual funds',kind:'liq',d:{v:3000000,ret:12,liq:90}},
+  gold:{g:'Liquid',n:'Digital gold',kind:'liq',d:{v:1500000,ret:8,liq:85}},
+  oth:{g:'Liquid',n:'Other liquid (FDs, debt funds)',kind:'liq',d:{v:500000,ret:6.5,liq:75}},
+  rVilla:{g:'Rural',n:'Rural villa',kind:'prop',gL:5,s:.35,life:60,liq:12,water:45,d:{v:4000000,age:12,yld:0,drag:1.2}},
+  rHouse:{g:'Rural',n:'Rural individual house',kind:'prop',gL:4.5,s:.5,life:50,liq:15,water:50,d:{v:2500000,age:25,yld:0,drag:1}},
+  rApt:{g:'Rural',n:'Mid-level rural apartment / home',kind:'prop',gL:4,s:.6,life:40,liq:18,water:45,d:{v:1500000,age:18,yld:2,drag:1.5}},
+  farm:{g:'Rural',n:'Farmland',kind:'farm',d:{acres:4,ppa:1500000,water:2,solar:40000,on:false}}
+};
+let nextId = 1;
+const mk = (type, name, d) => { const t = TYPES[type]; return {id:'a' + (nextId++), type, g:t.g, kind:t.kind, n:name || t.n, gL:t.gL, s:t.s, life:t.life, liq:t.liq, water:t.water, d:{...t.d, ...d}}; };
+const sample = () => ['uVilla','uHouse','uApt','mf','gold','oth','rVilla','rHouse','rApt','farm'].map(t => mk(t));
+const mkG = () => ({id:'g',d:{infl:6,stress:40,target:35}});
+let A = sample(), G = mkG();
+const KEY = 'asset_forecaster_v2';
+try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && Array.isArray(s.assets)) { A = s.assets.filter(x => TYPES[x.type]).map(x => mk(x.type, x.n, x.d)); if (s.g) Object.assign(G.d, s.g); } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify({assets:A.map(a => ({type:a.type, n:a.n, d:a.d})), g:G.d})); } catch (e) {} };
+const get = id => id === 'g' ? G : A.find(a => a.id === id);
+const val = a => a.kind === 'farm' ? a.d.acres * a.d.ppa : a.d.v;
+
+const F = {
+  v:['Current value',0,100000000,100000,fmtS], age:['Building age',0,60,1,x=>x+' yrs'],
+  yld:['Rental yield',0,8,.1,x=>x+'%'], drag:['Maintenance drag per year',0,5,.1,x=>x+'%'],
+  ret:['Return rate per year',0,20,.1,x=>x+'%'], liq:['Liquidity score',0,100,1,x=>x+'/100'],
+  acres:['Farmland acreage',0,50,.5,x=>x+' acres'], ppa:['Value per acre',0,10000000,100000,fmtS],
+  water:['Water availability',1,5,1,x=>['','Very scarce','Scarce','Moderate','Good','Abundant'][x]],
+  solar:['Solar lease per acre per year',0,150000,5000,fmtS],
+  infl:['Inflation per year',0,12,.5,x=>x+'%'], stress:['Water and climate stress',0,100,5,x=>x+'/100'],
+  target:['Target liquid share of portfolio',0,70,5,x=>x+'%']
+};
+const KEYS = {prop:['v','age','yld','drag'], liq:['v','ret','liq'], farm:['acres','ppa','water','solar']};
+
+/* growth of one asset in year t (nominal) */
+function proj(a, t, stress, v0) {
+  const d = a.d;
+  if (a.kind === 'prop') {
+    const f = x => Math.max(.1, 1 - (d.age + x) / a.life);
+    return (v0 ?? d.v) * ((1 - a.s) * Math.pow(1 + a.gL/100, t) + a.s * Math.pow(1.03, t) * f(t) / f(0));
+  }
+  if (a.kind === 'liq') return (v0 ?? d.v) * Math.pow(1 + d.ret/100, t);
+  const haircut = Math.max(0, 4 - d.water) * .1 * (stress/100) * (t/30) * (d.on ? .5 : 1);
+  return d.acres * d.ppa * Math.pow(1.06, t) * (1 - haircut);
+}
+function income(a, v, t) {
+  if (a.kind === 'prop') return v * (a.d.yld - a.d.drag) / 100;
+  if (a.kind === 'farm') return v * .012 + (a.d.on ? a.d.acres * a.d.solar * Math.pow(1.03, t) : 0);
+  return 0;
+}
+const isRE = a => a.kind !== 'liq';
+function obsRisk(a) {
+  const f = x => Math.max(.1, 1 - (a.d.age + x) / a.life);
+  return clamp(a.s * (1 - f(30)/f(0)) * 160 + a.d.drag * 6, 0, 100);
+}
+
+function compute() {
+  const stress = G.d.stress, infl = G.d.infl / 100;
+  const cls = {urban:[],rural:[],liquid:[],total:[]};
+  let cum = 0;
+  for (let t = 0; t <= 30; t++) {
+    let u = 0, r = 0, l = 0;
+    A.forEach(a => {
+      const v = proj(a, t, stress);
+      if (a.kind === 'liq') l += v; else if (a.g === 'Urban') u += v; else r += v;
+      if (t > 0) cum += income(a, v, t);
+    });
+    cls.urban.push(u); cls.rural.push(r); cls.liquid.push(l); cls.total.push(u + r + l + cum);
+  }
+  const tot = A.reduce((s, a) => s + val(a), 0);
+  const liqV = A.filter(a => a.kind === 'liq').reduce((s, a) => s + val(a), 0);
+  const reV = tot - liqV;
+  const liqScore = tot ? A.reduce((s, a) => s + val(a) * (a.kind === 'liq' ? a.d.liq : a.kind === 'prop' ? a.liq : 10), 0) / tot : 0;
+
+  const res = a => a.kind === 'liq' ? 90 : (a.kind === 'farm' ? clamp(a.d.water * 20 + (a.d.on ? 10 : 0), 0, 100) : a.water) * (1 - .5 * stress / 100);
+  const avgRes = f => { const s = A.filter(f), w = s.reduce((x, a) => x + val(a), 0); return w ? s.reduce((x, a) => x + val(a) * res(a), 0) / w : null; };
+  const props = A.filter(a => a.kind === 'prop' && val(a) > 0);
+  const pw = props.reduce((s, a) => s + val(a), 0);
+  const obs = pw ? props.reduce((s, a) => s + val(a) * obsRisk(a), 0) / pw : 0;
+  const reNet = (() => { const w = A.filter(a => isRE(a) && val(a) > 0); const s = w.reduce((x, a) => x + val(a), 0); return s ? w.reduce((x, a) => x + val(a) * (a.kind === 'farm' ? 1.2 : a.d.yld - a.d.drag), 0) / s : 0; })();
+  return { cls, tot, liqV, reV, liqScore, resAll: tot ? avgRes(() => true) : null, resU: avgRes(a => a.g === 'Urban'), resR: avgRes(a => a.g === 'Rural'), resL: avgRes(a => a.kind === 'liq'), obs, props, reNet,
+    y30: cls.total[30], y30real: cls.total[30] / Math.pow(1 + infl, 30) };
+}
+
+/* ---------- Inputs UI ---------- */
+const MONEY = new Set(['v','ppa','solar']);
+function sl(o, k) {
+  const [lab, min, max, step, f] = F[k], v = o.d[k], da = `data-a="${o.id}" data-k="${k}"`;
+  return `<div class="mb-3"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>${lab}</span><b id="l_${o.id}_${k}" class="text-slate-100">${f(v)}</b></div><div class="flex items-center gap-2"><input type="range" class="flex-1 min-w-0 accent-emerald-400" min="${min}" max="${max}" step="${step}" value="${v}" ${da} aria-label="${lab} slider"><input type="number" inputmode="decimal" step="any" min="${min}" class="w-28 rounded-md bg-slate-900 border border-slate-600 px-2 py-1 text-sm text-right text-slate-100" value="${v}" ${da} aria-label="${lab}"></div></div>`;
+}
+const GROUPS = [['Urban','Urban real estate'],['Liquid','Liquid reserves'],['Rural','Rural real estate and farmland']];
+const card = (title, note, body) => `<div class="rounded-xl bg-slate-800 p-4"><h2 class="font-semibold">${title}</h2><p class="text-xs text-slate-400 mb-3">${note}</p>${body}</div>`;
+let draft, editingId = null;
+const newDraft = type => { draft = {id:'draft', type, n:'', d:{...TYPES[type].d}}; };
+newDraft('uApt');
+
+function renderForm() {
+  const t = TYPES[draft.type];
+  const opts = GROUPS.map(([g, l]) => `<optgroup label="${l}">${Object.entries(TYPES).filter(([k, v]) => v.g === g).map(([k, v]) => `<option value="${k}" ${k === draft.type ? 'selected' : ''}>${v.n}</option>`).join('')}</optgroup>`).join('');
+  const box = t.kind === 'farm' ? `<label class="flex items-center gap-2 text-xs text-slate-300 mb-3"><input type="checkbox" class="accent-emerald-400" data-a="draft" data-k="on" ${draft.d.on ? 'checked' : ''}> Lease part of the land for solar</label>` : '';
+  const cls = 'mt-1 w-full rounded-lg bg-slate-900 border border-slate-600 p-2 text-sm text-slate-100';
+  document.getElementById('form').innerHTML = card(editingId ? 'Edit asset' : 'Add an asset', 'Pick a type, set the details, then add it. Add as many as you like, including several of the same type.',
+    `<label class="block mb-3 text-xs text-slate-400">Asset type<select id="typeSel" class="${cls}" ${editingId ? 'disabled' : ''}>${opts}</select></label>
+     <label class="block mb-3 text-xs text-slate-400">Name (optional)<input id="nameIn" type="text" maxlength="40" class="${cls}" value="${esc(draft.n)}" placeholder="e.g. Flat near the metro"></label>
+     ${KEYS[t.kind].map(k => sl(draft, k)).join('')}${box}
+     <div class="flex gap-2"><button data-act="save" class="flex-1 rounded-lg bg-emerald-500 py-2 font-bold text-emerald-950">${editingId ? 'Update asset' : '+ Add asset'}</button>${editingId ? '<button data-act="cancel" class="rounded-lg border border-slate-600 px-4 text-sm">Cancel</button>' : ''}</div>`);
+}
+function summary(a) {
+  if (a.kind === 'prop') return `${a.d.age} yrs old · ${a.d.yld}% rent · ${a.d.drag}% upkeep`;
+  if (a.kind === 'liq') return `${a.d.ret}% return · liquidity ${a.d.liq}/100`;
+  return `${a.d.acres} acres · water: ${F.water[4](a.d.water).toLowerCase()}${a.d.on ? ' · solar lease' : ''}`;
+}
+function renderList() {
+  document.getElementById('list').innerHTML = GROUPS.map(([g, l]) => {
+    const items = A.filter(a => a.g === g), sub = items.reduce((s, a) => s + val(a), 0);
+    const rows = items.length ? items.map(a => `<div class="flex items-center gap-2 py-2 border-b border-slate-700 last:border-0"><div class="flex-1 min-w-0"><div class="text-sm font-semibold truncate">${esc(a.n)}</div><div class="text-xs text-slate-400">${summary(a)}</div></div><div class="text-sm text-emerald-400 whitespace-nowrap">${fmt(val(a))}</div><button data-act="edit" data-id="${a.id}" class="text-xs text-sky-400 px-1">Edit</button><button data-act="del" data-id="${a.id}" class="text-red-400 px-1" aria-label="Remove ${esc(a.n)}">✕</button></div>`).join('') : '<div class="text-xs text-slate-500 py-2">Nothing added yet.</div>';
+    return card(l, `${items.length} ${items.length === 1 ? 'asset' : 'assets'} · ${fmt(sub)}`, rows);
+  }).join('');
+}
+function renderScenario() { document.getElementById('scenario').innerHTML = card('Scenario', 'Higher stress means more water shortage and heat over the next 30 years.', ['infl','stress','target'].map(k => sl(G, k)).join('')); }
+function buildInputs() {
+  document.getElementById('inputs').innerHTML = '<div id="form"></div><div id="list" class="space-y-4"></div><div id="scenario"></div>';
+  renderForm(); renderList(); renderScenario();
+}
+function saveDraft() {
+  if (editingId) { const a = get(editingId); if (a) { Object.assign(a.d, draft.d); a.n = draft.n.trim() || a.n; } editingId = null; }
+  else { const base = draft.n.trim() || TYPES[draft.type].n, c = A.filter(a => a.n === base || a.n.startsWith(base + ' ')).length; A.push(mk(draft.type, c ? `${base} ${c + 1}` : base, {...draft.d})); }
+  newDraft(draft.type); renderForm(); renderList(); save(); update();
+}
+const inputsEl = document.getElementById('inputs');
+inputsEl.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'nameIn') { draft.n = t.value; return; }
+  if (!t.dataset.k) return;
+  const o = t.dataset.a === 'g' ? G : draft, k = t.dataset.k;
+  let v;
+  if (t.type === 'checkbox') v = t.checked;
+  else {
+    if (t.value === '' || !isFinite(+t.value)) return;
+    const [, min, max] = F[k]; v = Math.max(min, +t.value); if (!MONEY.has(k)) v = Math.min(max, v);
+    inputsEl.querySelectorAll(`[data-a="${t.dataset.a}"][data-k="${k}"]`).forEach(x => { if (x !== t) x.value = v; });
+  }
+  o.d[k] = v;
+  const lab = document.getElementById(`l_${o.id}_${k}`); if (lab) lab.textContent = F[k][4](v);
+  if (o === G) { save(); update(); }
+});
+inputsEl.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'typeSel') { const n = draft.n; newDraft(t.value); draft.n = n; renderForm(); }
+  else if (t.type === 'number' && t.dataset.k) { t.value = (t.dataset.a === 'g' ? G : draft).d[t.dataset.k]; }
+});
+inputsEl.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, id = b.dataset.id;
+  if (act === 'save') saveDraft();
+  else if (act === 'cancel') { editingId = null; newDraft(draft.type); renderForm(); }
+  else if (act === 'edit') { const a = get(id); editingId = id; draft = {id:'draft', type:a.type, n:a.n, d:{...a.d}}; renderForm(); document.getElementById('form').scrollIntoView({behavior:'smooth'}); }
+  else if (act === 'del') { A = A.filter(x => x.id !== id); if (editingId === id) { editingId = null; newDraft(draft.type); renderForm(); } renderList(); save(); update(); }
+});
+document.getElementById('reset').addEventListener('click', () => { A = sample(); G = mkG(); editingId = null; newDraft('uApt'); buildInputs(); save(); update(); });
+
+/* ---------- Results ---------- */
+const COL = ['#38bdf8','#818cf8','#a78bfa','#22c55e','#facc15','#fb923c','#f472b6','#f87171','#2dd4bf','#a3e635'];
+Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
+const yTicks = { callback: v => fmtS(v) };
+const tip = { callbacks: { label: c => ` ${c.dataset.label || c.label}: ${fmt(c.parsed.y ?? c.parsed)}` } };
+const years = Array.from({length: 31}, (_, i) => i);
+const lineOpt = { responsive: true, maintainAspectRatio: false, interaction: {mode:'index', intersect:false}, scales: { y: { ticks: yTicks }, x: { title: {display:true, text:'Years from now'} } }, plugins: { tooltip: tip, legend: {position:'bottom'} } };
+const ch = {
+  donut: new Chart(document.getElementById('cDonut'), { type:'doughnut', data:{labels:[], datasets:[{data:[], backgroundColor:[], borderWidth:0}]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'right'}, tooltip:{callbacks:{label:c => ` ${c.label}: ${fmt(c.parsed)}`}} } } }),
+  proj: new Chart(document.getElementById('cProj'), { type:'line', data:{labels:years, datasets:[]}, options:lineOpt }),
+  obs: new Chart(document.getElementById('cObs'), { type:'line', data:{labels:years, datasets:[]}, options:{ ...lineOpt, scales:{ y:{ ticks:{callback:v=>v} }, x:lineOpt.scales.x }, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(0)}`}} } } })
+};
+
+const meter = (p, rev) => `<div class="meter ${rev ? 'rev' : ''} mt-2" role="img" aria-label="${Math.round(p)} out of 100"><i style="left:calc(${clamp(p,0,100)}% - 2px)"></i></div>`;
+const band = (p, rev) => { const good = rev ? 100 - p : p; return good >= 60 ? ['Strong','text-emerald-400'] : good >= 40 ? ['Moderate','text-amber-400'] : ['Weak','text-red-400']; };
+
+function update() {
+  const R = compute(), now = new Date(), end = new Date(now); end.setFullYear(now.getFullYear() + 30);
+  document.getElementById('asOf').textContent = `As of ${fmtDate(now)}.`;
+  document.getElementById('projNote').textContent = `Year 30 falls on ${fmtDate(end)}. Rental income, net of upkeep, is added to the total line.`;
+
+  document.getElementById('sum').innerHTML = [['Portfolio today', fmt(R.tot), 'text-slate-100'], [`Year 30 (${fmtDate(end)})`, fmt(R.y30), 'text-emerald-400'], ['Year 30 in today\'s rupees', fmt(R.y30real), 'text-sky-300']]
+    .map(([l, v, c]) => `<div class="rounded-xl bg-slate-800 p-3 text-center"><div class="text-[11px] text-slate-400">${l}</div><div class="font-bold ${c} text-sm sm:text-lg break-words">${v}</div></div>`).join('');
+
+  const items = A.filter(a => val(a) > 0);
+  ch.donut.data.labels = items.map(a => a.n);
+  ch.donut.data.datasets[0].data = items.map(val);
+  ch.donut.data.datasets[0].backgroundColor = items.map(a => COL[A.indexOf(a) % COL.length]);
+  ch.donut.update();
+
+  ch.proj.data.datasets = [
+    {label:'Urban real estate', data:R.cls.urban, borderColor:'#38bdf8', pointRadius:0, tension:.3},
+    {label:'Rural real estate', data:R.cls.rural, borderColor:'#fb923c', pointRadius:0, tension:.3},
+    {label:'Liquid reserves', data:R.cls.liquid, borderColor:'#22c55e', pointRadius:0, tension:.3},
+    {label:'Total with rental income', data:R.cls.total, borderColor:'#f8fafc', borderDash:[6,4], pointRadius:0, tension:.3}
+  ];
+  ch.proj.update();
+
+  const urb = A.filter(a => a.g === 'Urban' || a.kind === 'prop');
+  ch.obs.data.datasets = urb.filter(a => a.kind === 'prop').map(a => {
+    const c = {...a, d:{...a.d, v: a.d.v || 1e6}};
+    return {label:a.n, data:years.map(t => proj(c, t, 0) / proj(c, 0, 0) / Math.pow(1 + G.d.infl/100, t) * 100), borderColor:COL[A.indexOf(a) % COL.length], pointRadius:0, tension:.3, borderDash: a.g === 'Rural' ? [5,4] : []};
+  });
+  ch.obs.update();
+
+  /* impact cards */
+  const liqPct = R.tot ? R.liqV / R.tot : 0, [lb, lc] = band(R.liqScore, false);
+  const wA = R.resAll ?? 0, [wb, wc] = band(wA, false), [ob, oc] = band(R.obs, true);
+  const rows = (arr) => arr.map(([l, v]) => `<div class="flex justify-between text-xs text-slate-400 mt-1"><span>${l}</span><span class="text-slate-200">${v}</span></div>`).join('');
+  document.getElementById('impact').innerHTML = `
+    <div class="rounded-xl bg-slate-800 p-4"><h3 class="text-sm font-semibold">Liquidity vs illiquidity</h3>
+      <div class="flex h-3 rounded overflow-hidden mt-2"><div style="width:${liqPct*100}%;background:#22c55e"></div><div style="width:${(1-liqPct)*100}%;background:#64748b"></div></div>
+      <div class="text-xs mt-1 text-slate-400">${pc(liqPct)} liquid · ${pc(1 - liqPct)} real estate</div>
+      <div class="mt-2 text-lg font-bold ${lc}">${Math.round(R.liqScore)}/100 <span class="text-xs font-normal">${lb}</span></div>${meter(R.liqScore, false)}
+      ${rows([['Liquid reserves', fmt(R.liqV)], ['Real estate', fmt(R.reV)], ['Likely loss on a quick sale (about 10%)', fmt(R.reV * .1)]])}</div>
+    <div class="rounded-xl bg-slate-800 p-4"><h3 class="text-sm font-semibold">Water and climate resilience</h3>
+      <div class="mt-2 text-lg font-bold ${wc}">${Math.round(wA)}/100 <span class="text-xs font-normal">${wb}</span></div>${meter(wA, false)}
+      ${rows([['Urban property', R.resU == null ? '–' : Math.round(R.resU) + '/100'], ['Rural property and land', R.resR == null ? '–' : Math.round(R.resR) + '/100'], ['Liquid reserves', R.resL == null ? '–' : Math.round(R.resL) + '/100'], ['Scenario stress', G.d.stress + '/100']])}</div>
+    <div class="rounded-xl bg-slate-800 p-4"><h3 class="text-sm font-semibold">Maintenance and obsolescence risk</h3>
+      <div class="mt-2 text-lg font-bold ${oc}">${Math.round(R.obs)}/100 <span class="text-xs font-normal">${ob === 'Strong' ? 'Low risk' : ob === 'Moderate' ? 'Medium risk' : 'High risk'}</span></div>${meter(R.obs, true)}
+      ${rows(R.props.map(a => [a.n, Math.round(obsRisk(a)) + '/100']))}</div>`;
+
+  /* recommendations */
+  const col = (title, arr) => `<div class="rounded-xl bg-slate-800 p-4"><h3 class="font-semibold mb-2">${title}</h3>${arr.map(([h, t, tone]) => `<div class="mb-3 pl-3 border-l-4 ${tone === 'warn' ? 'border-amber-400' : tone === 'bad' ? 'border-red-400' : tone === 'ok' ? 'border-emerald-400' : 'border-slate-500'}"><div class="text-sm font-semibold">${h}</div><div class="text-xs text-slate-400 leading-relaxed">${t}</div></div>`).join('')}</div>`;
+  const U = [], Ru = [], Rb = [];
+  const ofT = (...ts) => A.filter(a => ts.includes(a.type));
+  const sv = as => as.reduce((s, a) => s + val(a), 0);
+  const uT = sv(A.filter(a => a.g === 'Urban')), sh = t => uT ? sv(ofT(t)) / uT : 0;
+  const apts = ofT('uApt'), apAge = sv(apts) ? Math.round(apts.reduce((s, a) => s + val(a) * a.d.age, 0) / sv(apts)) : 0;
+  if (!uT) U.push(['No urban property entered', 'Add a villa, house or apartment to get an urban strategy.', 'n']);
+  else {
+    if (sh('uApt') > .5 && apAge >= 15) U.push(['Apartment-heavy and ageing', `Apartments are ${pc(sh('uApt'))} of your urban value and average ${apAge} years old. Structure value fades first. Check redevelopment eligibility and society consent, and rotate part of the money into land-heavy houses before the building passes about 30 years.`, 'warn']);
+    else if (sh('uApt') > .5) U.push(['Apartment-heavy but still young', `Apartments are ${pc(sh('uApt'))} of urban value. Fine for now. Build a maintenance reserve and re-check once the building passes 20 years.`, 'n']);
+    if (sh('uHouse') + sh('uVilla') > .6) U.push(['Land-heavy core', `Houses and villas are ${pc(sh('uHouse') + sh('uVilla'))} of urban value. Land share grows fastest as the city densifies. Confirm zoning, setbacks and road-widening plans.`, 'ok']);
+    if (sh('uVilla') > .5) U.push(['Villa concentration', 'Villas sell to a thin buyer pool and take longer to exit. Keep liquid reserves at or above your target.', 'warn']);
+    if (sh('uApt') < .15) U.push(['Small apartment slice', 'Keeping about 20 to 30 percent in apartments adds rent and an easier exit, without large ageing exposure.', 'n']);
+    const hd = A.filter(a => a.g === 'Urban' && a.d.drag > 2.5 && val(a) > 0);
+    if (hd.length) U.push(['High upkeep drag', `${hd.map(a => esc(a.n)).join(', ')} lose over 2.5% a year to upkeep. Review service charges, repairs, and whether rent covers it.`, 'bad']);
+  }
+  const farms = ofT('farm'), ruralProps = sv(A.filter(a => a.g === 'Rural' && a.kind === 'prop')), rT = ruralProps + sv(farms);
+  const nm = as => as.map(a => esc(a.n)).join(', '), pot = as => as.reduce((s, a) => s + a.d.acres * a.d.solar, 0);
+  if (!rT) Ru.push(['No rural assets entered', 'Add rural homes or farmland to get a rural strategy.', 'n']);
+  else {
+    const dry = farms.filter(a => a.d.acres > 0 && a.d.water <= 2), wet = farms.filter(a => a.d.acres > 0 && a.d.water >= 4), mid = farms.filter(a => a.d.acres > 0 && a.d.water === 3), off = farms.filter(a => !a.d.on);
+    if (dry.length) Ru.push(['Low-water farmland', `${nm(dry)}: lease part of the land for solar (about ${fmt(pot(dry))} a year at your rate) and shift the rest to drought-tolerant agroforestry such as timber, fruit trees or bamboo.`, 'warn']);
+    if (wet.length) Ru.push(['Water is your strongest rural asset', `${nm(wet)}: protect the water with drip irrigation and recharge pits. Keep it as farmland or high-value horticulture.`, 'ok']);
+    if (mid.length) Ru.push(['Moderate water', `${nm(mid)}: mix crops with agroforestry borders and recharge structures. Solar on the driest corner is a hedge.`, 'n']);
+    if (off.length && pot(off) > 0) Ru.push(['Solar lease is switched off', `On ${nm(off)}, turning it on adds about ${fmt(pot(off))} a year at today's rate, rising 3% a year in this model.`, 'n']);
+    if (R.reV && rT / R.reV > .35) Ru.push(['Rural-heavy real estate', `Rural assets are ${pc(rT / R.reV)} of your real estate. Hold parcels near expanding corridors (highways, ring-road belts) and sell remote, low-water parcels to fund liquid reserves.`, 'warn']);
+    if (ruralProps > 0) Ru.push(['Rural homes', 'Homes without road access or land rarely resell quickly. Keep those you use or rent to farm managers, and plan to hold them.', 'n']);
+  }
+  const gold = sv(ofT('gold')), gap = G.d.target / 100 * R.tot - R.liqV;
+  const liqA = A.filter(a => a.kind === 'liq'), liqRet = R.liqV ? liqA.reduce((s, a) => s + val(a) * a.d.ret, 0) / R.liqV : 0;
+  const worst = [...R.props].sort((a, b) => obsRisk(b) * val(b) - obsRisk(a) * val(a))[0];
+  if (!R.tot) Rb.push(['Nothing to rebalance yet', 'Add your assets to see the gap.', 'n']);
+  else {
+    if (gap > 0) Rb.push(['Below your liquid target', `You hold ${pc(liqPct)} liquid against a ${G.d.target}% target. Move about ${fmt(gap)} into liquid reserves${worst ? `, starting with ${esc(worst.n)} (highest ageing risk)` : ''}.`, 'warn']);
+    else Rb.push(['Liquid target met', `You are ${fmt(-gap)} above the ${G.d.target}% target. Add to real estate only if net rent beats what liquid assets earn.`, 'ok']);
+    if (liqPct < .15) Rb.push(['Very thin cash buffer', 'Under 15% liquid means a forced sale could cost about 10% of the property value.', 'bad']);
+    if (R.liqV && (gold / R.liqV < .1 || gold / R.liqV > .4)) Rb.push(['Gold share of liquid reserves', `Gold is ${pc(gold / R.liqV)} of your liquid pool. About 15 to 30 percent is a common hedge band.`, 'n']);
+    if (R.liqV) Rb.push(['Income check', `Real estate nets about ${R.reNet.toFixed(1)}% a year from rent minus upkeep, before price growth. Your liquid assets earn about ${liqRet.toFixed(1)}% on average.`, 'n']);
+  }
+  document.getElementById('recs').innerHTML = col('Urban strategy', U) + col('Rural strategy', Ru) + col('Portfolio rebalancing', Rb);
+}
+
+buildInputs();
+update();
+</script>
+</body>
+</html>

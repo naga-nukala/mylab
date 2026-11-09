@@ -85,6 +85,9 @@ const INVESTMENT_STORAGE_KEY = 'investment_appreciation_entries';
 const INSURANCE_CHECKER_KEY = 'as_insurancechecker';
 const RETIREMENT_CALCULATOR_KEY = 'as_retirementcorpus';
 const PARENTS_COVERAGE_KEY = 'as_parents_coverage_v1';
+const EPF_RETIREMENT_KEY = 'as_epf_tracker_v1';
+const PPF_RETIREMENT_KEY = 'ppf_contributions_v1';
+const NPS_RETIREMENT_KEY = 'nps_contributions_v2';
 function safeGetItem(key){
   try { return localStorage.getItem(key); } catch(e) { return null; }
 }
@@ -212,6 +215,63 @@ function parentsCoverageData(){
   };
 }
 
+function retirementLinkedBalances(){
+  const amount = value => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const hasAmount = value => value !== '' && value !== null && value !== undefined &&
+    Number.isFinite(Number.parseFloat(value));
+  const ppfBalance = account => {
+    let balance = amount(account.opening);
+    const years = Array.isArray(account.years) ? [...account.years].sort((a,b) =>
+      (hasAmount(a.fy) ? Number.parseInt(a.fy,10) : 9999) -
+      (hasAmount(b.fy) ? Number.parseInt(b.fy,10) : 9999)) : [];
+    years.forEach(year => {
+      const months = Array.isArray(year.months) ? year.months : [];
+      const count = hasAmount(year.n) ? Math.max(0,Math.min(12,Number.parseInt(year.n,10))) : 12;
+      const principal = year.mode === 'each'
+        ? months.reduce((sum,value) => sum + amount(value),0)
+        : amount(year.same) * count;
+      const calculated = balance + principal + amount(year.interest) - amount(year.withdrawn);
+      balance = hasAmount(year.balance) ? amount(year.balance) : calculated;
+    });
+    return balance;
+  };
+  const npsTierBalance = (tier,index) => {
+    let balance = amount(tier.opening);
+    const years = Array.isArray(tier.years) ? [...tier.years].sort((a,b) =>
+      (hasAmount(a.fy) ? Number.parseInt(a.fy,10) : 9999) -
+      (hasAmount(b.fy) ? Number.parseInt(b.fy,10) : 9999)) : [];
+    years.forEach(year => {
+      const months = Array.isArray(year.months) ? year.months : [];
+      const count = hasAmount(year.n) ? Math.max(0,Math.min(12,Number.parseInt(year.n,10))) : 12;
+      const own = year.mode === 'each'
+        ? months.reduce((sum,value) => sum + amount(value),0)
+        : amount(year.same) * count;
+      const calculated = balance + own + (index === 0 ? amount(year.employer) : 0) + amount(year.interest);
+      balance = hasAmount(year.balance) ? amount(year.balance) : calculated;
+    });
+    if(hasAmount(tier.cur)) return amount(tier.cur);
+    const funds = Array.isArray(tier.funds) ? tier.funds.reduce((sum,fund) => sum + amount(fund.value),0) : 0;
+    if(funds > 0) return funds;
+    return years.length || amount(tier.opening) > 0 ? balance : 0;
+  };
+
+  const epf = readStoredObject(EPF_RETIREMENT_KEY);
+  const ppf = readStoredObject(PPF_RETIREMENT_KEY);
+  const nps = readStoredObject(NPS_RETIREMENT_KEY);
+  return {
+    epf:Array.isArray(epf.items) ? epf.items.reduce((sum,item) =>
+      sum + (item.emp === undefined ? amount(item.balance) : amount(item.emp)) + amount(item.er),0) : 0,
+    ppf:Array.isArray(ppf.accs) ? ppf.accs.reduce((sum,account) => sum + ppfBalance(account),0) : 0,
+    nps:Array.isArray(nps.accs) ? nps.accs.reduce((sum,account) => {
+      const tiers = Array.isArray(account.tiers) ? account.tiers : [];
+      return sum + tiers.reduce((tierSum,tier,index) => tierSum + npsTierBalance(tier,index),0);
+    },0) : 0
+  };
+}
+
 function insuranceCheckerData(){
   const data = readStoredObject(INSURANCE_CHECKER_KEY);
   const coverAmount = Number(data.existingHealth);
@@ -229,17 +289,23 @@ function insuranceCheckerData(){
 
 function retirementCalculatorData(){
   const data = readStoredObject(RETIREMENT_CALCULATOR_KEY);
-  const fields = ['currentAge','retireAge','monthlyExp','currentSavings','existingSip','preReturn'];
-  return fields.some(field => data[field] !== undefined && data[field] !== '')
-    ? {
-        currentAge:Number(data.currentAge) || 0,
-        targetAge:Number(data.retireAge) || 60,
-        monthlyExpense:Number(data.monthlyExp) || 0,
-        currentSavings:Number(data.currentSavings) || 0,
-        currentSIP:Number(data.existingSip) || 0,
-        preReturn:Number(data.preReturn) || 12
-      }
-    : null;
+  const sipFields = ['npsSip','ppfSip','epfSip','otherSip'];
+  const fields = ['currentAge','retireAge','monthlyExp','currentSavings','existingSip','preReturn',...sipFields];
+  if(!fields.some(field => data[field] !== undefined && data[field] !== '')) return null;
+  const linkedBalances = retirementLinkedBalances();
+  return {
+    currentAge:Number(data.currentAge) || 0,
+    targetAge:Number(data.retireAge) || 60,
+    monthlyExpense:Number(data.monthlyExp) || 0,
+    currentSavings:(Number(data.currentSavings) || 0) +
+      (data.includeEpf !== false ? linkedBalances.epf : 0) +
+      (data.includePpf !== false ? linkedBalances.ppf : 0) +
+      (data.includeNps !== false ? linkedBalances.nps : 0),
+    currentSIP:sipFields.some(field => data[field] !== undefined && data[field] !== '')
+      ? sipFields.reduce((sum,field) => sum + (Number(data[field]) || 0),0)
+      : Number(data.existingSip) || 0,
+    preReturn:Number(data.preReturn) || 12
+  };
 }
 
 function financialPlanDebts(){
@@ -777,7 +843,10 @@ const LINKED_PAGE_KEYS = new Set([
   INVESTMENT_STORAGE_KEY,
   INSURANCE_CHECKER_KEY,
   RETIREMENT_CALCULATOR_KEY,
-  PARENTS_COVERAGE_KEY
+  PARENTS_COVERAGE_KEY,
+  EPF_RETIREMENT_KEY,
+  PPF_RETIREMENT_KEY,
+  NPS_RETIREMENT_KEY
 ]);
 window.addEventListener('storage', event => {
   if(event.key === null || LINKED_PAGE_KEYS.has(event.key)){
