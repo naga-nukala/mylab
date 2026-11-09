@@ -43,7 +43,11 @@ const save=()=>{try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}};
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p2=n=>String(n).padStart(2,'0');
 const iso=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
 const fd=s=>{const[y,m,d]=s.split('-');return +d+'th '+MN[m-1]+' '+y};
-const H=d=>{const o={},l=D.log[d]||{};for(const k in l.done||{}){const[t,h]=l.done[k];o[t]=(o[t]||0)+h}for(const t in l.man||{})o[t]=(o[t]||0)+l.man[t];return o};
+const m0=s=>{const[h,m]=s.split(':');return h*60+ +m};
+const H=d=>{const o={},l=D.log[d]||{},seen=new Uint8Array(1440);
+for(const k in l.done||{}){const x=l.done[k],t=x[0];if(x.length<4||!x[2]||!x[3]){o[t]=(o[t]||0)+x[1];continue}
+const a=m0(x[2]);let b=m0(x[3]);if(b<a)b+=1440;let c=0;for(let m=a;m<b&&m<a+1440;m++){const i=m%1440;if(!seen[i]){seen[i]=1;c++}}o[t]=(o[t]||0)+c/60}
+for(const t in l.man||{})o[t]=(o[t]||0)+l.man[t];return o};
 const f=h=>(Math.round(h*100)/100).toLocaleString('en-IN')+'h';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.className='on';clearTimeout(tt);tt=setTimeout(()=>e.className='',1600)};
@@ -67,19 +71,23 @@ if(!last||!f||!(mn(f.e)<mn(f.s))||f.s==last.e)return;
 const o=T.map(b=>({...b}));o[0].s=last.e;const N=lg();N.ov=o;N.ovk=k;N.chained=1;save();toast('Sleep starts at '+last.e+', where the previous day ended')}
 const mn=s=>{const[h,m]=(s||'').split(':');return h*60+ +m},dur=b=>{let d=mn(b.e)-mn(b.s);if(isNaN(d))return 0;if(d<0)d+=1440;return d/60};
 const rl=b=>Array.isArray(b.r)?b.r:(b.r?[b.r]:[]);
+const rn=(b,L)=>{const v=((L.bv||{})[b.id])||{};return[...new Set([...rl(b),...Object.keys(v).filter(k=>String(v[k]||'').trim()&&RVn().includes(k))])]};
+const setR=(b,a)=>{b.r=a;const L=D.log[day]||{};[...Object.values(D.tpl).flat(),...(L.ov||[])].forEach(x=>{if(x.id==b.id)x.r=a})};
 function migR(){const m={},fx=b=>{if(typeof b.r=='string'){m[b.id]=b.r;b.r=b.r?[b.r]:[]}else if(!b.r)b.r=[]};
 for(const k in D.tpl)D.tpl[k].forEach(fx);for(const d in D.log)if(D.log[d].ov)D.log[d].ov.forEach(fx);
 for(const d in D.log){const bv=D.log[d].bv;if(bv)for(const id in bv)if(typeof bv[id]=='string'){if(m[id])bv[id]={[m[id]]:bv[id]};else delete bv[id]}}save()}
-const rvh=(b,L)=>{const a=rl(b),bv=(L.bv||{})[b.id]||{},rest=RVn().filter(x=>!a.includes(x));
+const rvh=(b,L)=>{const a=rn(b,L),bv=(L.bv||{})[b.id]||{},rest=RVn().filter(x=>!a.includes(x));
 return `<div class="rvs">${a.map(k=>`<span class="rvc"><b>${esc(k)}</b><input data-f="v" data-k="${esc(k)}" placeholder="value" value="${esc(bv[k]||'')}"><button class="g x" data-rrm="${esc(k)}" aria-label="Remove review">✕</button></span>`).join('')}${rest.length?`<select data-f="radd" aria-label="Add review"><option value="">+ Review</option>${rest.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:''}</div>`};
 const hm=m=>{m=((m%1440)+1440)%1440;return p2(Math.floor(m/60))+':'+p2(m%60)};
-const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d)};
+const snap=b=>[b.g,dur(b),b.s,b.e];
+const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d);const L=D.log[day];if(L&&L.done&&L.done[b.id])L.done[b.id]=snap(b)};
+function resnap(){const L=D.log[day];if(!L||!L.done)return;[...Object.values(D.tpl).flat(),...(L.ov||[])].forEach(b=>{const x=L.done[b.id];if(x&&x.length<4)L.done[b.id]=snap(b)})}
 const fixB=B=>{for(let n=0;n<B.length;n++){const f=B[0];if(f&&B.length>1&&mn(f.e)<mn(f.s)&&dur(f)<4)B.push(B.shift());else break}return B};
 const isOv=()=>{const L=D.log[day];return !!(L&&L.ov&&L.ovk==cur())};
 const blocks=()=>isOv()?D.log[day].ov:D.tpl[cur()];
 const opts=g=>[...new Set([...D.tags,g])].map(t=>`<option ${t==g?'selected':''}>${esc(t)}</option>`).join('');
 const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-function stat(){const B=blocks(),h=H(day),L=D.log[day]||{},dn=Object.values(L.done||{}).reduce((a,x)=>a+x[1],0);
+function stat(){resnap();const B=blocks(),h=H(day),dn=Object.values(h).reduce((a,x)=>a+x,0);
 $('#sum').textContent=f(dn)+' logged';
 $('#chips').innerHTML=Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')||'<span style="color:var(--d)">Tick a block to add its hours.</span>'}
 function draw(){const k=cur(),B=fixB(blocks()),m=D.tm[k],L=D.log[day]||{};$('#hd').textContent=DN[dow]+', '+fd(day);$('#dp').value=day;
@@ -95,19 +103,19 @@ if(d.day!=null){const i=+d.day;m.d=m.d.includes(i)?m.d.filter(x=>x!=i):[...m.d,i
 else if('dup' in d){const n='t'+uid();D.tpl[n]=D.tpl[k].map(b=>({...b,id:uid()}));D.tm[n]={n:m.n+' copy',d:[]};lg().tpl=n;save();draw();toast('Duplicated')}
 else if('rm' in d){if(Object.keys(D.tm).length<2)return toast('Keep at least one template');twice('rt'+k,()=>{delete D.tpl[k];delete D.tm[k];const L=lg();delete L.tpl;save();draw();toast('Template deleted')});if(arm)e.target.classList.add('arm')}};
 $('#list').oninput=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||!fl||fl=='s'||fl=='e')return;const b=blocks()[r.dataset.i],L=lg();L.done=L.done||{};
-if(fl=='done'){if(e.target.checked)L.done[b.id]=[b.g,dur(b)];else delete L.done[b.id]}else if(fl=='v'){L.bv=L.bv||{};(L.bv[b.id]=L.bv[b.id]||{})[e.target.dataset.k]=e.target.value}else if(fl=='radd'){if(!e.target.value)return;b.r=[...rl(b),e.target.value]}else{b[fl]=e.target.value;if(L.done[b.id])L.done[b.id]=[b.g,dur(b)]}
+if(fl=='done'){if(e.target.checked)L.done[b.id]=snap(b);else delete L.done[b.id]}else if(fl=='v'){L.bv=L.bv||{};(L.bv[b.id]=L.bv[b.id]||{})[e.target.dataset.k]=e.target.value}else if(fl=='radd'){if(!e.target.value)return;setR(b,[...rl(b),e.target.value])}else{b[fl]=e.target.value;if(L.done[b.id])L.done[b.id]=snap(b)}
 syncRv();save();if(fl=='radd')draw();else stat()};
 $('#list').onchange=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||(fl!='s'&&fl!='e'))return;const B=blocks(),i=+r.dataset.i,b=B[i],o=e.target.dataset.p,n=e.target.value;if(!n){e.target.value=o;return}
 let d=mn(n)-mn(o);d=((d+720)%1440+1440)%1440-720;if(!d)return;
 if(fl=='s')shiftB(b,d);else b.e=n;
 for(let j=i+1;j<B.length;j++)shiftB(B[j],d);
-const L=lg();if(L.done&&L.done[b.id])L.done[b.id]=[b.g,dur(b)];syncRv();save();draw();toast('Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
+const L=lg();if(L.done&&L.done[b.id])L.done[b.id]=snap(b);syncRv();save();draw();toast('Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
 function ins(i){const B=blocks(),a=B[i],d=15;for(let j=i+1;j<B.length;j++)shiftB(B[j],d);B.splice(i+1,0,{id:uid(),s:a.e,e:hm(mn(a.e)+d),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added, later blocks moved 15 min')}
 $('#scope').onclick=e=>{const c=e.target.dataset.scope;if(!c)return;const L=lg(),k=cur();if(c=='day'&&!isOv()){L.ov=D.tpl[k].map(b=>({...b}));L.ovk=k;save();draw();toast('Changes now apply to this day only')}else if(c=='tpl'&&isOv())twice('so',()=>{delete L.ov;delete L.ovk;syncRv();save();draw();toast('Day changes discarded')})};
-$('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];b.r=rl(b).filter(x=>x!=rk);syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
+$('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];setR(b,rl(b).filter(x=>x!=rk));{const L=lg();if(L.bv&&L.bv[b.id])delete L.bv[b.id][rk]}syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
 $('#add').onclick=()=>{const B=blocks(),a=B[B.length-1],st=a?a.e:'09:00';B.push({id:uid(),s:st,e:hm(mn(st)+30),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added')};
 function syncRv(){const L=lg(),B=blocks(),a={},mp=new Set,F={};D.rvf.forEach(x=>F[x.n]=x);L.rv=L.rv||{};L.au=L.au||{};
-for(const b of B)for(const n of rl(b)){const x=F[n];if(!x)continue;mp.add(n);if(!(L.done&&L.done[b.id]))continue;let v=String((((L.bv||{})[b.id])||{})[n]||'').trim();if(!v&&x.a)v=x.u?dur(b):f(dur(b));if(v!=='')(a[n]=a[n]||[]).push(v)}
+for(const b of B)for(const n of rn(b,L)){const x=F[n];if(!x)continue;mp.add(n);if(!(L.done&&L.done[b.id]))continue;let v=String((((L.bv||{})[b.id])||{})[n]||'').trim();if(!v&&x.a)v=x.u?dur(b):f(dur(b));if(v!=='')(a[n]=a[n]||[]).push(v)}
 for(const k of mp){if(a[k]){L.rv[k]=F[k].u?String(Math.round(a[k].reduce((p,q)=>p+(+q||0),0)*100)/100):a[k].join(', ');L.au[k]=1}else if(L.au[k]){delete L.rv[k];delete L.au[k]}}
 fillRv()}
 function fillRv(){const r=(D.log[day]||{}).rv||{};document.querySelectorAll('#rv input').forEach(i=>i.value=r[i.dataset.k]||'')}
