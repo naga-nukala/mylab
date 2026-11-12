@@ -104,6 +104,7 @@
 
   <div class="card" id="breakdownCard">
     <details class="bd" id="bdTypeBox"><summary>By Type <span class="bd-sum" id="bdTypeSum"></span></summary><div class="bd-body" id="bdType"></div></details>
+    <details class="bd" id="bdXirrBox"><summary>XIRR by Type <span class="bd-sum" id="bdXirrSum"></span></summary><div class="bd-body" id="bdXirr"></div></details>
     <details class="bd" id="bdModeBox"><summary>One-time vs Monthly SIP <span class="bd-sum" id="bdModeSum"></span></summary><div class="bd-body" id="bdMode"></div></details>
     <details class="bd" id="bdYearBox"><summary>By Year <span class="bd-sum" id="bdYearSum"></span></summary><div class="bd-body" id="bdYear"></div></details>
   </div>
@@ -380,8 +381,9 @@ function groupRows(groups, totals){
 }
 
 function renderBreakdown(){
-  const byType = {}, byMode = {}, byYear = {};
+  const byType = {}, byMode = {}, byYear = {}, flowsByType = {};
   const totals = {invested:0, current:0};
+  const allFlows = [];
   investments.forEach(i=>{
     const flows = flowsOf(i);
     const invested = flows.reduce((s,f)=>s+f.amount, 0);
@@ -391,6 +393,8 @@ function renderBreakdown(){
       g.invested += invested; g.current += i.current; g.count++;
     };
     add(byType, i.type, TYPE_LABELS[i.type] || i.type);
+    (flowsByType[i.type] = flowsByType[i.type] || []).push(...flows);
+    allFlows.push(...flows);
     const isSip = i.mode === 'sip';
     add(byMode, isSip ? 'sip' : 'lump', isSip ? 'Monthly SIP' : 'One-time');
     flows.forEach(f=>{
@@ -406,6 +410,32 @@ function renderBreakdown(){
   document.getElementById('bdMode').innerHTML = has ? groupRows(byMode, totals) : empty;
   document.getElementById('bdTypeSum').textContent = has ? Object.keys(byType).length + (Object.keys(byType).length===1?' type':' types') : '';
   document.getElementById('bdModeSum').textContent = has ? fmt(totals.invested) : '';
+
+  // XIRR per type: pool every payment of that type, compare with the pooled current value
+  const xirrCell = (flows, current)=>{
+    if(!flows.length) return {text:'n/a', cls:'', first:null};
+    const first = flows.map(f=>f.date).sort()[0];
+    const days = daysBetween(first, todayStr());
+    if(days < 365) return {text:'after 1 yr', cls:'', first};
+    const x = xirr(flows, current);
+    if(x === null) return {text:'n/a', cls:'', first};
+    return {text:(x>=0?'+':'') + x.toFixed(1) + '%', cls:x>=0?'pos':'neg', first};
+  };
+  if(!has){
+    document.getElementById('bdXirr').innerHTML = empty;
+    document.getElementById('bdXirrSum').textContent = '';
+  } else {
+    const rows = Object.keys(byType).sort((a,b)=>byType[b].invested-byType[a].invested).map(t=>{
+      const g = byType[t], x = xirrCell(flowsByType[t], g.current);
+      return `<div class="bd-row"><div class="nm">${esc(g.label)}<small>${x.first ? 'since ' + formatDate(x.first) : ''}</small></div><div class="r">${fmt(g.invested)}</div><div class="r">${fmt(g.current)}</div><div class="r ${x.cls}"><b>${x.text}</b></div></div>`;
+    }).join('');
+    const tx = xirrCell(allFlows, totals.current);
+    document.getElementById('bdXirr').innerHTML =
+      `<div class="bd-row head"><div>Type</div><div class="r">Invested</div><div class="r">Current</div><div class="r">XIRR</div></div>` + rows +
+      `<div class="bd-row total"><div>All investments</div><div class="r">${fmt(totals.invested)}</div><div class="r">${fmt(totals.current)}</div><div class="r ${tx.cls}">${tx.text}</div></div>` +
+      `<div class="bd-note">Annualized return that accounts for when each payment was made. Shown once a type's oldest payment is over 1 year old; a type mixing old and recent money uses all of it.</div>`;
+    document.getElementById('bdXirrSum').textContent = tx.cls ? tx.text + ' overall' : '';
+  }
 
   const years = Object.keys(byYear).sort((a,b)=>b-a);
   const maxY = Math.max(0, ...years.map(y=>byYear[y].invested));
