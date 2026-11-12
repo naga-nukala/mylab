@@ -63,6 +63,26 @@
   .inv-meta{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6;}
   .inv-meta b{color:var(--txt);font-weight:600;}
   .plan-line{padding-left:10px;border-left:2px solid #334155;margin:2px 0;}
+  details.bd{border-top:1px solid #334155;}
+  details.bd:first-of-type{border-top:none;}
+  details.bd summary{cursor:pointer;padding:12px 0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;list-style:none;}
+  details.bd summary::-webkit-details-marker{display:none;}
+  details.bd summary::before{content:'▸';color:var(--sub);font-size:12px;}
+  details.bd[open] summary::before{content:'▾';}
+  details.bd summary .bd-sum{margin-left:auto;font-size:12px;font-weight:600;color:var(--sub);}
+  .bd-body{padding-bottom:10px;}
+  .bd-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr);gap:6px;align-items:center;padding:7px 0;font-size:12px;border-bottom:1px solid rgba(51,65,85,.5);}
+  .bd-row:last-child{border-bottom:none;}
+  .bd-row.head{color:var(--sub);font-size:10px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #334155;}
+  .bd-row.total{font-weight:700;border-top:1px solid #334155;border-bottom:none;}
+  .bd-row .nm{font-weight:600;word-break:break-word;}
+  .bd-row .nm small{display:block;color:var(--sub);font-weight:400;font-size:10px;}
+  .bd-row .r{text-align:right;white-space:nowrap;}
+  .bd-row .r small{display:block;font-size:10px;font-weight:400;}
+  .bd-row.yr{grid-template-columns:minmax(0,.7fr) minmax(0,1.6fr) minmax(0,1fr);}
+  .bd-bar{height:6px;background:#0f172a;border-radius:4px;overflow:hidden;margin-top:4px;}
+  .bd-bar i{display:block;height:100%;background:var(--acc);}
+  .bd-note{font-size:11px;color:var(--sub);margin-top:6px;line-height:1.5;}
   .empty{text-align:center;color:var(--sub);font-size:13px;padding:20px;}
   .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#334155;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #475569;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;max-width:90%;}
 </style>
@@ -80,6 +100,12 @@
       <div class="stat"><div class="n" id="totalCurrent">₹0</div><div class="l">Current Value</div></div>
       <div class="stat wide"><div class="n" id="totalGainAmt">₹0</div><div class="l">Absolute Gain</div></div>
     </div>
+  </div>
+
+  <div class="card" id="breakdownCard">
+    <details class="bd" id="bdTypeBox"><summary>By Type <span class="bd-sum" id="bdTypeSum"></span></summary><div class="bd-body" id="bdType"></div></details>
+    <details class="bd" id="bdModeBox"><summary>One-time vs Monthly SIP <span class="bd-sum" id="bdModeSum"></span></summary><div class="bd-body" id="bdMode"></div></details>
+    <details class="bd" id="bdYearBox"><summary>By Year <span class="bd-sum" id="bdYearSum"></span></summary><div class="bd-body" id="bdYear"></div></details>
   </div>
 
   <div class="card">
@@ -341,7 +367,58 @@ function planLine(p){
     : amt + ' from ' + formatDate(p.start) + ' (ongoing)';
 }
 
+const TYPE_LABELS = {'SIP/Mutual Fund':'Mutual Fund','Stocks':'Stocks','FD':'Fixed Deposit','RD':'Recurring Deposit','PPF/EPF':'PPF/EPF','Gold':'Gold','Other':'Other'};
+
+function groupRows(groups, totals){
+  const rows = Object.values(groups).sort((a,b)=>b.invested-a.invested).map(g=>{
+    const gain = g.current - g.invested, pct = g.invested>0 ? gain/g.invested*100 : 0, cls = gain>=0?'pos':'neg';
+    return `<div class="bd-row"><div class="nm">${esc(g.label)}<small>${g.count} investment${g.count===1?'':'s'}</small></div><div class="r">${fmt(g.invested)}</div><div class="r">${fmt(g.current)}</div><div class="r ${cls}">${fmtSigned(gain)}<small>${pct>=0?'+':''}${pct.toFixed(1)}%</small></div></div>`;
+  }).join('');
+  const tg = totals.current - totals.invested, tp = totals.invested>0 ? tg/totals.invested*100 : 0, tc = tg>=0?'pos':'neg';
+  return `<div class="bd-row head"><div>Group</div><div class="r">Invested</div><div class="r">Current</div><div class="r">Gain</div></div>` + rows +
+    `<div class="bd-row total"><div>Total</div><div class="r">${fmt(totals.invested)}</div><div class="r">${fmt(totals.current)}</div><div class="r ${tc}">${fmtSigned(tg)}<small>${tp>=0?'+':''}${tp.toFixed(1)}%</small></div></div>`;
+}
+
+function renderBreakdown(){
+  const byType = {}, byMode = {}, byYear = {};
+  const totals = {invested:0, current:0};
+  investments.forEach(i=>{
+    const flows = flowsOf(i);
+    const invested = flows.reduce((s,f)=>s+f.amount, 0);
+    totals.invested += invested; totals.current += i.current;
+    const add = (map, key, label)=>{
+      const g = map[key] || (map[key] = {label, invested:0, current:0, count:0});
+      g.invested += invested; g.current += i.current; g.count++;
+    };
+    add(byType, i.type, TYPE_LABELS[i.type] || i.type);
+    const isSip = i.mode === 'sip';
+    add(byMode, isSip ? 'sip' : 'lump', isSip ? 'Monthly SIP' : 'One-time');
+    flows.forEach(f=>{
+      const y = f.date.slice(0,4);
+      const g = byYear[y] || (byYear[y] = {invested:0, entries:0});
+      g.invested += f.amount; g.entries++;
+    });
+  });
+
+  const empty = '<div class="empty" style="padding:8px 0;">Add an investment to see this breakdown.</div>';
+  const has = investments.length > 0;
+  document.getElementById('bdType').innerHTML = has ? groupRows(byType, totals) : empty;
+  document.getElementById('bdMode').innerHTML = has ? groupRows(byMode, totals) : empty;
+  document.getElementById('bdTypeSum').textContent = has ? Object.keys(byType).length + (Object.keys(byType).length===1?' type':' types') : '';
+  document.getElementById('bdModeSum').textContent = has ? fmt(totals.invested) : '';
+
+  const years = Object.keys(byYear).sort((a,b)=>b-a);
+  const maxY = Math.max(0, ...years.map(y=>byYear[y].invested));
+  document.getElementById('bdYear').innerHTML = !has ? empty :
+    `<div class="bd-row yr head"><div>Year</div><div class="r">Invested</div><div class="r">Payments</div></div>` +
+    years.map(y=>`<div class="bd-row yr"><div class="nm">${y}</div><div><div class="r" style="text-align:right;">${fmt(byYear[y].invested)}</div><div class="bd-bar"><i style="width:${maxY>0?(byYear[y].invested/maxY*100).toFixed(1):0}%"></i></div></div><div class="r">${byYear[y].entries}</div></div>`).join('') +
+    `<div class="bd-row yr total"><div>Total</div><div class="r">${fmt(totals.invested)}</div><div class="r">${years.reduce((s,y)=>s+byYear[y].entries,0)}</div></div>` +
+    `<div class="bd-note">Calendar year in which each payment was made. Current value can't be split by year, so only invested amounts are shown.</div>`;
+  document.getElementById('bdYearSum').textContent = has ? years.length + (years.length===1?' year':' years') : '';
+}
+
 function render(){
+  renderBreakdown();
   const container = document.getElementById('invList');
   const pctEl = document.getElementById('totalGainPct');
   const gainEl = document.getElementById('totalGainAmt');
