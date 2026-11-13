@@ -31,18 +31,28 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 .day{position:relative;aspect-ratio:1/1.05;background:var(--bg);border:1.5px solid transparent;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0;color:var(--tx);font-weight:500}
 .day.empty{visibility:hidden}
 .day.fert{background:rgba(167,232,197,.18)}
+.day.med{background:rgba(232,200,120,.2)}
 .day.peak{background:rgba(167,232,197,.42);color:#fff}
 .day.per{background:rgba(255,140,112,.38)}
 .day.pred{background:transparent;border:1.5px dashed var(--coral)}
 .day.today{box-shadow:inset 0 0 0 1.5px var(--tx)}
 .day.sel{border-color:var(--mint);border-style:solid}
+.day u{position:absolute;bottom:3px;left:50%;width:6px;height:6px;border-radius:50%;transform:translateX(-50%)}
+.day u.c{background:var(--tx)}.day u.n{background:var(--coral)}
+.sx{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.sxr{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border-radius:0;background:transparent;color:var(--tx);padding:7px 18px}
+.seg button.on{background:var(--mint);color:#0b1511}
+.sx summary{margin-bottom:2px}
+.warn{color:var(--coral)}
 .day i{position:absolute;top:3px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--mint)}
 .leg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--mu);margin-top:10px}
 .leg span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c);border:var(--b,0)}
 .det h3{margin:0;font-size:17px}
 .det p{margin:4px 0 10px;color:var(--mu)}
 .tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:600}
-.tag.low{background:#2a3430;color:var(--mu)}.tag.high{background:rgba(167,232,197,.25);color:var(--mint)}.tag.peak{background:var(--mint);color:#0b1511}.tag.per{background:rgba(255,140,112,.3);color:var(--coral)}
+.tag.low{background:#2a3430;color:var(--mu)}.tag.med{background:rgba(232,200,120,.25);color:#e8c878}.tag.high{background:rgba(167,232,197,.25);color:var(--mint)}.tag.peak{background:var(--mint);color:#0b1511}.tag.per{background:rgba(255,140,112,.3);color:var(--coral)}
 form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label{font-size:12px;color:var(--mu);display:block}
 input[type=date],input[type=number]{width:100%;margin-top:3px;padding:9px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:inherit;color-scheme:dark}
@@ -77,7 +87,10 @@ details form{margin-top:10px}
       <span style="--c:transparent;--b:1.5px dashed #ff8c70">Predicted period</span>
       <span style="--c:rgba(167,232,197,.3)">Fertile</span>
       <span style="--c:rgba(167,232,197,.7)">Peak</span>
+      <span style="--c:rgba(232,200,120,.45)">Medium</span>
       <span style="--c:#a7e8c5;border-radius:50%">Ovulation</span>
+      <span style="--c:#e8f0ec;border-radius:50%">Intercourse, condom</span>
+      <span style="--c:#ff8c70;border-radius:50%">Intercourse, no condom</span>
     </div>
   </div>
 
@@ -95,6 +108,11 @@ details form{margin-top:10px}
   <div class="card">
     <h2>History by month</h2>
     <div id="hist"></div>
+  </div>
+
+  <div class="card">
+    <h2>Intercourse log by month</h2>
+    <div id="sxh"></div>
   </div>
 
   <div class="card">
@@ -117,10 +135,10 @@ details form{margin-top:10px}
 (function(){
 'use strict';
 var KEY='as_menstrual_v1', MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-var S={entries:[],defCycle:28,defPeriod:5,fixed:'false'}, editId=null, armId=null, armT=null, sel=null, view=null, C=null;
+var S={entries:[],defCycle:28,defPeriod:5,fixed:'false',sex:[]}, sxd={condom:'yes',orgasm:'no'}, sxOpen=false, editId=null, armId=null, armT=null, sel=null, view=null, C=null;
 var $=function(i){return document.getElementById(i)};
 
-function load(){try{var r=JSON.parse(localStorage.getItem(KEY)||'null');if(r&&Array.isArray(r.entries)){S.entries=r.entries;S.defCycle=+r.defCycle||28;S.defPeriod=+r.defPeriod||5;S.fixed=r.fixed==='true'?'true':'false'}}catch(e){}}
+function load(){try{var r=JSON.parse(localStorage.getItem(KEY)||'null');if(r&&Array.isArray(r.entries)){S.entries=r.entries;S.defCycle=+r.defCycle||28;S.defPeriod=+r.defPeriod||5;S.fixed=r.fixed==='true'?'true':'false';S.sex=Array.isArray(r.sex)?r.sex:[]}}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function dn(s){var p=s.split('-').map(Number);return Date.UTC(p[0],p[1]-1,p[2])/864e5}
 function iso(n){return new Date(n*864e5).toISOString().slice(0,10)}
@@ -150,11 +168,16 @@ function info(n){
     var k='low',lab='LOW chance of getting pregnant';
     if(n===c.ov||n===c.ov-1){k='peak';lab='PEAK chance of getting pregnant'}
     else if(n>=c.fs&&n<=c.fe){k='high';lab='HIGH chance of getting pregnant'}
+    else if(n>c.ov+1&&n<=c.ov+4){k='med';lab='MEDIUM chance of getting pregnant'}
     var per=n<c.s+c.pl;
     return{c:c,day:n-c.s+1,k:k,lab:lab,per:per,ov:n===c.ov}}}
   return null;
 }
 
+function sexOn(n){var d=iso(n);return S.sex.filter(function(x){return x.date===d})[0]}
+function loadDraft(){var e=sexOn(sel);sxd=e?{condom:e.condom,orgasm:e.orgasm}:{condom:'yes',orgasm:'no'}}
+function yn(v){return v==='yes'?'Yes':'No'}
+function seg(k){return '<div class="seg">'+['yes','no'].map(function(v){return '<button type="button" data-act="sx" data-k="'+k+'" data-v="'+v+'"'+(sxd[k]===v?' class="on"':'')+'>'+yn(v)+'</button>'}).join('')+'</div>'}
 function renderSum(){
   var el=$('sum');
   if(!C.n){el.innerHTML='<div class="full"><b>No periods logged yet</b><small>Log your last period start below to see predictions.</small></div>';return}
@@ -173,9 +196,9 @@ function renderCal(){
   for(i=0;i<off;i++)h+='<div class="day empty"></div>';
   for(i=1;i<=dim;i++){
     var n=first+i-1,f=info(n),cl='day';
-    if(f){if(f.per)cl+=f.c.act?' per':' pred';else if(f.k==='peak')cl+=' peak';else if(f.k==='high')cl+=' fert'}
+    if(f){if(f.per)cl+=f.c.act?' per':' pred';else if(f.k==='peak')cl+=' peak';else if(f.k==='high')cl+=' fert';else if(f.k==='med')cl+=' med'}
     if(n===t)cl+=' today';if(n===sel)cl+=' sel';
-    h+='<button type="button" class="'+cl+'" data-act="day" data-n="'+n+'">'+i+(f&&f.ov?'<i></i>':'')+'</button>';
+    h+='<button type="button" class="'+cl+'" data-act="day" data-n="'+n+'">'+i+(f&&f.ov?'<i></i>':'')+(function(){var x=sexOn(n);return x?'<u class="'+(x.condom==='yes'?'c':'n')+'"></u>':''})()+'</button>';
   }
   $('cal').innerHTML=h;
 }
@@ -189,6 +212,28 @@ function renderDet(){
     '<span class="tag '+f.k+'">'+f.lab+'</span>'+(f.per?' <span class="tag per">'+(f.c.act?'Period':'Predicted period')+'</span>':'');
   }
   h+='<div style="margin-top:12px"><button class="sm" data-act="mark" data-n="'+sel+'">Log period starting this day</button></div>';
+  var ex=sexOn(sel);
+  h+='<details class="sx" id="sxbox"'+(sxOpen?' open':'')+'><summary>Intercourse on this date'+(ex?' (logged)':'')+'</summary>'+
+    '<div class="sxr"><span>Condom</span>'+seg('condom')+'</div>'+
+    '<div class="sxr"><span>Female orgasm</span>'+seg('orgasm')+'</div>'+
+    '<div class="row" style="display:flex;gap:8px"><button class="sm" data-act="sxsave">'+(ex?'Update':'Save')+'</button>'+
+    (ex?'<button class="ghost sm" data-act="sxdel" data-id="'+ex.id+'">Remove</button>':'')+'</div></details>';
+  el.innerHTML=h;
+}
+function renderSex(){
+  var el=$('sxh');
+  if(!S.sex.length){el.innerHTML='<p class="note">Nothing logged yet. Tap a date on the calendar and save intercourse details.</p>';return}
+  var l=S.sex.slice().sort(function(a,b){return a.date<b.date?1:-1}),last='',h='',cnt={};
+  l.forEach(function(x){var k=x.date.slice(0,7);cnt[k]=(cnt[k]||0)+1});
+  l.forEach(function(x){
+    var n=dn(x.date),d=new Date(n*864e5),mk=MON[d.getUTCMonth()]+' '+d.getUTCFullYear();
+    if(mk!==last){h+='<div class="mh">'+mk+' ('+cnt[x.date.slice(0,7)]+')</div>';last=mk}
+    var f=info(n),ch=f?'Cycle day '+f.day+' · '+({low:'LOW',med:'MEDIUM',high:'HIGH',peak:'PEAK'})[f.k]+' chance':'Outside cycle data',
+        risk=f&&x.condom==='no'&&f.k!=='low';
+    h+='<div class="item"><div>'+fmt(n)+'<small>'+ch+'</small><small'+(risk?' class="warn"':'')+'>Condom: '+yn(x.condom)+' · Female orgasm: '+yn(x.orgasm)+(risk?(f.k==='med'?' · No condom, medium chance':' · No condom in fertile window'):'')+'</small></div>'+
+      '<div class="acts"><button class="ghost sm" data-act="sxedit" data-n="'+n+'">Edit</button>'+
+      '<button class="ghost sm" data-act="sxdel" data-id="'+x.id+'">Delete</button></div></div>';
+  });
   el.innerHTML=h;
 }
 function renderHist(){
@@ -206,7 +251,7 @@ function renderHist(){
   });
   el.innerHTML=h;
 }
-function renderAll(){C=compute();renderSum();renderCal();renderDet();renderHist()}
+function renderAll(){C=compute();renderSum();renderCal();renderDet();renderHist();renderSex()}
 
 function resetForm(){editId=null;$('fs').value='';$('fe').value='';$('ft').textContent='Log a period';$('fb').textContent='Save period';$('fc').hidden=true}
 function upsert(start,end){
@@ -222,7 +267,14 @@ document.addEventListener('click',function(ev){
   var b=ev.target.closest('[data-act]');if(!b)return;
   var a=b.dataset.act,id=b.dataset.id;
   if(a==='prev'||a==='next'){view.m+=a==='next'?1:-1;if(view.m<0){view.m=11;view.y--}if(view.m>11){view.m=0;view.y++}renderCal()}
-  else if(a==='day'){sel=+b.dataset.n;renderCal();renderDet()}
+  else if(a==='day'){sel=+b.dataset.n;loadDraft();renderCal();renderDet()}
+  else if(a==='sx'){sxd[b.dataset.k]=b.dataset.v;renderDet()}
+  else if(a==='sxsave'){var ex=sexOn(sel);if(ex){ex.condom=sxd.condom;ex.orgasm=sxd.orgasm}else S.sex.push({id:'x'+Date.now().toString(36),date:iso(sel),condom:sxd.condom,orgasm:sxd.orgasm});save();toast(ex?'Updated':'Saved');renderAll()}
+  else if(a==='sxedit'){sel=+b.dataset.n;var dd=new Date(sel*864e5);view={y:dd.getUTCFullYear(),m:dd.getUTCMonth()};sxOpen=true;loadDraft();renderAll();$('det').scrollIntoView({behavior:'smooth',block:'center'})}
+  else if(a==='sxdel'){
+    if(armId===id){S.sex=S.sex.filter(function(x){return x.id!==id});save();armId=null;loadDraft();toast('Deleted');renderAll()}
+    else{armId=id;b.textContent='Tap again';b.classList.add('danger');toast('Tap again to delete');clearTimeout(armT);armT=setTimeout(function(){armId=null;renderDet();renderSex()},3000)}
+  }
   else if(a==='mark'){var n=+b.dataset.n;editId=null;if(upsert(iso(n),'')){toast('Period logged');renderAll()}}
   else if(a==='edit'){var e=S.entries.filter(function(x){return x.id===id})[0];if(!e)return;
     editId=id;$('fs').value=e.start;$('fe').value=e.end||'';$('ft').textContent='Edit period';$('fb').textContent='Update period';$('fc').hidden=false;
@@ -244,8 +296,9 @@ $('fx').addEventListener('change',function(){S.fixed=this.checked?'true':'false'
   if(id==='dc')S.defCycle=Math.min(45,Math.max(20,v));else S.defPeriod=Math.min(10,Math.max(1,v));
   save();C=compute();renderSum();renderCal();renderDet()})});
 
+document.addEventListener('toggle',function(e){if(e.target.id==='sxbox')sxOpen=e.target.open},true);
 load();
-var t0=new Date();view={y:t0.getFullYear(),m:t0.getMonth()};sel=today();
+var t0=new Date();view={y:t0.getFullYear(),m:t0.getMonth()};sel=today();loadDraft();
 $('fx').checked=S.fixed==='true';$('dc').value=S.defCycle;$('dp').value=S.defPeriod;
 renderAll();
 })();
