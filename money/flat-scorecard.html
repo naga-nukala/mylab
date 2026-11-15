@@ -33,16 +33,26 @@
   .cost-stat{flex:1;background:#0f172a;border-radius:10px;padding:12px;text-align:center;}
   .cost-stat .n{font-size:17px;font-weight:800;color:var(--acc);}
   .cost-stat .l{font-size:10px;color:var(--sub);margin-top:2px;}
-  .photo-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;}
-  .photo-prev{width:72px;height:72px;border-radius:10px;background:#0f172a;border:1px dashed #475569;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0;}
-  .photo-prev img{width:100%;height:100%;object-fit:cover;}
+  .a-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid #334155;}
+  .a-row:last-child{border-bottom:none;}
+  .a-row span:first-child{color:var(--sub);}
+  .a-row .v{font-weight:700;text-align:right;}
+  .a-note{font-size:12px;margin-top:10px;padding:10px;border-radius:8px;line-height:1.5;}
+  .a-note.up{background:rgba(239,68,68,.12);color:var(--bad);}
+  .a-note.down{background:rgba(34,197,94,.12);color:var(--acc);}
+  .photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .ph{position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;background:#0f172a;}
+  .ph img{width:100%;height:100%;object-fit:cover;}
+  .ph button{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:12px;cursor:pointer;line-height:1;padding:0;}
   .btn{padding:12px;border:none;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:14px;cursor:pointer;width:100%;}
   .btn.ghost{background:#0f172a;color:var(--txt);border:1px solid #475569;font-weight:600;}
   .btn-row{display:flex;gap:8px;}
   .flat{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #334155;align-items:flex-start;}
   .flat:last-child{border-bottom:none;}
-  .thumb{width:56px;height:56px;border-radius:8px;background:#0f172a;display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden;flex-shrink:0;}
+  .thumb{position:relative;width:56px;height:56px;border-radius:8px;background:#0f172a;display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden;flex-shrink:0;}
   .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb[data-photo]{cursor:pointer;}
+  .thumb .more{position:absolute;right:0;bottom:0;background:rgba(0,0,0,.75);font-size:10px;padding:1px 5px;border-radius:6px 0 0 0;}
   .flat-info{flex:1;min-width:0;}
   .flat-name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .flat-meta{font-size:11px;color:var(--sub);margin-top:2px;line-height:1.5;}
@@ -66,14 +76,21 @@
   th .thumb{margin:0 0 4px auto;}
   td.best{color:var(--acc);font-weight:800;}
   tr.total td{font-weight:700;}
-  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #334155;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:100;display:none;max-width:90%;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#2a2f3a;color:var(--txt);padding:10px 18px;border-radius:20px;font-size:13px;border:1px solid #334155;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:200;display:none;max-width:90%;}
+  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:150;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+  #lightbox.open{display:flex;}
+  #lightbox img{max-width:94vw;max-height:78vh;border-radius:10px;}
+  #lightbox .lb-bar{display:flex;gap:10px;align-items:center;color:var(--txt);font-size:13px;}
+  #lightbox button{background:#1e293b;border:1px solid #475569;color:var(--txt);border-radius:8px;padding:8px 14px;font-size:14px;cursor:pointer;}
 </style>
 </head>
 <body>
 <div id="toast" class="toast"></div>
+<div id="lightbox"><img id="lbImg" alt="Flat photo"><div class="lb-bar"><button id="lbPrev" type="button">←</button><span id="lbCount"></span><button id="lbNext" type="button">→</button><button id="lbClose" type="button">✕ Close</button></div></div>
+
 <div class="wrap">
   <h1>🏠 Flat Buying Scorecard</h1>
-  <p class="sub">Score a flat, add its costs, save it, and compare flats side by side.</p>
+  <p class="sub">Score a flat, check land vs construction cost, save it, and compare flats.</p>
 
   <div class="card score-box">
     <div class="score-num" id="scoreNum">--</div>
@@ -91,36 +108,52 @@
   </div>
 
   <div class="card">
+    <div class="section-title">Cost Analysis — Actual vs Estimated</div>
+    <div id="analysisBox"></div>
+  </div>
+
+  <div class="card">
     <div class="section-title">Flat Details</div>
-    <div class="field" style="margin-bottom:10px;">
-      <label for="name">Apartment Name</label>
-      <input type="text" id="name" placeholder="e.g. Sri Sai Residency, 2BHK">
-    </div>
-    <div class="photo-row">
-      <div class="photo-prev" id="photoPrev">📷</div>
-      <div class="field">
-        <label>Photo (optional)</label>
-        <input type="file" id="photoFile" accept="image/*" style="font-size:12px;padding:8px;">
-        <button class="icon-btn" id="photoRemove" type="button" style="margin-top:6px;display:none;">Remove photo</button>
+    <div class="row">
+      <div class="field"><label for="name">Apartment Name</label><input type="text" id="name" placeholder="e.g. Sri Sai Residency"></div>
+      <div class="field"><label for="flatType">Flat Type</label>
+        <select id="flatType"><option value="">Select</option><option value="2BHK">2BHK</option><option value="3BHK">3BHK</option><option value="Group Apartment">Group Apartment</option></select>
       </div>
     </div>
+    <label>Photos (optional, up to 6)</label>
+    <div class="photo-grid" id="photoGrid"></div>
+    <input type="file" id="photoFile" accept="image/*" multiple style="font-size:12px;padding:8px;">
   </div>
 
   <div class="card">
     <div class="section-title">Score Factors</div>
     <div class="row">
+      <div class="field"><label for="totalArea">Total Area (sq ft)</label><div class="hint">Built-up / super built-up</div><input type="number" id="totalArea" min="0" placeholder="1100"></div>
       <div class="field"><label for="sqft">Carpet Area (sq ft)</label><div class="hint">Ideal: 850–950</div><input type="number" id="sqft" min="1" placeholder="900"></div>
+    </div>
+    <div class="row">
       <div class="field"><label for="numFlats">Flats in Project</label><div class="hint">Ideal: 10+</div><input type="number" id="numFlats" min="1" placeholder="24"></div>
+      <div class="field"><label for="uds">UDS (sq yd)</label><div class="hint">Ideal: 40+</div><input type="number" id="uds" min="0" placeholder="41"></div>
     </div>
     <div class="row">
-      <div class="field"><label for="uds">UDS (sq ft)</label><div class="hint">Ideal: 40+</div><input type="number" id="uds" min="0" placeholder="41"></div>
-      <div class="field"><label for="landPct">Land Cost %</label><div class="hint">Ideal: 40–45%</div><input type="number" id="landPct" min="0" max="100" placeholder="42"></div>
-    </div>
-    <div class="row">
+      <div class="field"><label for="landPct">Land Cost % (manual)</label><div class="hint" id="landPctHint">Ideal: 40–45%</div><input type="number" id="landPct" min="0" max="100" placeholder="42"></div>
       <div class="field"><label for="road">Road Width (ft)</label><div class="hint">Ideal: 30–40</div><input type="number" id="road" min="1" placeholder="35"></div>
+    </div>
+    <div class="row">
       <div class="field"><label for="lift">Lift Available?</label><div class="hint">May raise maintenance</div>
         <select id="lift"><option value="no">No Lift</option><option value="yes">Has Lift</option></select>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Land & Construction</div>
+    <div class="row">
+      <div class="field"><label for="landSqYd">Total Land (sq yd)</label><input type="number" id="landSqYd" min="0" placeholder="e.g. 1200"></div>
+      <div class="field"><label for="landPrice">Land Price (₹ / sq yd)</label><input type="number" id="landPrice" min="0" placeholder="e.g. 60000"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="constRate">Construction Rate (₹ / sq ft)</label><input type="number" id="constRate" min="0" placeholder="e.g. 2200"></div>
     </div>
   </div>
 
@@ -159,34 +192,50 @@
 const LIST_KEY = 'flatScorecard_v1';
 const CMP_KEY = 'flatScorecard_cmp_v1';
 const DRAFT_KEY = 'as_flatscorecard';
-const FIELD_IDS = ['name','sqft','numFlats','uds','landPct','road','lift','cost','regFee','gst','maint','parking','other'];
+const DRAFT_PHOTOS_KEY = 'as_flatscorecard_photos';
+const MAX_PHOTOS = 6;
+const FIELD_IDS = ['name','flatType','totalArea','sqft','numFlats','uds','landPct','road','lift','landSqYd','landPrice','constRate','cost','regFee','gst','maint','parking','other'];
 const COST_IDS = ['cost','regFee','gst','maint','parking','other'];
+const NUM_IDS = ['totalArea','sqft','numFlats','uds','landPct','road','landSqYd','landPrice','constRate'];
 
 function load(key, fb){ try{ const v = JSON.parse(localStorage.getItem(key)); return v === null ? fb : v; }catch(e){ return fb; } }
-function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ toast('Storage full — try a smaller photo'); return false; } }
+function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ toast('Storage full — remove some photos'); return false; } }
 
-let flats = load(LIST_KEY, []);
+let flats = load(LIST_KEY, []).map(f => ({ ...f, photos: f.photos || (f.photo ? [f.photo] : []) }));
 let cmp = new Set(load(CMP_KEY, []));
-let photo = '';
+let photos = [];
 let editingId = null;
 let pendingDeletes = {};
 
 const $ = id => document.getElementById(id);
 const fmt = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
+const fmtSigned = n => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
 function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
-
 function ordinal(d){ if(d>=11 && d<=13) return d+'th'; return d + (['th','st','nd','rd'][d%10] || 'th'); }
 function fmtDate(ts){
   const dt = new Date(ts);
   if(isNaN(dt)) return '';
   return ordinal(dt.getDate()) + ' ' + dt.toLocaleDateString('en-GB',{month:'short'}) + ' ' + dt.getFullYear();
 }
-
 let toastTimer;
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ t.style.display = 'none'; }, 2200);
+}
+
+// ---------- calculations ----------
+function analysis(f){
+  const uds = Number(f.uds)||0, lp = Number(f.landPrice)||0, ta = Number(f.totalArea)||0, cr = Number(f.constRate)||0, actual = Number(f.cost)||0;
+  const landCost = uds>0 && lp>0 ? uds*lp : null;
+  const constCost = ta>0 && cr>0 ? ta*cr : null;
+  const est = (landCost!==null || constCost!==null) ? (landCost||0)+(constCost||0) : null;
+  const landPct = landCost!==null && actual>0 ? landCost/actual*100 : null;
+  const full = landCost!==null && constCost!==null;
+  const diff = full && actual>0 ? actual-est : null;
+  const diffPct = diff!==null && est>0 ? diff/est*100 : null;
+  const share = uds>0 && Number(f.landSqYd)>0 ? uds/Number(f.landSqYd)*100 : null;
+  return { landCost, constCost, est, landPct, full, diff, diffPct, share, actual };
 }
 
 function scoreRange(val, min, max, weight){
@@ -197,16 +246,19 @@ function scoreRange(val, min, max, weight){
   return Math.max(0, weight*(1-Math.min(1, dist/range)));
 }
 
+function effLandPct(f){ const a = analysis(f); return a.landPct !== null ? a.landPct : f.landPct; }
+
 function computeScore(f){
+  const lp = effLandPct(f);
   const ok = Number.isFinite(f.sqft) && f.sqft>0 && Number.isFinite(f.numFlats) && f.numFlats>0 &&
-    Number.isFinite(f.uds) && f.uds>=0 && Number.isFinite(f.landPct) && f.landPct>=0 && f.landPct<=100 &&
+    Number.isFinite(f.uds) && f.uds>=0 && Number.isFinite(lp) && lp>=0 &&
     Number.isFinite(f.road) && f.road>0;
   if(!ok) return null;
   const parts = {
     area: scoreRange(f.sqft,850,950,20),
     flats: Math.min(20,(f.numFlats/10)*20),
     uds: Math.min(20,(f.uds/40)*20),
-    land: scoreRange(f.landPct,40,45,20),
+    land: scoreRange(lp,40,45,20),
     road: scoreRange(f.road,30,40,15),
     lift: f.lift==='yes' ? 5 : 3
   };
@@ -215,12 +267,12 @@ function computeScore(f){
 }
 
 function totalCost(f){ return COST_IDS.reduce((s,k)=>s+(Number(f[k])||0),0); }
+function areaFor(f){ return Number(f.totalArea)>0 ? Number(f.totalArea) : Number(f.sqft)||0; }
 
 function readForm(){
-  const num = id => parseFloat($(id).value);
-  const f = { name:$('name').value.trim(), lift:$('lift').value, photo };
-  ['sqft','numFlats','uds','landPct','road'].forEach(k=>{ f[k] = num(k); });
-  COST_IDS.forEach(k=>{ f[k] = num(k) || 0; });
+  const f = { name:$('name').value.trim(), flatType:$('flatType').value, lift:$('lift').value, photos:[...photos] };
+  NUM_IDS.forEach(k=>{ f[k] = parseFloat($(k).value); });
+  COST_IDS.forEach(k=>{ f[k] = parseFloat($(k).value) || 0; });
   return f;
 }
 
@@ -228,6 +280,27 @@ function verdictFor(s){
   if(s>=75) return {color:'var(--acc)', text:'Strong initial score — verify documents and records', cls:'good'};
   if(s>=50) return {color:'var(--warn)', text:'Average — negotiate or verify further', cls:'mid'};
   return {color:'var(--bad)', text:'Risky — high maintenance/low resale likely', cls:'bad'};
+}
+
+function analysisHTML(f){
+  const a = analysis(f);
+  if(a.landCost===null && a.constCost===null){
+    return '<div class="empty">Enter UDS and land price per sq yd (land), and total area and construction rate (construction) to see the estimate.</div>';
+  }
+  const rows = [];
+  if(a.landCost!==null) rows.push(['Land cost (UDS × price)', fmt(a.landCost) + (a.landPct!==null ? ` · ${a.landPct.toFixed(1)}%` : '')]);
+  if(a.constCost!==null) rows.push(['Construction cost (area × rate)', fmt(a.constCost)]);
+  if(a.est!==null) rows.push(['Estimated cost', fmt(a.est)]);
+  if(a.actual>0) rows.push(['Actual cost (apartment cost)', fmt(a.actual)]);
+  if(a.share!==null) rows.push(['UDS share of total land', a.share.toFixed(2)+'%']);
+  let html = rows.map(r=>`<div class="a-row"><span>${r[0]}</span><span class="v">${r[1]}</span></div>`).join('');
+  if(a.diff!==null){
+    const up = a.diff > 0;
+    html += `<div class="a-note ${up?'up':'down'}">${up ? 'Actual is' : 'Actual is'} ${fmt(Math.abs(a.diff))} (${Math.abs(a.diffPct).toFixed(1)}%) ${up ? 'above' : 'below'} the estimate${up ? ' — builder margin/premium to negotiate.' : ' — priced under land + construction.'}</div>`;
+  } else if(a.est!==null){
+    html += '<div class="a-note down" style="background:#0f172a;color:var(--sub);">Enter both land and construction inputs plus Apartment Cost to compare actual vs estimated.</div>';
+  }
+  return html;
 }
 
 function updateLive(){
@@ -246,60 +319,83 @@ function updateLive(){
     $('verdict').textContent = v.text;
     $('breakdown').innerHTML = `Area: ${Math.round(p.area)}/20<br>Project size: ${Math.round(p.flats)}/20<br>UDS: ${Math.round(p.uds)}/20<br>Land value: ${Math.round(p.land)}/20<br>Road access: ${Math.round(p.road)}/15<br>Lift/accessibility: ${p.lift}/5`;
   }
-  const t = totalCost(f);
+  const t = totalCost(f), ar = areaFor(f);
   $('totalCost').textContent = fmt(t);
-  $('perSqft').textContent = f.sqft>0 ? fmt(t/f.sqft) : '₹0';
+  $('perSqft').textContent = ar>0 ? fmt(t/ar) : '₹0';
+  const a = analysis(f);
+  $('landPctHint').textContent = a.landPct!==null ? `Using calculated ${a.landPct.toFixed(1)}%` : 'Ideal: 40–45%';
+  $('analysisBox').innerHTML = analysisHTML(f);
 }
 
+// ---------- draft ----------
 function saveDraft(){
   const d = {};
   FIELD_IDS.forEach(id=>{ d[id] = $(id).value; });
-  d.photo = photo;
   d.editingId = editingId;
   store(DRAFT_KEY, d);
 }
+function savePhotosDraft(){ store(DRAFT_PHOTOS_KEY, photos); }
 
 function restoreDraft(){
   const d = load(DRAFT_KEY, {});
   FIELD_IDS.forEach(id=>{ if(d[id] !== undefined) $(id).value = d[id]; });
-  photo = d.photo || '';
+  photos = load(DRAFT_PHOTOS_KEY, null) || (d.photo ? [d.photo] : []);
   editingId = d.editingId && flats.some(x=>x.id===d.editingId) ? d.editingId : null;
   $('saveBtn').textContent = editingId ? '✓ Update Flat' : '💾 Save Flat';
-  setPhoto(photo, false);
+  renderPhotoGrid();
 }
 
-function setPhoto(src, persist){
-  photo = src || '';
-  $('photoPrev').innerHTML = photo ? `<img alt="Flat photo" src="${photo}">` : '📷';
-  $('photoRemove').style.display = photo ? 'inline-block' : 'none';
-  if(persist){ saveDraft(); }
+// ---------- photos ----------
+function renderPhotoGrid(){
+  $('photoGrid').innerHTML = photos.map((p,i)=>`<div class="ph"><img alt="" src="${p}"><button type="button" data-rm="${i}" aria-label="Remove photo">✕</button></div>`).join('');
 }
-
-function resizeImage(file, cb){
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      const max = 480, scale = Math.min(1, max/Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
-      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      cb(c.toDataURL('image/jpeg',0.7));
+function resizeImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 480, scale = Math.min(1, max/Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL('image/jpeg',0.7));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
     };
-    img.onerror = () => toast('Could not read that image');
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function addPhotos(files){
+  const room = MAX_PHOTOS - photos.length;
+  if(room <= 0){ toast('Max '+MAX_PHOTOS+' photos per flat'); return; }
+  const picked = [...files].slice(0, room);
+  if(files.length > room) toast('Only '+room+' more photo'+(room===1?'':'s')+' allowed');
+  for(const file of picked){
+    try{ photos.push(await resizeImage(file)); }catch(e){ toast('Could not read an image'); }
+  }
+  renderPhotoGrid(); savePhotosDraft();
 }
 
+// lightbox
+let lbList = [], lbIdx = 0;
+function openLightbox(list, idx){ lbList = list; lbIdx = idx; showLb(); $('lightbox').classList.add('open'); }
+function showLb(){
+  $('lbImg').src = lbList[lbIdx];
+  $('lbCount').textContent = (lbIdx+1)+' / '+lbList.length;
+}
+function stepLb(d){ if(!lbList.length) return; lbIdx = (lbIdx+d+lbList.length)%lbList.length; showLb(); }
+
+// ---------- form actions ----------
 function clearForm(){
   FIELD_IDS.forEach(id=>{ $(id).value = id==='lift' ? 'no' : ''; });
   $('photoFile').value = '';
+  photos = [];
   editingId = null;
   $('saveBtn').textContent = '💾 Save Flat';
-  setPhoto('', false);
-  saveDraft();
-  updateLive();
+  renderPhotoGrid(); saveDraft(); savePhotosDraft(); updateLive();
 }
 
 function saveFlat(){
@@ -321,11 +417,11 @@ function saveFlat(){
 
 function editFlat(id){
   const f = flats.find(x=>x.id===id); if(!f) return;
-  FIELD_IDS.forEach(k=>{ $(k).value = (f[k] === undefined || (typeof f[k]==='number' && isNaN(f[k]))) ? '' : f[k]; });
+  FIELD_IDS.forEach(k=>{ $(k).value = (f[k] === undefined || f[k] === null || (typeof f[k]==='number' && isNaN(f[k]))) ? '' : f[k]; });
+  photos = [...(f.photos||[])];
   editingId = id;
   $('saveBtn').textContent = '✓ Update Flat';
-  setPhoto(f.photo || '', false);
-  saveDraft(); updateLive();
+  renderPhotoGrid(); saveDraft(); savePhotosDraft(); updateLive();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -346,17 +442,25 @@ function deleteFlat(id, btn){
   }, 2500);
 }
 
+// ---------- render ----------
+function thumbHTML(f){
+  const n = (f.photos||[]).length;
+  if(!n) return '<div class="thumb">🏠</div>';
+  return `<div class="thumb" data-photo="0"><img alt="" src="${f.photos[0]}">${n>1?`<span class="more">+${n-1}</span>`:''}</div>`;
+}
+
 function renderList(){
   const el = $('flatList');
   if(!flats.length){ el.innerHTML = '<div class="empty">No flats saved yet. Fill the form and tap Save Flat.</div>'; return; }
   el.innerHTML = flats.map(f=>{
     const r = computeScore(f), s = r ? r.total : 0, v = verdictFor(s);
-    const t = totalCost(f);
+    const t = totalCost(f), ar = areaFor(f), a = analysis(f);
+    const extra = [f.flatType, a.landPct!==null ? `Land ${a.landPct.toFixed(0)}%` : ''].filter(Boolean).join(' · ');
     return `<div class="flat" data-id="${f.id}">
-      <div class="thumb">${f.photo ? `<img alt="" src="${f.photo}">` : '🏠'}</div>
+      ${thumbHTML(f)}
       <div class="flat-info">
         <div class="flat-name">${esc(f.name)}<span class="pill ${v.cls}">${s}/100</span></div>
-        <div class="flat-meta">${fmt(t)} total · ${f.sqft>0 ? fmt(t/f.sqft)+'/sq ft' : '—'} · ${f.sqft||'—'} sq ft<br>Saved ${fmtDate(f.savedAt)}</div>
+        <div class="flat-meta">${extra ? esc(extra)+'<br>' : ''}${fmt(t)} total · ${ar>0 ? fmt(t/ar)+'/sq ft' : '—'}<br>Saved ${fmtDate(f.savedAt)}</div>
         <label class="cmp-toggle"><input type="checkbox" data-act="cmp" ${cmp.has(f.id)?'checked':''}> Compare</label>
       </div>
       <div class="flat-actions">
@@ -374,13 +478,19 @@ function renderCompare(){
     el.innerHTML = '<div class="empty">Tick “Compare” on two or more saved flats to see them side by side.</div>';
     return;
   }
-  const data = sel.map(f=>{ const r = computeScore(f); return { f, score:r?r.total:0, total:totalCost(f), psf:f.sqft>0 ? totalCost(f)/f.sqft : 0 }; });
-  const best = (key, dir) => { const vals = data.map(d=>d[key]); return dir==='max' ? Math.max(...vals) : Math.min(...vals); };
-  const bScore = best('score','max'), bTotal = best('total','min'), bPsf = best('psf','min');
+  const data = sel.map(f=>{
+    const r = computeScore(f), ar = areaFor(f), a = analysis(f);
+    return { f, a, score:r?r.total:0, total:totalCost(f), psf:ar>0 ? totalCost(f)/ar : 0 };
+  });
+  const min = key => Math.min(...data.map(d=>d[key]));
+  const bScore = Math.max(...data.map(d=>d.score)), bTotal = min('total');
+  const psfVals = data.map(d=>d.psf).filter(v=>v>0), bPsf = psfVals.length ? Math.min(...psfVals) : null;
   const row = (label, cells, cls) => `<tr class="${cls||''}"><td>${label}</td>${cells.join('')}</tr>`;
-  const plain = fn => data.map(d=>`<td>${fn(d.f)}</td>`);
+  const plain = fn => data.map(d=>`<td>${fn(d.f, d.a)}</td>`);
+  const dash = v => (v===null || v===undefined || (typeof v==='number' && isNaN(v)) || v==='') ? '—' : v;
   const rows = [
     row('Score', data.map(d=>`<td class="${d.score===bScore?'best':''}">${d.score}/100</td>`)),
+    row('Flat type', plain(f=>dash(f.flatType))),
     row('Apartment cost', plain(f=>fmt(f.cost))),
     row('Reg + Stamp duty', plain(f=>fmt(f.regFee))),
     row('GST', plain(f=>fmt(f.gst))),
@@ -388,21 +498,35 @@ function renderCompare(){
     row('Parking', plain(f=>fmt(f.parking))),
     row('Other', plain(f=>fmt(f.other))),
     row('Total cost', data.map(d=>`<td class="${d.total===bTotal?'best':''}">${fmt(d.total)}</td>`), 'total'),
-    row('Total ₹ / sq ft', data.map(d=>`<td class="${d.psf===bPsf?'best':''}">${d.psf?fmt(d.psf):'—'}</td>`)),
-    row('Carpet area', plain(f=>(f.sqft||'—')+' sq ft')),
-    row('Flats in project', plain(f=>f.numFlats||'—')),
-    row('UDS', plain(f=>(f.uds ?? '—')+' sq ft')),
-    row('Land cost %', plain(f=>(f.landPct ?? '—')+'%')),
-    row('Road width', plain(f=>(f.road||'—')+' ft')),
+    row('Total ₹ / sq ft', data.map(d=>`<td class="${bPsf!==null && d.psf===bPsf?'best':''}">${d.psf?fmt(d.psf):'—'}</td>`)),
+    row('Total area', plain(f=>Number(f.totalArea)>0 ? f.totalArea+' sq ft' : '—')),
+    row('Carpet area', plain(f=>dash(f.sqft)+(f.sqft?' sq ft':''))),
+    row('UDS', plain(f=>dash(f.uds)+(f.uds!==undefined && !isNaN(f.uds)?' sq yd':''))),
+    row('Total land', plain(f=>Number(f.landSqYd)>0 ? f.landSqYd+' sq yd' : '—')),
+    row('Land price / sq yd', plain(f=>Number(f.landPrice)>0 ? fmt(f.landPrice) : '—')),
+    row('Land cost', plain((f,a)=>a.landCost!==null ? fmt(a.landCost) : '—')),
+    row('Land cost %', plain((f,a)=>a.landPct!==null ? a.landPct.toFixed(1)+'%' : dash(f.landPct)+(f.landPct?'%':''))),
+    row('Construction cost', plain((f,a)=>a.constCost!==null ? fmt(a.constCost) : '—')),
+    row('Estimated cost', plain((f,a)=>a.full ? fmt(a.est) : '—')),
+    row('Actual − Estimated', plain((f,a)=>a.diff!==null ? fmtSigned(a.diff)+' ('+a.diffPct.toFixed(1)+'%)' : '—')),
+    row('Flats in project', plain(f=>dash(f.numFlats))),
+    row('Road width', plain(f=>dash(f.road)+(f.road?' ft':''))),
     row('Lift', plain(f=>f.lift==='yes'?'Yes':'No'))
   ];
-  const head = `<tr><th></th>${data.map(d=>`<th><div class="thumb">${d.f.photo?`<img alt="" src="${d.f.photo}">`:'🏠'}</div>${esc(d.f.name)}</th>`).join('')}</tr>`;
+  const head = `<tr><th></th>${data.map(d=>`<th><div class="thumb">${(d.f.photos||[])[0]?`<img alt="" src="${d.f.photos[0]}">`:'🏠'}</div>${esc(d.f.name)}</th>`).join('')}</tr>`;
   el.innerHTML = `<div class="table-scroll"><table>${head}${rows.join('')}</table></div>`;
 }
 
 function renderAll(){ renderList(); renderCompare(); }
 
+// ---------- events ----------
 $('flatList').addEventListener('click', e=>{
+  const th = e.target.closest('.thumb[data-photo]');
+  if(th){
+    const f = flats.find(x=>x.id===th.closest('.flat').dataset.id);
+    if(f && f.photos && f.photos.length) openLightbox(f.photos, 0);
+    return;
+  }
   const btn = e.target.closest('button[data-act]'); if(!btn) return;
   const id = btn.closest('.flat').dataset.id;
   if(btn.dataset.act === 'edit') editFlat(id);
@@ -415,15 +539,23 @@ $('flatList').addEventListener('change', e=>{
   store(CMP_KEY, [...cmp]);
   renderCompare();
 });
+$('photoGrid').addEventListener('click', e=>{
+  const rm = e.target.closest('[data-rm]'); if(rm){
+    photos.splice(Number(rm.dataset.rm),1); renderPhotoGrid(); savePhotosDraft(); return;
+  }
+  const img = e.target.closest('.ph img'); if(img){
+    openLightbox(photos, [...$('photoGrid').querySelectorAll('.ph img')].indexOf(img));
+  }
+});
+$('photoFile').addEventListener('change', e=>{ addPhotos(e.target.files).then(()=>{ $('photoFile').value=''; }); });
 $('saveBtn').addEventListener('click', saveFlat);
 $('clearBtn').addEventListener('click', clearForm);
-$('photoFile').addEventListener('change', e=>{
-  const file = e.target.files[0]; if(!file) return;
-  resizeImage(file, src=>setPhoto(src, true));
-});
-$('photoRemove').addEventListener('click', ()=>{ $('photoFile').value=''; setPhoto('', true); });
+$('lbPrev').addEventListener('click', ()=>stepLb(-1));
+$('lbNext').addEventListener('click', ()=>stepLb(1));
+$('lbClose').addEventListener('click', ()=>$('lightbox').classList.remove('open'));
+$('lightbox').addEventListener('click', e=>{ if(e.target.id==='lightbox') $('lightbox').classList.remove('open'); });
 FIELD_IDS.forEach(id=>{
-  $(id).addEventListener(id==='lift' ? 'change' : 'input', ()=>{ saveDraft(); updateLive(); });
+  $(id).addEventListener((id==='lift'||id==='flatType') ? 'change' : 'input', ()=>{ saveDraft(); updateLive(); });
 });
 
 cmp = new Set([...cmp].filter(id=>flats.some(f=>f.id===id)));
