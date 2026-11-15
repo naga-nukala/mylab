@@ -18,8 +18,9 @@
   .section-title{font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;}
   label{display:block;font-size:12px;margin-bottom:4px;font-weight:600;}
   .hint{font-size:11px;color:var(--sub);margin-bottom:6px;font-weight:400;}
-  input, select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;}
-  input:focus,select:focus{outline:2px solid var(--acc);}
+  input, select, textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--txt);font-size:15px;font-family:inherit;}
+  textarea{resize:vertical;min-height:64px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);}
   .row{display:flex;gap:8px;margin-bottom:10px;}
   .field{flex:1;min-width:0;}
   .score-box{text-align:center;padding:20px 16px;}
@@ -56,10 +57,12 @@
   .flat-info{flex:1;min-width:0;}
   .flat-name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .flat-meta{font-size:11px;color:var(--sub);margin-top:2px;line-height:1.5;}
+  .flat-notes{font-size:11px;color:var(--txt);opacity:.8;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;}
   .pill{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:700;margin-left:6px;}
   .good{background:rgba(34,197,94,.15);color:var(--acc);}
   .mid{background:rgba(245,158,11,.15);color:var(--warn);}
   .bad{background:rgba(239,68,68,.15);color:var(--bad);}
+  .none{background:#0f172a;color:var(--sub);}
   .flat-actions{display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
   .icon-btn{background:#0f172a;border:1px solid #334155;color:var(--txt);border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;}
   .icon-btn.edit{color:var(--edit);}
@@ -90,7 +93,7 @@
 
 <div class="wrap">
   <h1>🏠 Flat Buying Scorecard</h1>
-  <p class="sub">Score a flat, check land vs construction cost, save it, and compare flats.</p>
+  <p class="sub">Check land vs construction cost, score the deal, save it, and compare flats.</p>
 
   <div class="card score-box">
     <div class="score-num" id="scoreNum">--</div>
@@ -117,59 +120,35 @@
     <div class="row">
       <div class="field"><label for="name">Apartment Name</label><input type="text" id="name" placeholder="e.g. Sri Sai Residency"></div>
       <div class="field"><label for="flatType">Flat Type</label>
-        <select id="flatType"><option value="">Select</option><option value="2BHK">2BHK</option><option value="3BHK">3BHK</option><option value="Group Apartment">Group Apartment</option></select>
+        <select id="flatType">
+          <option value="">Select</option><option value="2BHK">2BHK</option><option value="3BHK">3BHK</option><option value="Group Apartment">Group Apartment</option><option value="Semi-Gated">Semi-Gated</option><option value="Gated">Gated</option><option value="Commercial">Commercial</option><option value="Others">Others</option>
+        </select>
       </div>
     </div>
     <label>Photos (optional, up to 6)</label>
     <div class="photo-grid" id="photoGrid"></div>
-    <input type="file" id="photoFile" accept="image/*" multiple style="font-size:12px;padding:8px;">
+    <input type="file" id="photoFile" accept="image/*" multiple style="font-size:12px;padding:8px;margin-bottom:10px;">
+    <label for="notes">Notes</label>
+    <textarea id="notes" placeholder="Builder, approvals, possession date, things to check…"></textarea>
   </div>
 
   <div class="card">
-    <div class="section-title">Score Factors</div>
+    <div class="section-title">Area, Land & Cost</div>
     <div class="row">
-      <div class="field"><label for="totalArea">Total Area (sq ft)</label><div class="hint">Built-up / super built-up</div><input type="number" id="totalArea" min="0" placeholder="1100"></div>
-      <div class="field"><label for="sqft">Carpet Area (sq ft)</label><div class="hint">Ideal: 850–950</div><input type="number" id="sqft" min="1" placeholder="900"></div>
+      <div class="field"><label for="totalArea">Total Area (sq ft)</label><input type="number" id="totalArea" min="0" placeholder="1100"></div>
+      <div class="field"><label for="numFlats">Flats</label><input type="number" id="numFlats" min="0" placeholder="24"></div>
     </div>
     <div class="row">
-      <div class="field"><label for="numFlats">Flats in Project</label><div class="hint">Ideal: 10+</div><input type="number" id="numFlats" min="1" placeholder="24"></div>
       <div class="field"><label for="uds">UDS (sq yd)</label><div class="hint">Ideal: 40+</div><input type="number" id="uds" min="0" placeholder="41"></div>
+      <div class="field"><label for="landSqYd">Total Land (sq yd)</label><div class="hint">Whole project plot</div><input type="number" id="landSqYd" min="0" placeholder="1200"></div>
     </div>
     <div class="row">
-      <div class="field"><label for="landPct">Land Cost % (manual)</label><div class="hint" id="landPctHint">Ideal: 40–45%</div><input type="number" id="landPct" min="0" max="100" placeholder="42"></div>
-      <div class="field"><label for="road">Road Width (ft)</label><div class="hint">Ideal: 30–40</div><input type="number" id="road" min="1" placeholder="35"></div>
+      <div class="field"><label for="landPrice">Land Present Price (₹ / sq yd)</label><input type="number" id="landPrice" min="0" placeholder="60000"></div>
+      <div class="field"><label for="constRate">Construction Rate (₹ / sq ft)</label><input type="number" id="constRate" min="0" placeholder="2200"></div>
     </div>
     <div class="row">
-      <div class="field"><label for="lift">Lift Available?</label><div class="hint">May raise maintenance</div>
-        <select id="lift"><option value="no">No Lift</option><option value="yes">Has Lift</option></select>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="section-title">Land & Construction</div>
-    <div class="row">
-      <div class="field"><label for="landSqYd">Total Land (sq yd)</label><input type="number" id="landSqYd" min="0" placeholder="e.g. 1200"></div>
-      <div class="field"><label for="landPrice">Land Price (₹ / sq yd)</label><input type="number" id="landPrice" min="0" placeholder="e.g. 60000"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label for="constRate">Construction Rate (₹ / sq ft)</label><input type="number" id="constRate" min="0" placeholder="e.g. 2200"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="section-title">Costs (₹)</div>
-    <div class="row">
-      <div class="field"><label for="cost">Apartment Cost</label><input type="number" id="cost" min="0" placeholder="e.g. 4500000"></div>
-      <div class="field"><label for="regFee">Registration + Stamp Duty</label><input type="number" id="regFee" min="0" placeholder="e.g. 300000"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label for="gst">GST</label><input type="number" id="gst" min="0" placeholder="0"></div>
-      <div class="field"><label for="maint">Maintenance Corpus</label><input type="number" id="maint" min="0" placeholder="e.g. 50000"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label for="parking">Parking</label><input type="number" id="parking" min="0" placeholder="0"></div>
-      <div class="field"><label for="other">Other (legal, interiors…)</label><input type="number" id="other" min="0" placeholder="0"></div>
+      <div class="field"><label for="cost">Apartment Cost (₹)</label><input type="number" id="cost" min="0" placeholder="4500000"></div>
+      <div class="field"><label for="otherCharges">Other Charges (₹)</label><div class="hint">Registration, GST, corpus, parking…</div><input type="number" id="otherCharges" min="0" placeholder="350000"></div>
     </div>
     <div class="btn-row">
       <button class="btn" id="saveBtn" type="button">💾 Save Flat</button>
@@ -194,14 +173,19 @@ const CMP_KEY = 'flatScorecard_cmp_v1';
 const DRAFT_KEY = 'as_flatscorecard';
 const DRAFT_PHOTOS_KEY = 'as_flatscorecard_photos';
 const MAX_PHOTOS = 6;
-const FIELD_IDS = ['name','flatType','totalArea','sqft','numFlats','uds','landPct','road','lift','landSqYd','landPrice','constRate','cost','regFee','gst','maint','parking','other'];
-const COST_IDS = ['cost','regFee','gst','maint','parking','other'];
-const NUM_IDS = ['totalArea','sqft','numFlats','uds','landPct','road','landSqYd','landPrice','constRate'];
+const FIELD_IDS = ['name','flatType','notes','totalArea','numFlats','uds','landSqYd','landPrice','constRate','cost','otherCharges'];
+const NUM_IDS = ['totalArea','numFlats','uds','landSqYd','landPrice','constRate','cost','otherCharges'];
+const LEGACY_CHARGES = ['regFee','gst','maint','parking','other'];
+const legacySum = o => LEGACY_CHARGES.reduce((t,k)=>t+(parseFloat(o[k])||0),0);
 
 function load(key, fb){ try{ const v = JSON.parse(localStorage.getItem(key)); return v === null ? fb : v; }catch(e){ return fb; } }
 function store(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ toast('Storage full — remove some photos'); return false; } }
 
-let flats = load(LIST_KEY, []).map(f => ({ ...f, photos: f.photos || (f.photo ? [f.photo] : []) }));
+let flats = load(LIST_KEY, []).map(f => ({
+  ...f,
+  photos: f.photos || (f.photo ? [f.photo] : []),
+  otherCharges: f.otherCharges !== undefined ? f.otherCharges : legacySum(f)
+}));
 let cmp = new Set(load(CMP_KEY, []));
 let photos = [];
 let editingId = null;
@@ -238,54 +222,39 @@ function analysis(f){
   return { landCost, constCost, est, landPct, full, diff, diffPct, share, actual };
 }
 
-function scoreRange(val, min, max, weight){
-  if(isNaN(val)) return 0;
-  if(val>=min && val<=max) return weight;
-  const dist = val<min ? min-val : val-max;
-  const range = max-min || 1;
-  return Math.max(0, weight*(1-Math.min(1, dist/range)));
-}
-
-function effLandPct(f){ const a = analysis(f); return a.landPct !== null ? a.landPct : f.landPct; }
-
+// Score (100): UDS 30 + Land cost % 30 + Actual vs Estimated 40
 function computeScore(f){
-  const lp = effLandPct(f);
-  const ok = Number.isFinite(f.sqft) && f.sqft>0 && Number.isFinite(f.numFlats) && f.numFlats>0 &&
-    Number.isFinite(f.uds) && f.uds>=0 && Number.isFinite(lp) && lp>=0 &&
-    Number.isFinite(f.road) && f.road>0;
-  if(!ok) return null;
+  const a = analysis(f), uds = Number(f.uds)||0;
+  if(!(uds>0) || a.landPct===null || a.diffPct===null) return null;
+  const dist = a.landPct<40 ? 40-a.landPct : a.landPct>45 ? a.landPct-45 : 0;
   const parts = {
-    area: scoreRange(f.sqft,850,950,20),
-    flats: Math.min(20,(f.numFlats/10)*20),
-    uds: Math.min(20,(f.uds/40)*20),
-    land: scoreRange(lp,40,45,20),
-    road: scoreRange(f.road,30,40,15),
-    lift: f.lift==='yes' ? 5 : 3
+    uds: Math.min(30, uds/40*30),
+    land: 30*Math.max(0, 1-dist/20),
+    value: a.diffPct<=0 ? 40 : 40*Math.max(0, 1-a.diffPct/40)
   };
-  const total = Math.round(Math.min(100, Object.values(parts).reduce((a,b)=>a+b,0)));
+  const total = Math.round(Math.min(100, parts.uds+parts.land+parts.value));
   return { parts, total };
 }
 
-function totalCost(f){ return COST_IDS.reduce((s,k)=>s+(Number(f[k])||0),0); }
+function totalCost(f){ return (Number(f.cost)||0) + (Number(f.otherCharges)||0); }
 function areaFor(f){ return Number(f.totalArea)>0 ? Number(f.totalArea) : Number(f.sqft)||0; }
 
 function readForm(){
-  const f = { name:$('name').value.trim(), flatType:$('flatType').value, lift:$('lift').value, photos:[...photos] };
-  NUM_IDS.forEach(k=>{ f[k] = parseFloat($(k).value); });
-  COST_IDS.forEach(k=>{ f[k] = parseFloat($(k).value) || 0; });
+  const f = { name:$('name').value.trim(), flatType:$('flatType').value, notes:$('notes').value.trim(), photos:[...photos] };
+  NUM_IDS.forEach(k=>{ f[k] = parseFloat($(k).value) || 0; });
   return f;
 }
 
 function verdictFor(s){
-  if(s>=75) return {color:'var(--acc)', text:'Strong initial score — verify documents and records', cls:'good'};
+  if(s>=75) return {color:'var(--acc)', text:'Strong deal — verify documents and records', cls:'good'};
   if(s>=50) return {color:'var(--warn)', text:'Average — negotiate or verify further', cls:'mid'};
-  return {color:'var(--bad)', text:'Risky — high maintenance/low resale likely', cls:'bad'};
+  return {color:'var(--bad)', text:'Risky — priced high vs land + construction', cls:'bad'};
 }
 
 function analysisHTML(f){
   const a = analysis(f);
   if(a.landCost===null && a.constCost===null){
-    return '<div class="empty">Enter UDS and land price per sq yd (land), and total area and construction rate (construction) to see the estimate.</div>';
+    return '<div class="empty">Enter UDS and land price (land), and total area and construction rate (construction) to see the estimate.</div>';
   }
   const rows = [];
   if(a.landCost!==null) rows.push(['Land cost (UDS × price)', fmt(a.landCost) + (a.landPct!==null ? ` · ${a.landPct.toFixed(1)}%` : '')]);
@@ -296,9 +265,9 @@ function analysisHTML(f){
   let html = rows.map(r=>`<div class="a-row"><span>${r[0]}</span><span class="v">${r[1]}</span></div>`).join('');
   if(a.diff!==null){
     const up = a.diff > 0;
-    html += `<div class="a-note ${up?'up':'down'}">${up ? 'Actual is' : 'Actual is'} ${fmt(Math.abs(a.diff))} (${Math.abs(a.diffPct).toFixed(1)}%) ${up ? 'above' : 'below'} the estimate${up ? ' — builder margin/premium to negotiate.' : ' — priced under land + construction.'}</div>`;
+    html += `<div class="a-note ${up?'up':'down'}">Actual is ${fmt(Math.abs(a.diff))} (${Math.abs(a.diffPct).toFixed(1)}%) ${up ? 'above the estimate — builder margin/premium to negotiate.' : 'below the estimate — priced under land + construction.'}</div>`;
   } else if(a.est!==null){
-    html += '<div class="a-note down" style="background:#0f172a;color:var(--sub);">Enter both land and construction inputs plus Apartment Cost to compare actual vs estimated.</div>';
+    html += '<div class="a-note" style="background:#0f172a;color:var(--sub);">Enter land, construction and Apartment Cost to compare actual vs estimated.</div>';
   }
   return html;
 }
@@ -310,20 +279,18 @@ function updateLive(){
   if(!r){
     numEl.textContent = '--'; numEl.style.color = '';
     barEl.style.width = '0%';
-    $('verdict').textContent = 'Fill details below';
+    $('verdict').textContent = 'Enter UDS, land price, area, construction rate and apartment cost';
     $('breakdown').innerHTML = '';
   } else {
     const v = verdictFor(r.total), p = r.parts;
     numEl.textContent = r.total; numEl.style.color = v.color;
     barEl.style.width = r.total+'%'; barEl.style.background = v.color;
     $('verdict').textContent = v.text;
-    $('breakdown').innerHTML = `Area: ${Math.round(p.area)}/20<br>Project size: ${Math.round(p.flats)}/20<br>UDS: ${Math.round(p.uds)}/20<br>Land value: ${Math.round(p.land)}/20<br>Road access: ${Math.round(p.road)}/15<br>Lift/accessibility: ${p.lift}/5`;
+    $('breakdown').innerHTML = `UDS: ${Math.round(p.uds)}/30<br>Land cost %: ${Math.round(p.land)}/30<br>Actual vs estimated: ${Math.round(p.value)}/40`;
   }
   const t = totalCost(f), ar = areaFor(f);
   $('totalCost').textContent = fmt(t);
   $('perSqft').textContent = ar>0 ? fmt(t/ar) : '₹0';
-  const a = analysis(f);
-  $('landPctHint').textContent = a.landPct!==null ? `Using calculated ${a.landPct.toFixed(1)}%` : 'Ideal: 40–45%';
   $('analysisBox').innerHTML = analysisHTML(f);
 }
 
@@ -338,6 +305,7 @@ function savePhotosDraft(){ store(DRAFT_PHOTOS_KEY, photos); }
 
 function restoreDraft(){
   const d = load(DRAFT_KEY, {});
+  if(d.otherCharges === undefined){ const s = legacySum(d); if(s) d.otherCharges = s; }
   FIELD_IDS.forEach(id=>{ if(d[id] !== undefined) $(id).value = d[id]; });
   photos = load(DRAFT_PHOTOS_KEY, null) || (d.photo ? [d.photo] : []);
   editingId = d.editingId && flats.some(x=>x.id===d.editingId) ? d.editingId : null;
@@ -379,18 +347,14 @@ async function addPhotos(files){
   renderPhotoGrid(); savePhotosDraft();
 }
 
-// lightbox
 let lbList = [], lbIdx = 0;
 function openLightbox(list, idx){ lbList = list; lbIdx = idx; showLb(); $('lightbox').classList.add('open'); }
-function showLb(){
-  $('lbImg').src = lbList[lbIdx];
-  $('lbCount').textContent = (lbIdx+1)+' / '+lbList.length;
-}
+function showLb(){ $('lbImg').src = lbList[lbIdx]; $('lbCount').textContent = (lbIdx+1)+' / '+lbList.length; }
 function stepLb(d){ if(!lbList.length) return; lbIdx = (lbIdx+d+lbList.length)%lbList.length; showLb(); }
 
 // ---------- form actions ----------
 function clearForm(){
-  FIELD_IDS.forEach(id=>{ $(id).value = id==='lift' ? 'no' : ''; });
+  FIELD_IDS.forEach(id=>{ $(id).value = ''; });
   $('photoFile').value = '';
   photos = [];
   editingId = null;
@@ -401,7 +365,6 @@ function clearForm(){
 function saveFlat(){
   const f = readForm();
   if(!f.name){ toast('Enter the apartment name'); $('name').focus(); return; }
-  if(!computeScore(f)){ toast('Fill all score factors correctly'); return; }
   if(editingId){
     const i = flats.findIndex(x=>x.id===editingId);
     flats[i] = { ...flats[i], ...f };
@@ -417,7 +380,7 @@ function saveFlat(){
 
 function editFlat(id){
   const f = flats.find(x=>x.id===id); if(!f) return;
-  FIELD_IDS.forEach(k=>{ $(k).value = (f[k] === undefined || f[k] === null || (typeof f[k]==='number' && isNaN(f[k]))) ? '' : f[k]; });
+  FIELD_IDS.forEach(k=>{ const v = f[k]; $(k).value = (v === undefined || v === null || (typeof v==='number' && (isNaN(v) || (v===0 && NUM_IDS.includes(k))))) ? '' : v; });
   photos = [...(f.photos||[])];
   editingId = id;
   $('saveBtn').textContent = '✓ Update Flat';
@@ -453,14 +416,15 @@ function renderList(){
   const el = $('flatList');
   if(!flats.length){ el.innerHTML = '<div class="empty">No flats saved yet. Fill the form and tap Save Flat.</div>'; return; }
   el.innerHTML = flats.map(f=>{
-    const r = computeScore(f), s = r ? r.total : 0, v = verdictFor(s);
+    const r = computeScore(f), v = r ? verdictFor(r.total) : null;
     const t = totalCost(f), ar = areaFor(f), a = analysis(f);
     const extra = [f.flatType, a.landPct!==null ? `Land ${a.landPct.toFixed(0)}%` : ''].filter(Boolean).join(' · ');
     return `<div class="flat" data-id="${f.id}">
       ${thumbHTML(f)}
       <div class="flat-info">
-        <div class="flat-name">${esc(f.name)}<span class="pill ${v.cls}">${s}/100</span></div>
+        <div class="flat-name">${esc(f.name)}<span class="pill ${v?v.cls:'none'}">${r ? r.total+'/100' : '—'}</span></div>
         <div class="flat-meta">${extra ? esc(extra)+'<br>' : ''}${fmt(t)} total · ${ar>0 ? fmt(t/ar)+'/sq ft' : '—'}<br>Saved ${fmtDate(f.savedAt)}</div>
+        ${f.notes ? `<div class="flat-notes">${esc(f.notes)}</div>` : ''}
         <label class="cmp-toggle"><input type="checkbox" data-act="cmp" ${cmp.has(f.id)?'checked':''}> Compare</label>
       </div>
       <div class="flat-actions">
@@ -479,39 +443,22 @@ function renderCompare(){
     return;
   }
   const data = sel.map(f=>{
-    const r = computeScore(f), ar = areaFor(f), a = analysis(f);
-    return { f, a, score:r?r.total:0, total:totalCost(f), psf:ar>0 ? totalCost(f)/ar : 0 };
+    const ar = areaFor(f), a = analysis(f), t = totalCost(f);
+    return { f, a, total:t, psf:ar>0 ? t/ar : 0 };
   });
-  const min = key => Math.min(...data.map(d=>d[key]));
-  const bScore = Math.max(...data.map(d=>d.score)), bTotal = min('total');
+  const bTotal = Math.min(...data.map(d=>d.total));
   const psfVals = data.map(d=>d.psf).filter(v=>v>0), bPsf = psfVals.length ? Math.min(...psfVals) : null;
   const row = (label, cells, cls) => `<tr class="${cls||''}"><td>${label}</td>${cells.join('')}</tr>`;
   const plain = fn => data.map(d=>`<td>${fn(d.f, d.a)}</td>`);
-  const dash = v => (v===null || v===undefined || (typeof v==='number' && isNaN(v)) || v==='') ? '—' : v;
   const rows = [
-    row('Score', data.map(d=>`<td class="${d.score===bScore?'best':''}">${d.score}/100</td>`)),
-    row('Flat type', plain(f=>dash(f.flatType))),
-    row('Apartment cost', plain(f=>fmt(f.cost))),
-    row('Reg + Stamp duty', plain(f=>fmt(f.regFee))),
-    row('GST', plain(f=>fmt(f.gst))),
-    row('Maint. corpus', plain(f=>fmt(f.maint))),
-    row('Parking', plain(f=>fmt(f.parking))),
-    row('Other', plain(f=>fmt(f.other))),
     row('Total cost', data.map(d=>`<td class="${d.total===bTotal?'best':''}">${fmt(d.total)}</td>`), 'total'),
     row('Total ₹ / sq ft', data.map(d=>`<td class="${bPsf!==null && d.psf===bPsf?'best':''}">${d.psf?fmt(d.psf):'—'}</td>`)),
-    row('Total area', plain(f=>Number(f.totalArea)>0 ? f.totalArea+' sq ft' : '—')),
-    row('Carpet area', plain(f=>dash(f.sqft)+(f.sqft?' sq ft':''))),
-    row('UDS', plain(f=>dash(f.uds)+(f.uds!==undefined && !isNaN(f.uds)?' sq yd':''))),
-    row('Total land', plain(f=>Number(f.landSqYd)>0 ? f.landSqYd+' sq yd' : '—')),
-    row('Land price / sq yd', plain(f=>Number(f.landPrice)>0 ? fmt(f.landPrice) : '—')),
-    row('Land cost', plain((f,a)=>a.landCost!==null ? fmt(a.landCost) : '—')),
-    row('Land cost %', plain((f,a)=>a.landPct!==null ? a.landPct.toFixed(1)+'%' : dash(f.landPct)+(f.landPct?'%':''))),
+    row('Total area', plain(f=>areaFor(f)>0 ? areaFor(f)+' sq ft' : '—')),
+    row('UDS', plain(f=>Number(f.uds)>0 ? f.uds+' sq yd' : '—')),
+    row('Land cost (%)', plain((f,a)=>a.landCost!==null ? fmt(a.landCost)+(a.landPct!==null ? ' ('+a.landPct.toFixed(1)+'%)' : '') : '—')),
     row('Construction cost', plain((f,a)=>a.constCost!==null ? fmt(a.constCost) : '—')),
     row('Estimated cost', plain((f,a)=>a.full ? fmt(a.est) : '—')),
-    row('Actual − Estimated', plain((f,a)=>a.diff!==null ? fmtSigned(a.diff)+' ('+a.diffPct.toFixed(1)+'%)' : '—')),
-    row('Flats in project', plain(f=>dash(f.numFlats))),
-    row('Road width', plain(f=>dash(f.road)+(f.road?' ft':''))),
-    row('Lift', plain(f=>f.lift==='yes'?'Yes':'No'))
+    row('Actual cost', plain((f,a)=>a.actual>0 ? fmt(a.actual) : '—'))
   ];
   const head = `<tr><th></th>${data.map(d=>`<th><div class="thumb">${(d.f.photos||[])[0]?`<img alt="" src="${d.f.photos[0]}">`:'🏠'}</div>${esc(d.f.name)}</th>`).join('')}</tr>`;
   el.innerHTML = `<div class="table-scroll"><table>${head}${rows.join('')}</table></div>`;
@@ -555,7 +502,7 @@ $('lbNext').addEventListener('click', ()=>stepLb(1));
 $('lbClose').addEventListener('click', ()=>$('lightbox').classList.remove('open'));
 $('lightbox').addEventListener('click', e=>{ if(e.target.id==='lightbox') $('lightbox').classList.remove('open'); });
 FIELD_IDS.forEach(id=>{
-  $(id).addEventListener((id==='lift'||id==='flatType') ? 'change' : 'input', ()=>{ saveDraft(); updateLive(); });
+  $(id).addEventListener(id==='flatType' ? 'change' : 'input', ()=>{ saveDraft(); updateLive(); });
 });
 
 cmp = new Set([...cmp].filter(id=>flats.some(f=>f.id===id)));
