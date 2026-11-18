@@ -22,7 +22,7 @@ table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6
 <div class="card" id="tinfo"></div>
 <div class="card"><h2>Day total <span id="sum"></span></h2><div id="chips"></div></div>
 <div class="card"><div id="scope"></div><div id="list"></div><div class="fl" style="margin-top:10px"><button id="add">+ Add at end</button></div></div>
-<div class="card"><h2>DS Review</h2><p class="h">Fills from ticked blocks that have a review field. You can also type here.</p><div id="rv"></div><details style="margin:8px 0"><summary>Manage review tags</summary><div id="rvm"></div><div class="fl" style="margin-top:8px"><input id="nr" placeholder="e.g. Meditation (min)"><button id="nra">Add</button></div></details><a href="time-zones-reports.html#day">All day-wise reviews</a></div>
+<div class="card"><h2>DS Review</h2><p class="h">Fills from ticked blocks that have a review field. You can also type here.</p><div id="rv"></div><details style="margin:8px 0"><summary>Manage review tags</summary><div id="rvm"></div><div class="fl" style="margin-top:8px"><input id="nr" placeholder="e.g. Meditation (min)"><button id="nra">Add</button></div></details><a href="#day">All day-wise reviews</a></div>
 <div class="card"><h2>Backup &amp; share</h2><div class="fl"><button class="g" id="ex">Export JSON</button><button class="g" id="im">Import &amp; merge</button><button class="g x" id="ir">Import &amp; replace</button></div><input type="file" id="fi" accept=".json,application/json" hidden></div>
 </section>
 <section id="v-main" hidden><div class="card"><h2>Hours by tag <input id="myr" type="number" style="width:84px" aria-label="Year"></h2><p class="h">Hours come from the blocks you tick on the planner, plus any manual entries.</p><div id="tot"></div></div>
@@ -30,10 +30,12 @@ table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6
 <div class="card"><h2>Manual entries</h2><p class="h">Change the hours of an entry, or delete it.</p><div id="man"></div></div>
 <div class="card"><h2>Manage tags</h2><p class="h">Tags group your hours. They appear as choices for each block on the planner.</p><div id="tg"></div><div class="fl" style="margin-top:8px"><input id="nt" placeholder="e.g. goal-fitness"><button id="na">Add tag</button></div></div>
 </section>
-<section id="v-rep" hidden><div class="fl" style="margin:8px 0"><button data-rv="month">Monthly</button><button data-rv="day">Day-wise</button><input id="rq" type="search" placeholder="Search tags, dates, notes" style="flex:1;min-width:140px" aria-label="Search"><button class="g" id="rdl">Download .md</button></div>
+<section id="v-rep" hidden><div class="fl" style="margin:8px 0"><button data-rv="month">Monthly</button><button data-rv="day">Day-wise</button><button data-rv="review">Review tags</button><input id="rq" type="search" placeholder="Search tags, dates, notes" style="flex:1;min-width:140px" aria-label="Search"><button class="g" id="rdl">Download .md</button></div>
 <p class="h" id="rc"></p>
 <div class="card" id="mo"><h2>Tag × month <input id="ryr" type="number" style="width:84px" aria-label="Year"></h2><div class="sc"><table id="t"></table></div></div>
 <div id="dy"></div>
+<div class="card" id="rt"><h2>Review tags</h2><p class="h">Pick one or more tags to see only their entries, grouped by month.</p><div id="rchips"></div><div class="fl" style="margin-top:8px"><button class="g" id="rall">Select all</button><button class="g" id="rclr">Clear</button></div></div>
+<div id="rout"></div>
 </section>
 <div id="toast"></div><script>
 const K='tz_v1',$=s=>document.querySelector(s);
@@ -169,29 +171,45 @@ $('#man').onclick=e=>{const r=e.target.closest('[data-d]');if(!r||!e.target.hasA
 $('#ma').onclick=()=>{const t=$('#mt').value,d=$('#md').value,h=parseFloat($('#mh').value);if(!t||!d||!(h>0))return toast('Pick tag, date and hours');const L=D.log[d]=D.log[d]||{};L.man=L.man||{};L.man[t]=(L.man[t]||0)+h;$('#mh').value='';save();draw();drawMan();toast('Added '+f(h)+' to #'+t+' · '+fd(d))};
 R.main=()=>{draw();drawMan()};R.main();
 })();
-(()=>{let Y=new Date().getFullYear(),V='month',q='';$('#ryr').value=Y;
+(()=>{let Y=new Date().getFullYear(),V='month',q='';const sel=new Set(D.rsel||[]);$('#ryr').value=Y;
 const ql=()=>q.trim().toLowerCase();
 function mdata(){const tg=new Set(D.tags),m={};for(const d in D.log){if(d.slice(0,4)!=Y)continue;const mo=+d.slice(5,7)-1,h=H(d);for(const t in h){tg.add(t);(m[t]=m[t]||Array(12).fill(0))[mo]+=h[t]}}
 const s=ql();return [...tg].filter(t=>!s||t.toLowerCase().includes(s)).map(t=>({t,a:m[t]||Array(12).fill(0)}))}
 function ddata(){const s=ql();return Object.keys(D.log).sort().reverse().map(d=>{const h=H(d),r=D.log[d].rv||{};return{d,h:Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]),r:[...new Set([...RVn(),...Object.keys(r)])].filter(k=>r[k]).map(k=>[k,r[k]]),tot:Object.values(h).reduce((a,x)=>a+x,0)}}).filter(x=>x.h.length||x.r.length).filter(x=>!s||[fd(x.d),...x.h.map(y=>y[0]),...x.r.map(y=>y.join(' '))].join(' ').toLowerCase().includes(s))}
 const sum=a=>a.reduce((x,y)=>x+y,0);
-function draw(){document.querySelectorAll('[data-rv]').forEach(b=>b.className=b.dataset.rv==V?'':'g');$('#mo').hidden=V!='month';$('#dy').hidden=V!='day';
+function draw(){document.querySelectorAll('[data-rv]').forEach(b=>b.className=b.dataset.rv==V?'':'g');$('#mo').hidden=V!='month';$('#dy').hidden=V!='day';$('#rt').hidden=V!='review';$('#rout').hidden=V!='review';
 if(V=='month'){const r=mdata(),col=Array(12).fill(0);r.forEach(x=>x.a.forEach((h,i)=>col[i]+=h));
 $('#t').innerHTML=`<tr><th>Tag</th>${MN.map(x=>`<th>${x}</th>`).join('')}<th>Total</th></tr>`+r.map(x=>`<tr><td>#${esc(x.t)}</td>${x.a.map(h=>`<td>${h?f(h):'-'}</td>`).join('')}<td><b>${f(sum(x.a))}</b></td></tr>`).join('')+`<tr><td><b>Total</b></td>${col.map(h=>`<td><b>${h?f(h):'-'}</b></td>`).join('')}<td><b>${f(sum(col))}</b></td></tr>`;
 $('#rc').textContent=ql()?r.length+' tag(s) match':''}
-else{const r=ddata();$('#dy').innerHTML=r.map(x=>`<div class="card"><h2>${fd(x.d)} <span>${f(x.tot)}</span></h2>${x.h.map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')}<div style="margin-top:8px;font-size:14px">${x.r.map(([k,v])=>`<div>${esc(k)}: <b>${esc(v)}</b></div>`).join('')}</div></div>`).join('')||'<div class="card">Nothing to show. Tick blocks on the planner or add hours on Contributions.</div>';
-$('#rc').textContent=ql()?r.length+' day(s) match':''}}
+else if(V=='day'){const r=ddata();$('#dy').innerHTML=r.map(x=>`<div class="card"><h2>${fd(x.d)} <span>${f(x.tot)}</span></h2>${x.h.map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')}<div style="margin-top:8px;font-size:14px">${x.r.map(([k,v])=>`<div>${esc(k)}: <b>${esc(v)}</b></div>`).join('')}</div></div>`).join('')||'<div class="card">Nothing to show. Tick blocks on the planner or add hours on Contributions.</div>';
+$('#rc').textContent=ql()?r.length+' day(s) match':''}
+else rdraw()}
+const num=n=>(Math.round(n*100)/100).toLocaleString('en-IN'),mlabel=k=>MN[+k.slice(5)-1]+' '+k.slice(0,4);
+function rdata(){const s=ql(),keys=[...sel],mo={};
+Object.keys(D.log).sort().reverse().forEach(d=>{const r=D.log[d].rv||{},e=keys.filter(k=>String(r[k]||'').trim()).map(k=>[k,r[k]]);if(!e.length)return;
+if(s&&![fd(d),...e.map(x=>x.join(' '))].join(' ').toLowerCase().includes(s))return;(mo[d.slice(0,7)]=mo[d.slice(0,7)]||[]).push({d,e})});
+return Object.keys(mo).sort().reverse().map(k=>({k,rows:mo[k]}))}
+function rdraw(){const all=[...new Set([...RVn(),...Object.values(D.log).flatMap(L=>Object.keys(L.rv||{}))])];
+$('#rchips').innerHTML=all.map(k=>`<button class="${sel.has(k)?'':'g'}" data-rk="${esc(k)}" style="margin:3px 4px 0 0">${esc(k)}</button>`).join('');
+const r=rdata(),F={};D.rvf.forEach(x=>F[x.n]=x);const multi=sel.size>1;
+$('#rout').innerHTML=!sel.size?'<div class="card">Select one or more review tags above.</div>':r.map(m=>{const sums=[...sel].filter(k=>F[k]&&F[k].u).map(k=>{const t=m.rows.reduce((a,x)=>a+(+((x.e.find(y=>y[0]==k)||[0,0])[1])||0),0);return t?esc(k)+': '+num(t):''}).filter(Boolean).join(' · ');
+return`<div class="card"><h2>${mlabel(m.k)} <span>${m.rows.length} day(s)</span></h2>${sums?`<p class="h">Total - ${sums}</p>`:''}${m.rows.map(x=>`<div style="padding:6px 0;border-bottom:1px solid #22302a"><b>${fd(x.d)}</b>${x.e.map(([k,v])=>`<div>${multi?esc(k)+': ':''}${esc(v)}</div>`).join('')}</div>`).join('')}</div>`}).join('')||'<div class="card">No entries for the selected tags.</div>';
+$('#rc').textContent=sel.size&&ql()?r.reduce((a,m)=>a+m.rows.length,0)+' day(s) match':''}
+$('#rchips').onclick=e=>{const k=e.target.dataset.rk;if(k==null)return;sel.has(k)?sel.delete(k):sel.add(k);D.rsel=[...sel];save();draw()};
+$('#rall').onclick=()=>{document.querySelectorAll('#rchips [data-rk]').forEach(b=>sel.add(b.dataset.rk));D.rsel=[...sel];save();draw()};
+$('#rclr').onclick=()=>{sel.clear();D.rsel=[];save();draw()};
 function md(){const s=ql(),fl=s?'\nFilter: "'+q.trim()+'"\n':'';
+if(V=='review'){return '# Time Zone - Review tags: '+[...sel].join(', ')+'\n'+fl+rdata().map(m=>'\n## '+mlabel(m.k)+'\n'+m.rows.map(x=>'- '+fd(x.d)+' - '+x.e.map(([k,v])=>k+': '+v).join('; ')).join('\n')).join('\n')+'\n'}
 if(V=='month'){const r=mdata();return `# Time Zone - Monthly contributions ${Y}\n${fl}\n| Tag | ${MN.join(' | ')} | Total |\n|---|${MN.map(()=>'---|').join('')}---|\n`+r.map(x=>`| #${x.t} | ${x.a.map(h=>h?f(h):'-').join(' | ')} | ${f(sum(x.a))} |`).join('\n')+'\n'}
 return '# Time Zone - Day-wise contributions\n'+fl+ddata().map(x=>`\n## ${fd(x.d)} (${f(x.tot)})\n`+x.h.map(([t,v])=>`- #${t}: ${f(v)}`).join('\n')+(x.r.length?'\n\nReview\n'+x.r.map(([k,v])=>`- ${k}: ${v}`).join('\n'):'')).join('\n')+'\n'}
 document.querySelector('[data-rv="month"]').parentNode.onclick=e=>{const v=e.target.dataset.rv;if(v)location.hash=v};
 $('#rq').oninput=e=>{q=e.target.value;draw()};
 $('#ryr').onchange=e=>{Y=+e.target.value||Y;draw()};
-$('#rdl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md()],{type:'text/markdown'}));a.download='time-zone-'+(V=='month'?'monthly-'+Y:'daywise')+'.md';a.click();toast('Downloaded')};
+$('#rdl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md()],{type:'text/markdown'}));a.download='time-zone-'+(V=='month'?'monthly-'+Y:V=='day'?'daywise':'review-tags')+'.md';a.click();toast('Downloaded')};
 R.rep=()=>{V=R.v||V;draw()};draw();
 })();
 const VW={today:'#v-today',main:'#v-main',rep:'#v-rep'};
-function route(){const h=location.hash.slice(1),v=h=='contributions'?'main':(h=='month'||h=='day')?'rep':'today';if(v=='rep')R.v=h;
+function route(){const h=location.hash.slice(1),v=h=='contributions'?'main':(h=='month'||h=='day'||h=='review')?'rep':'today';if(v=='rep')R.v=h;
 for(const k in VW)$(VW[k]).hidden=k!=v;document.querySelectorAll('#nav a').forEach(a=>a.className=a.dataset.v==v?'on':'');R[v]&&R[v]()}
 window.onhashchange=route;route();
 </script></body></html>
