@@ -150,6 +150,10 @@
       <div class="field"><label for="cost">Apartment Cost (₹)</label><input type="number" id="cost" min="0" placeholder="4500000"></div>
       <div class="field"><label for="otherCharges">Other Charges (₹)</label><div class="hint">Registration, GST, corpus, parking…</div><input type="number" id="otherCharges" min="0" placeholder="350000"></div>
     </div>
+    <div class="row">
+      <div class="field"><label for="rent">Rent / Month (₹)</label><div class="hint">Market rent for this flat</div><input type="number" id="rent" min="0" placeholder="18000"></div>
+      <div class="field"></div>
+    </div>
     <div class="btn-row">
       <button class="btn" id="saveBtn" type="button">💾 Save Flat</button>
       <button class="btn ghost" id="clearBtn" type="button" style="width:40%;">Clear</button>
@@ -173,8 +177,8 @@ const CMP_KEY = 'flatScorecard_cmp_v1';
 const DRAFT_KEY = 'as_flatscorecard';
 const DRAFT_PHOTOS_KEY = 'as_flatscorecard_photos';
 const MAX_PHOTOS = 6;
-const FIELD_IDS = ['name','flatType','notes','totalArea','numFlats','uds','landSqYd','landPrice','constRate','cost','otherCharges'];
-const NUM_IDS = ['totalArea','numFlats','uds','landSqYd','landPrice','constRate','cost','otherCharges'];
+const FIELD_IDS = ['name','flatType','notes','totalArea','numFlats','uds','landSqYd','landPrice','constRate','cost','otherCharges','rent'];
+const NUM_IDS = ['totalArea','numFlats','uds','landSqYd','landPrice','constRate','cost','otherCharges','rent'];
 const LEGACY_CHARGES = ['regFee','gst','maint','parking','other'];
 const legacySum = o => LEGACY_CHARGES.reduce((t,k)=>t+(parseFloat(o[k])||0),0);
 
@@ -219,20 +223,25 @@ function analysis(f){
   const diff = full && actual>0 ? actual-est : null;
   const diffPct = diff!==null && est>0 ? diff/est*100 : null;
   const share = uds>0 && Number(f.landSqYd)>0 ? uds/Number(f.landSqYd)*100 : null;
-  return { landCost, constCost, est, landPct, full, diff, diffPct, share, actual };
+  const rent = Number(f.rent)||0;
+  const yieldPct = rent>0 && actual>0 ? rent*12/actual*100 : null;
+  return { landCost, constCost, est, landPct, full, diff, diffPct, share, actual, rent, yieldPct };
 }
 
-// Score (100): UDS 30 + Land cost % 30 + Actual vs Estimated 40
+// Score (100): UDS 25 + Land cost % 25 + Actual vs Estimated 30 + Rental yield 20 (yield part optional; score is scaled when rent is missing)
 function computeScore(f){
   const a = analysis(f), uds = Number(f.uds)||0;
   if(!(uds>0) || a.landPct===null || a.diffPct===null) return null;
   const dist = a.landPct<40 ? 40-a.landPct : a.landPct>45 ? a.landPct-45 : 0;
   const parts = {
-    uds: Math.min(30, uds/40*30),
-    land: 30*Math.max(0, 1-dist/20),
-    value: a.diffPct<=0 ? 40 : 40*Math.max(0, 1-a.diffPct/40)
+    uds: Math.min(25, uds/40*25),
+    land: 25*Math.max(0, 1-dist/20),
+    value: a.diffPct<=0 ? 30 : 30*Math.max(0, 1-a.diffPct/40),
+    yld: a.yieldPct===null ? null : 20*Math.min(1, a.yieldPct/6)
   };
-  const total = Math.round(Math.min(100, parts.uds+parts.land+parts.value));
+  const max = 80 + (parts.yld!==null ? 20 : 0);
+  const sum = parts.uds + parts.land + parts.value + (parts.yld||0);
+  const total = Math.round(Math.min(100, sum/max*100));
   return { parts, total };
 }
 
@@ -253,7 +262,7 @@ function verdictFor(s){
 
 function analysisHTML(f){
   const a = analysis(f);
-  if(a.landCost===null && a.constCost===null){
+  if(a.landCost===null && a.constCost===null && a.yieldPct===null){
     return '<div class="empty">Enter UDS and land price (land), and total area and construction rate (construction) to see the estimate.</div>';
   }
   const rows = [];
@@ -262,12 +271,17 @@ function analysisHTML(f){
   if(a.est!==null) rows.push(['Estimated cost', fmt(a.est)]);
   if(a.actual>0) rows.push(['Actual cost (apartment cost)', fmt(a.actual)]);
   if(a.share!==null) rows.push(['UDS share of total land', a.share.toFixed(2)+'%']);
+  if(a.yieldPct!==null) rows.push(['Rental yield (rent × 12 ÷ apartment cost)', a.yieldPct.toFixed(2)+'%']);
   let html = rows.map(r=>`<div class="a-row"><span>${r[0]}</span><span class="v">${r[1]}</span></div>`).join('');
   if(a.diff!==null){
     const up = a.diff > 0;
     html += `<div class="a-note ${up?'up':'down'}">Actual is ${fmt(Math.abs(a.diff))} (${Math.abs(a.diffPct).toFixed(1)}%) ${up ? 'above the estimate — builder margin/premium to negotiate.' : 'below the estimate — priced under land + construction.'}</div>`;
   } else if(a.est!==null){
     html += '<div class="a-note" style="background:#0f172a;color:var(--sub);">Enter land, construction and Apartment Cost to compare actual vs estimated.</div>';
+  }
+  if(a.yieldPct!==null){
+    const high = a.yieldPct < 6;
+    html += `<div class="a-note ${high?'up':'down'}">Rental yield ${a.yieldPct.toFixed(2)}% is ${high?'below':'at or above'} 6% — apartment cost is ${high?'HIGH for the rent it earns.':'LOW relative to rent (good).'}</div>`;
   }
   return html;
 }
@@ -286,7 +300,8 @@ function updateLive(){
     numEl.textContent = r.total; numEl.style.color = v.color;
     barEl.style.width = r.total+'%'; barEl.style.background = v.color;
     $('verdict').textContent = v.text;
-    $('breakdown').innerHTML = `UDS: ${Math.round(p.uds)}/30<br>Land cost %: ${Math.round(p.land)}/30<br>Actual vs estimated: ${Math.round(p.value)}/40`;
+    $('breakdown').innerHTML = `UDS: ${Math.round(p.uds)}/25<br>Land cost %: ${Math.round(p.land)}/25<br>Actual vs estimated: ${Math.round(p.value)}/30<br>` +
+      (p.yld!==null ? `Rental yield: ${Math.round(p.yld)}/20` : 'Rental yield: enter rent to include (score scaled without it)');
   }
   const t = totalCost(f), ar = areaFor(f);
   $('totalCost').textContent = fmt(t);
@@ -418,7 +433,7 @@ function renderList(){
   el.innerHTML = flats.map(f=>{
     const r = computeScore(f), v = r ? verdictFor(r.total) : null;
     const t = totalCost(f), ar = areaFor(f), a = analysis(f);
-    const extra = [f.flatType, a.landPct!==null ? `Land ${a.landPct.toFixed(0)}%` : ''].filter(Boolean).join(' · ');
+    const extra = [f.flatType, a.landPct!==null ? `Land ${a.landPct.toFixed(0)}%` : '', a.yieldPct!==null ? `Yield ${a.yieldPct.toFixed(1)}%` : ''].filter(Boolean).join(' · ');
     return `<div class="flat" data-id="${f.id}">
       ${thumbHTML(f)}
       <div class="flat-info">
