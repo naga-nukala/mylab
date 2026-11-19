@@ -15,78 +15,76 @@
     --mint:#a7e8c5;
     --mint-dim:#5a7d6b;
     --coral:#ff8c70;
-    --coral-dim:#8c5142;
     --radius:14px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  body{
-    margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    padding-bottom:60px;
-  }
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:90px;}
   .wrap{max-width:640px;margin:0 auto;padding:20px 16px 40px;}
   h1{font-size:22px;margin:4px 0 18px;letter-spacing:-0.3px;display:flex;align-items:center;gap:8px;}
   h2{font-size:14px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);margin:26px 0 10px;font-weight:600;}
 
-  /* Summary */
   .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .stat{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:12px 8px;text-align:center;}
   .stat .num{font-size:20px;font-weight:700;color:var(--mint);}
   .stat .lbl{font-size:10.5px;color:var(--text-dim);margin-top:2px;}
 
-  /* Chart */
-  .chart-card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:14px 14px 8px;}
+  .chart-card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:14px 14px 10px;}
   .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-  .chart-head select{
-    background:var(--bg-elev2);color:var(--text);border:1px solid var(--border);
-    border-radius:8px;padding:6px 10px;font-size:13px;
-  }
+  .chart-note{font-size:11px;color:var(--text-dim);margin-top:4px;min-height:14px;}
   svg.bars text{fill:var(--text-dim);font-size:9px;}
   .bar{fill:var(--mint-dim);}
   .bar.cur{fill:var(--coral);}
+  .chart-sep{height:1px;background:var(--border);margin:14px 0;}
+  .tagchart{display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px;}
+  .tcol{flex:1 0 46px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+  .tcount{font-size:10px;font-weight:600;color:var(--text);height:14px;}
+  .tbarwrap{height:80px;width:100%;display:flex;align-items:flex-end;justify-content:center;}
+  .tbar{width:22px;border-radius:3px;background:var(--mint-dim);min-height:2px;}
+  .tcol.none .tbar{background:var(--coral);}
+  .tlabel{font-size:9.5px;color:var(--text-dim);margin-top:5px;text-align:center;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .bar-count{fill:var(--text);font-size:10px;font-weight:600;}
 
-  /* Form */
-  .card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
-  label{display:block;font-size:12px;color:var(--text-dim);margin:12px 0 5px;}
-  label:first-child{margin-top:0;}
-  input[type=text],input[type=date],textarea{
+  .card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;}
+  label{display:block;font-size:12px;color:var(--text-dim);margin:0 0 6px;}
+  .field{margin-top:18px;}
+  .field:first-child{margin-top:0;}
+  input[type=text],textarea,select.fsel{
     width:100%;background:var(--bg-elev2);border:1px solid var(--border);color:var(--text);
-    border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit;
+    border-radius:10px;padding:13px 14px;font-size:16px;font-family:inherit;
   }
-  textarea{resize:vertical;min-height:56px;}
-  input:focus,textarea:focus{outline:none;border-color:var(--mint-dim);}
-
-  .tagrow{display:flex;flex-wrap:wrap;gap:7px;}
-  .chip{
-    padding:7px 13px;border-radius:20px;font-size:13px;border:1px solid var(--border);
-    background:var(--bg-elev2);color:var(--text-dim);cursor:pointer;user-select:none;
-  }
-  .chip.on{background:rgba(167,232,197,0.15);border-color:var(--mint);color:var(--mint);}
-
-  .stars{display:flex;gap:4px;font-size:24px;}
-  .star{cursor:pointer;color:var(--border);line-height:1;}
-  .star.on{color:var(--coral);}
-
+  select.fsel{appearance:none;-webkit-appearance:none;}
+  textarea{resize:vertical;min-height:70px;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--mint-dim);}
   .formrow{display:flex;gap:10px;}
   .formrow>div{flex:1;}
 
-  .btnrow{display:flex;gap:10px;margin-top:16px;}
-  button{
-    font-family:inherit;font-size:14px;font-weight:600;border:none;border-radius:10px;
-    padding:12px 16px;cursor:pointer;
-  }
+  .tagrow{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{padding:8px 14px;border-radius:20px;font-size:13px;border:1px solid var(--border);background:var(--bg-elev2);color:var(--text-dim);cursor:pointer;user-select:none;}
+  .chip.on{background:rgba(167,232,197,0.15);border-color:var(--mint);color:var(--mint);}
+  .labrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .labrow label{margin:0;}
+  .linkbtn{font-size:12px;color:var(--mint);cursor:pointer;padding:4px 0;}
+
+  .tagmgr{display:none;margin-top:10px;background:var(--bg-elev2);border:1px solid var(--border);border-radius:12px;padding:12px;}
+  .tagmgr.open{display:block;}
+  .tmrow{display:flex;gap:8px;margin-bottom:8px;}
+  .tmrow input{padding:10px 12px;font-size:15px;}
+  .tmrow .act{display:flex;align-items:center;white-space:nowrap;}
+  .tmhint{font-size:11px;color:var(--text-dim);margin:2px 0 10px;}
+
+  .stars{display:flex;gap:6px;font-size:28px;}
+  .star{cursor:pointer;color:var(--border);line-height:1;}
+  .star.on{color:var(--coral);}
+
+  .btnrow{display:flex;gap:10px;margin-top:22px;}
+  button{font-family:inherit;font-size:15px;font-weight:600;border:none;border-radius:10px;padding:14px 16px;cursor:pointer;}
   .btn-primary{flex:1;background:var(--mint);color:#0f0f10;}
   .btn-cancel{background:var(--bg-elev2);color:var(--text-dim);border:1px solid var(--border);}
 
-  /* Filters */
-  .filters{display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap;}
-  .filters input[type=text]{flex:1;min-width:140px;}
-  .sortsel{background:var(--bg-elev2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 10px;font-size:13px;}
+  .filters{display:flex;gap:8px;margin:10px 0 10px;flex-wrap:wrap;}
+  .filters input[type=text]{flex:1;min-width:140px;padding:11px 12px;font-size:15px;}
+  .sortsel{background:var(--bg-elev2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;}
 
-  /* List */
   .month-head{font-size:13px;color:var(--text-dim);margin:20px 0 8px;font-weight:600;display:flex;align-items:center;gap:8px;}
   .month-head::after{content:"";flex:1;height:1px;background:var(--border);}
   .book{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;margin-bottom:9px;}
@@ -99,33 +97,23 @@
   .pill{font-size:10.5px;padding:3px 9px;border-radius:12px;background:rgba(167,232,197,0.12);color:var(--mint);}
   .book-notes{font-size:12.5px;color:var(--text-dim);margin-top:7px;line-height:1.4;}
   .book-actions{display:flex;gap:8px;margin-top:10px;}
-  .act{font-size:12px;padding:6px 12px;border-radius:8px;background:var(--bg-elev2);color:var(--text-dim);border:1px solid var(--border);}
+  .act{font-size:12px;padding:7px 12px;border-radius:8px;background:var(--bg-elev);color:var(--text-dim);border:1px solid var(--border);cursor:pointer;}
+  .book .act{background:var(--bg-elev2);}
   .act.del{color:var(--coral);}
   .act.del.confirm{background:var(--coral);color:#0f0f10;border-color:var(--coral);}
-
   .empty{text-align:center;color:var(--text-dim);font-size:13px;padding:40px 10px;}
 
-  .fab{
-    position:fixed;bottom:20px;right:20px;width:54px;height:54px;border-radius:50%;
-    background:var(--mint);color:#0f0f10;font-size:26px;display:flex;align-items:center;justify-content:center;
-    box-shadow:0 4px 14px rgba(0,0,0,0.4);border:none;cursor:pointer;z-index:20;
-  }
+  .fab{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--mint);color:#0f0f10;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.4);border:none;padding:0;z-index:20;}
   #formCard{display:none;}
   #formCard.open{display:block;}
 
-  .toast{
-    position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(10px);
-    background:var(--bg-elev2);border:1px solid var(--border);color:var(--text);
-    padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;
-    transition:opacity .2s, transform .2s; z-index:30;
-  }
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--bg-elev2);border:1px solid var(--border);color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;z-index:30;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
   @media (hover:hover) and (pointer:fine){
     .chip:hover{border-color:var(--mint-dim);}
-    .act:hover{background:var(--border);}
-    .fab:hover{filter:brightness(1.08);}
-    button:hover{filter:brightness(1.05);}
+    .act:hover{filter:brightness(1.3);}
+    .fab:hover,button:hover{filter:brightness(1.07);}
   }
 </style>
 </head>
@@ -135,41 +123,63 @@
 
   <div class="summary" id="summary"></div>
 
-  <h2>This Year</h2>
+  <h2>Books per Month</h2>
   <div class="chart-card">
     <div class="chart-head">
-      <span style="font-size:12px;color:var(--text-dim)">Books per month</span>
-      <select id="yearSel"></select>
+      <span style="font-size:12px;color:var(--text-dim)">Year</span>
+      <select class="sortsel" id="yearSel"></select>
     </div>
     <svg id="chart" class="bars" viewBox="0 0 340 120" width="100%" height="120"></svg>
+    <div class="chart-note" id="chartNote"></div>
+    <div class="chart-sep"></div>
+    <div class="chart-head"><span style="font-size:12px;color:var(--text-dim)">By tag · all years</span></div>
+    <div class="tagchart" id="tagChart"></div>
   </div>
 
   <h2>Log a Book</h2>
   <div class="card" id="formCard">
-    <label>Title *</label>
-    <input type="text" id="fTitle" placeholder="Atomic Habits">
-    <div class="formrow">
-      <div>
-        <label>Author</label>
-        <input type="text" id="fAuthor" placeholder="James Clear">
-      </div>
-      <div>
-        <label>Date finished</label>
-        <div style="display:flex;gap:6px">
-          <select class="sortsel" id="fDay" style="flex:1"></select>
-          <select class="sortsel" id="fMonth" style="flex:1.3"></select>
-          <select class="sortsel" id="fYear" style="flex:1.2"></select>
+    <div class="field">
+      <label for="fTitle">Title *</label>
+      <input type="text" id="fTitle" placeholder="Atomic Habits" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fAuthor">Author</label>
+      <input type="text" id="fAuthor" placeholder="James Clear" autocomplete="off">
+    </div>
+    <div class="field">
+      <div class="formrow">
+        <div>
+          <label for="fMonth">Month (optional)</label>
+          <select class="fsel" id="fMonth"></select>
+        </div>
+        <div>
+          <label for="fYear">Year</label>
+          <select class="fsel" id="fYear"></select>
         </div>
       </div>
     </div>
-    <label>Rating</label>
-    <div class="stars" id="fStars">
-      <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span>
+    <div class="field">
+      <label>Rating</label>
+      <div class="stars" id="fStars">
+        <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span>
+      </div>
     </div>
-    <label>Tags</label>
-    <div class="tagrow" id="fTags"></div>
-    <label>Notes</label>
-    <textarea id="fNotes" placeholder="Key takeaway..."></textarea>
+    <div class="field">
+      <div class="labrow"><label>Tags</label><span class="linkbtn" id="tagEditToggle">Edit tags</span></div>
+      <div class="tagrow" id="fTags"></div>
+      <div class="tagmgr" id="tagMgr">
+        <div class="tmhint">Rename a tag by editing it. Tap Delete twice to remove.</div>
+        <div id="tmList"></div>
+        <div class="tmrow">
+          <input type="text" id="tmNew" placeholder="New tag" autocomplete="off">
+          <span class="act" id="tmAdd" style="background:var(--mint);color:#0f0f10;border-color:var(--mint)">Add</span>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="fNotes">Notes</label>
+      <textarea id="fNotes" placeholder="Key takeaway..."></textarea>
+    </div>
     <div class="btnrow">
       <button class="btn-primary" id="fSubmit">Add Book</button>
       <button class="btn-cancel" id="fCancel" style="display:none">Cancel</button>
@@ -178,7 +188,7 @@
 
   <h2>Library</h2>
   <div class="filters">
-    <input type="text" id="search" placeholder="Search title or author">
+    <input type="text" id="search" placeholder="Search title or author" autocomplete="off">
     <select class="sortsel" id="sortSel">
       <option value="new">Newest</option>
       <option value="old">Oldest</option>
@@ -191,93 +201,72 @@
   <div id="list"></div>
 </div>
 
-<button class="fab" id="fabAdd">+</button>
+<button class="fab" id="fabAdd" aria-label="Add book">+</button>
 <div class="toast" id="toast"></div>
 
 <script>
-const TAGS = ["Money","Health","Productivity","Career","Psychology","Presentation"];
+const DEFAULT_TAGS = ["Money","Health","Productivity","Career","Psychology","Presentation"];
 const KEY = "as_books_v1";
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONFULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 let state = load();
 let editingId = null;
 let pendingDelete = null;
+let pendingTagDelete = null;
 let activeTagFilters = new Set();
 let rating = 0;
 let formTags = new Set();
 
 function load(){
-  try{
-    const raw = localStorage.getItem(KEY);
-    if(!raw) return {books:[]};
-    const p = JSON.parse(raw);
-    if(!p.books) p.books = [];
-    return p;
-  }catch(e){ return {books:[]}; }
+  let p;
+  try{ p = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(!p || typeof p!=="object") p = {};
+  if(!Array.isArray(p.books)) p.books = [];
+  if(!Array.isArray(p.tags)) p.tags = DEFAULT_TAGS.slice();
+  p.books.forEach(b=>{
+    if(b.year===undefined && b.date){
+      b.year = Number(b.date.slice(0,4));
+      b.month = b.noDay===undefined || true ? Number(b.date.slice(5,7)) : 0;
+    }
+    delete b.date; delete b.noDay;
+    if(b.month===undefined) b.month = 0;
+    if(!Array.isArray(b.tags)) b.tags = [];
+  });
+  return p;
 }
-function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
-}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-
-function ordinal(n){
-  const s=["th","st","nd","rd"], v=n%100;
-  return n+(s[(v-20)%10]||s[v]||s[0]);
-}
-function formatDate(iso,noDay){
-  if(!iso) return "";
-  const d = new Date(iso+"T00:00:00");
-  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  if(noDay) return `${months[d.getMonth()]} ${d.getFullYear()}`;
-  return `${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-function monthYearLabel(iso){
-  const d = new Date(iso+"T00:00:00");
-  const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
-  return `${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-function todayISO(){
-  const d = new Date();
-  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-}
-const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-function populateDateSelects(){
-  const now=new Date(), y=now.getFullYear();
-  document.getElementById("fDay").innerHTML='<option value="0">Day</option>'+Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("");
-  document.getElementById("fMonth").innerHTML=MON.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
-  document.getElementById("fYear").innerHTML=Array.from({length:y-1989},(_,i)=>`<option value="${y-i}">${y-i}</option>`).join("");
-}
-function setFormDate(iso,noDay){
-  const [yy,mm,dd]=iso.split("-").map(Number);
-  const yEl=document.getElementById("fYear");
-  if(![...yEl.options].some(o=>Number(o.value)===yy)) yEl.insertAdjacentHTML("beforeend",`<option value="${yy}">${yy}</option>`);
-  yEl.value=yy;
-  document.getElementById("fMonth").value=mm;
-  document.getElementById("fDay").value=noDay?0:dd;
-}
-function getFormDate(){
-  const y=Number(document.getElementById("fYear").value), m=Number(document.getElementById("fMonth").value);
-  let d=Number(document.getElementById("fDay").value);
-  const noDay=d===0;
-  const max=new Date(y,m,0).getDate();
-  if(noDay) d=1; else if(d>max) d=max;
-  return {date:y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0"), noDay};
-}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function toast(msg){
   const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
+  t.textContent = msg; t.classList.add("show");
   clearTimeout(toast._t);
   toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+function dateLabel(b){ return b.month ? `${MON[b.month-1]} ${b.year}` : `${b.year}`; }
+function dateKey(b){ return b.year*100 + (b.month||0); }
+
+/* ---------- Date selects ---------- */
+function populateDateSelects(){
+  const y = new Date().getFullYear();
+  document.getElementById("fMonth").innerHTML = '<option value="0">— Not set —</option>' + MONFULL.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
+  document.getElementById("fYear").innerHTML = Array.from({length:y-1989},(_,i)=>`<option value="${y-i}">${y-i}</option>`).join("");
+}
+function setFormDate(year, month){
+  const yEl = document.getElementById("fYear");
+  if(![...yEl.options].some(o=>Number(o.value)===year)) yEl.insertAdjacentHTML("beforeend", `<option value="${year}">${year}</option>`);
+  yEl.value = year;
+  document.getElementById("fMonth").value = month;
 }
 
 /* ---------- Form ---------- */
 function renderTagChips(){
-  const el = document.getElementById("fTags");
-  el.innerHTML = TAGS.map(t=>`<span class="chip ${formTags.has(t)?'on':''}" data-tag="${t}">${t}</span>`).join("");
+  document.getElementById("fTags").innerHTML = state.tags.length
+    ? state.tags.map(t=>`<span class="chip ${formTags.has(t)?'on':''}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join("")
+    : `<span style="font-size:12px;color:var(--text-dim)">No tags yet — tap Edit tags to add.</span>`;
 }
 function renderStars(){
-  document.querySelectorAll("#fStars .star").forEach(s=>{
-    s.classList.toggle("on", Number(s.dataset.v) <= rating);
-  });
+  document.querySelectorAll("#fStars .star").forEach(s=>s.classList.toggle("on", Number(s.dataset.v) <= rating));
 }
 document.getElementById("fTags").addEventListener("click", e=>{
   const chip = e.target.closest(".chip");
@@ -295,15 +284,18 @@ document.getElementById("fStars").addEventListener("click", e=>{
 });
 
 function openForm(){
-  document.getElementById("formCard").classList.add("open");
-  document.getElementById("formCard").scrollIntoView({behavior:"smooth", block:"start"});
+  const card = document.getElementById("formCard");
+  card.classList.add("open");
+  card.scrollIntoView({behavior:"smooth", block:"start"});
+  document.getElementById("fTitle").focus({preventScroll:true});
 }
 function resetForm(){
   editingId = null;
   document.getElementById("fTitle").value = "";
   document.getElementById("fAuthor").value = "";
-  setFormDate(todayISO(),false);
   document.getElementById("fNotes").value = "";
+  const now = new Date();
+  setFormDate(now.getFullYear(), now.getMonth()+1);
   rating = 0; formTags = new Set();
   renderStars(); renderTagChips();
   document.getElementById("fSubmit").textContent = "Add Book";
@@ -316,17 +308,18 @@ document.getElementById("fCancel").addEventListener("click", ()=>{
 });
 document.getElementById("fSubmit").addEventListener("click", ()=>{
   const title = document.getElementById("fTitle").value.trim();
-  if(!title){ toast("Title is required"); return; }
+  if(!title){ toast("Title is required"); document.getElementById("fTitle").focus(); return; }
   const author = document.getElementById("fAuthor").value.trim();
-  const {date, noDay} = getFormDate();
+  const year = Number(document.getElementById("fYear").value);
+  const month = Number(document.getElementById("fMonth").value);
   const notes = document.getElementById("fNotes").value.trim();
-
+  const tags = state.tags.filter(t=>formTags.has(t));
   if(editingId){
     const b = state.books.find(x=>x.id===editingId);
-    Object.assign(b, {title, author, date, noDay, notes, rating, tags:[...formTags]});
+    Object.assign(b, {title, author, year, month, notes, rating, tags});
     toast("Book updated");
   } else {
-    state.books.push({id:uid(), title, author, date, noDay, notes, rating, tags:[...formTags], createdAt: Date.now()});
+    state.books.push({id:uid(), title, author, year, month, notes, rating, tags, createdAt:Date.now()});
     toast("Book added");
   }
   save();
@@ -335,18 +328,80 @@ document.getElementById("fSubmit").addEventListener("click", ()=>{
   renderAll();
 });
 
+/* ---------- Tag manager ---------- */
+document.getElementById("tagEditToggle").addEventListener("click", ()=>{
+  const m = document.getElementById("tagMgr");
+  const open = m.classList.toggle("open");
+  document.getElementById("tagEditToggle").textContent = open ? "Done" : "Edit tags";
+  pendingTagDelete = null;
+  if(open) renderTagManager();
+});
+function renderTagManager(){
+  document.getElementById("tmList").innerHTML = state.tags.map((t,i)=>`
+    <div class="tmrow" data-index="${i}">
+      <input type="text" data-role="tag-name" value="${escapeHtml(t)}" maxlength="24" autocomplete="off">
+      <span class="act del ${pendingTagDelete===i?'confirm':''}" data-role="tag-del">${pendingTagDelete===i?'Tap again':'Delete'}</span>
+    </div>`).join("");
+}
+function refreshTagViews(){
+  renderTagChips(); renderTagFilters(); renderList(); renderTagChart();
+}
+document.getElementById("tmList").addEventListener("change", e=>{
+  if(e.target.dataset.role!=="tag-name") return;
+  const i = Number(e.target.closest(".tmrow").dataset.index);
+  const old = state.tags[i];
+  const nv = e.target.value.trim();
+  if(!nv){ e.target.value = old; toast("Tag name can't be empty"); return; }
+  if(nv===old) return;
+  if(state.tags.some((t,j)=>j!==i && t.toLowerCase()===nv.toLowerCase())){ e.target.value = old; toast("Tag already exists"); return; }
+  state.tags[i] = nv;
+  state.books.forEach(b=>{ b.tags = b.tags.map(t=>t===old?nv:t); });
+  if(formTags.has(old)){ formTags.delete(old); formTags.add(nv); }
+  if(activeTagFilters.has(old)){ activeTagFilters.delete(old); activeTagFilters.add(nv); }
+  save(); refreshTagViews(); toast("Tag renamed");
+});
+document.getElementById("tmList").addEventListener("keydown", e=>{
+  if(e.key==="Enter" && e.target.dataset.role==="tag-name") e.target.blur();
+});
+document.getElementById("tmList").addEventListener("click", e=>{
+  const btn = e.target.closest('[data-role="tag-del"]');
+  if(!btn) return;
+  const i = Number(btn.closest(".tmrow").dataset.index);
+  if(pendingTagDelete===i){
+    const old = state.tags[i];
+    state.tags.splice(i,1);
+    state.books.forEach(b=>{ b.tags = b.tags.filter(t=>t!==old); });
+    formTags.delete(old); activeTagFilters.delete(old);
+    pendingTagDelete = null;
+    save(); renderTagManager(); refreshTagViews(); toast("Tag deleted");
+  } else {
+    pendingTagDelete = i;
+    renderTagManager();
+    setTimeout(()=>{ if(pendingTagDelete===i){ pendingTagDelete=null; renderTagManager(); } }, 3000);
+  }
+});
+function addTag(){
+  const inp = document.getElementById("tmNew");
+  const v = inp.value.trim();
+  if(!v) return;
+  if(state.tags.some(t=>t.toLowerCase()===v.toLowerCase())){ toast("Tag already exists"); return; }
+  state.tags.push(v);
+  inp.value = "";
+  save(); renderTagManager(); refreshTagViews(); toast("Tag added");
+}
+document.getElementById("tmAdd").addEventListener("click", addTag);
+document.getElementById("tmNew").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addTag(); } });
+
 /* ---------- Filters ---------- */
 function renderTagFilters(){
-  const el = document.getElementById("tagFilters");
-  el.innerHTML = TAGS.map(t=>`<span class="chip ${activeTagFilters.has(t)?'on':''}" data-tag="${t}">${t}</span>`).join("");
+  document.getElementById("tagFilters").innerHTML = state.tags.map(t=>`<span class="chip ${activeTagFilters.has(t)?'on':''}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join("");
 }
 document.getElementById("tagFilters").addEventListener("click", e=>{
   const chip = e.target.closest(".chip");
   if(!chip) return;
   const t = chip.dataset.tag;
   if(activeTagFilters.has(t)) activeTagFilters.delete(t); else activeTagFilters.add(t);
-  renderTagFilters();
-  renderList();
+  renderTagFilters(); renderList();
 });
 document.getElementById("search").addEventListener("input", renderList);
 document.getElementById("sortSel").addEventListener("change", renderList);
@@ -355,40 +410,37 @@ document.getElementById("sortSel").addEventListener("change", renderList);
 function getFiltered(){
   const q = document.getElementById("search").value.trim().toLowerCase();
   const sort = document.getElementById("sortSel").value;
-  let books = state.books.filter(b=>{
+  const books = state.books.filter(b=>{
     if(q && !(b.title.toLowerCase().includes(q) || (b.author||"").toLowerCase().includes(q))) return false;
     if(activeTagFilters.size && ![...activeTagFilters].every(t=>b.tags.includes(t))) return false;
     return true;
   });
   books.sort((a,b)=>{
-    if(sort==="new") return b.date.localeCompare(a.date) || b.createdAt-a.createdAt;
-    if(sort==="old") return a.date.localeCompare(b.date) || a.createdAt-b.createdAt;
+    if(sort==="new") return dateKey(b)-dateKey(a) || b.createdAt-a.createdAt;
+    if(sort==="old") return dateKey(a)-dateKey(b) || a.createdAt-b.createdAt;
     if(sort==="title") return a.title.localeCompare(b.title);
-    if(sort==="rating") return (b.rating||0)-(a.rating||0);
-    return 0;
+    return (b.rating||0)-(a.rating||0);
   });
   return books;
 }
+function groupLabel(b){ return b.month ? `${MONFULL[b.month-1]} ${b.year}` : `${b.year} · Month not set`; }
 
 function renderList(){
   const el = document.getElementById("list");
   const books = getFiltered();
   if(!books.length){
-    el.innerHTML = `<div class="empty">No books yet. Tap + to log your first read.</div>`;
+    el.innerHTML = `<div class="empty">${state.books.length ? "No books match." : "No books yet. Tap + to log your first read."}</div>`;
     return;
   }
-  const sort = document.getElementById("sortSel").value;
-  let html = "";
-  let lastGroup = null;
+  const grouped = ["new","old"].includes(document.getElementById("sortSel").value);
+  let html = "", last = null;
   books.forEach(b=>{
-    const group = (sort==="new"||sort==="old") ? monthYearLabel(b.date) : null;
-    if(group !== null && group !== lastGroup){
-      html += `<div class="month-head">${group}</div>`;
-      lastGroup = group;
+    if(grouped){
+      const g = groupLabel(b);
+      if(g!==last){ html += `<div class="month-head">${escapeHtml(g)}</div>`; last = g; }
     }
     const stars = b.rating ? "★".repeat(b.rating)+"☆".repeat(5-b.rating) : "";
-    const delBtnClass = pendingDelete===b.id ? "act del confirm" : "act del";
-    const delBtnLabel = pendingDelete===b.id ? "Tap again to delete" : "Delete";
+    const pend = pendingDelete===b.id;
     html += `
       <div class="book" data-id="${b.id}">
         <div class="book-top">
@@ -396,53 +448,45 @@ function renderList(){
             <div class="book-title">${escapeHtml(b.title)}</div>
             ${b.author?`<div class="book-author">${escapeHtml(b.author)}</div>`:""}
           </div>
-          <div class="book-date">${formatDate(b.date,b.noDay)}</div>
+          <div class="book-date">${dateLabel(b)}</div>
         </div>
         ${stars?`<div class="book-stars">${stars}</div>`:""}
-        ${b.tags.length?`<div class="book-tags">${b.tags.map(t=>`<span class="pill">${t}</span>`).join("")}</div>`:""}
+        ${b.tags.length?`<div class="book-tags">${b.tags.map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join("")}</div>`:""}
         ${b.notes?`<div class="book-notes">${escapeHtml(b.notes)}</div>`:""}
         <div class="book-actions">
           <span class="act" data-act="edit">Edit</span>
-          <span class="${delBtnClass}" data-act="del">${delBtnLabel}</span>
+          <span class="act del ${pend?'confirm':''}" data-act="del">${pend?'Tap again to delete':'Delete'}</span>
         </div>
       </div>`;
   });
   el.innerHTML = html;
 }
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
 document.getElementById("list").addEventListener("click", e=>{
   const actEl = e.target.closest("[data-act]");
   if(!actEl) return;
   const id = actEl.closest(".book").dataset.id;
-  const act = actEl.dataset.act;
-  if(act==="edit"){
+  if(actEl.dataset.act==="edit"){
     const b = state.books.find(x=>x.id===id);
     if(!b) return;
     editingId = id;
     document.getElementById("fTitle").value = b.title;
     document.getElementById("fAuthor").value = b.author||"";
-    setFormDate(b.date, b.noDay);
     document.getElementById("fNotes").value = b.notes||"";
+    setFormDate(b.year, b.month||0);
     rating = b.rating||0;
-    formTags = new Set(b.tags||[]);
+    formTags = new Set(b.tags);
     renderStars(); renderTagChips();
     document.getElementById("fSubmit").textContent = "Update Book";
     document.getElementById("fCancel").style.display = "block";
     pendingDelete = null;
+    renderList();
     openForm();
-  } else if(act==="del"){
+  } else {
     if(pendingDelete===id){
       state.books = state.books.filter(x=>x.id!==id);
-      save();
-      pendingDelete = null;
-      toast("Book deleted");
-      renderAll();
+      save(); pendingDelete = null; toast("Book deleted"); renderAll();
     } else {
-      pendingDelete = id;
-      renderList();
+      pendingDelete = id; renderList();
       setTimeout(()=>{ if(pendingDelete===id){ pendingDelete=null; renderList(); } }, 3000);
     }
   }
@@ -450,29 +494,22 @@ document.getElementById("list").addEventListener("click", e=>{
 
 /* ---------- Summary ---------- */
 function renderSummary(){
-  const el = document.getElementById("summary");
-  const now = new Date();
-  const yr = now.getFullYear();
+  const now = new Date(), yr = now.getFullYear();
   const total = state.books.length;
-  const thisYear = state.books.filter(b=>new Date(b.date+"T00:00:00").getFullYear()===yr).length;
-  const thisMonth = state.books.filter(b=>{
-    const d = new Date(b.date+"T00:00:00");
-    return d.getFullYear()===yr && d.getMonth()===now.getMonth();
-  }).length;
-  const monthsElapsed = now.getMonth()+1;
-  const avg = thisYear ? (thisYear/monthsElapsed).toFixed(1) : "0";
-  el.innerHTML = `
+  const thisYear = state.books.filter(b=>b.year===yr).length;
+  const thisMonth = state.books.filter(b=>b.year===yr && b.month===now.getMonth()+1).length;
+  const avg = thisYear ? (thisYear/(now.getMonth()+1)).toFixed(1) : "0";
+  document.getElementById("summary").innerHTML = `
     <div class="stat"><div class="num">${total}</div><div class="lbl">All Time</div></div>
     <div class="stat"><div class="num">${thisYear}</div><div class="lbl">This Year</div></div>
     <div class="stat"><div class="num">${thisMonth}</div><div class="lbl">This Month</div></div>
-    <div class="stat"><div class="num">${avg}</div><div class="lbl">Avg / Month</div></div>
-  `;
+    <div class="stat"><div class="num">${avg}</div><div class="lbl">Avg / Month</div></div>`;
 }
 
 /* ---------- Chart ---------- */
 function renderYearSelect(){
   const sel = document.getElementById("yearSel");
-  const years = new Set(state.books.map(b=>new Date(b.date+"T00:00:00").getFullYear()));
+  const years = new Set(state.books.map(b=>b.year));
   years.add(new Date().getFullYear());
   const sorted = [...years].sort((a,b)=>b-a);
   const cur = sel.value || String(new Date().getFullYear());
@@ -480,19 +517,19 @@ function renderYearSelect(){
   sel.value = sorted.includes(Number(cur)) ? cur : String(sorted[0]);
 }
 document.getElementById("yearSel").addEventListener("change", renderChart);
-
 function renderChart(){
   const year = Number(document.getElementById("yearSel").value);
   const counts = new Array(12).fill(0);
+  let noMonth = 0;
   state.books.forEach(b=>{
-    const d = new Date(b.date+"T00:00:00");
-    if(d.getFullYear()===year) counts[d.getMonth()]++;
+    if(b.year!==year) return;
+    if(b.month) counts[b.month-1]++; else noMonth++;
   });
   const max = Math.max(1, ...counts);
-  const mLabels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+  const labels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
   const now = new Date();
-  const curMonth = (year===now.getFullYear()) ? now.getMonth() : -1;
-  const w=340,h=120,pad=8,barW=20,gap=(w-pad*2-barW*12)/11;
+  const curMonth = year===now.getFullYear() ? now.getMonth() : -1;
+  const w=340, pad=8, barW=20, gap=(w-pad*2-barW*12)/11;
   let svg = "";
   counts.forEach((c,i)=>{
     const x = pad + i*(barW+gap);
@@ -500,24 +537,36 @@ function renderChart(){
     const y = 92 - barH;
     svg += `<rect class="bar ${i===curMonth?'cur':''}" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3"></rect>`;
     if(c>0) svg += `<text class="bar-count" x="${x+barW/2}" y="${y-4}" text-anchor="middle">${c}</text>`;
-    svg += `<text x="${x+barW/2}" y="108" text-anchor="middle">${mLabels[i]}</text>`;
+    svg += `<text x="${x+barW/2}" y="108" text-anchor="middle">${labels[i]}</text>`;
   });
   document.getElementById("chart").innerHTML = svg;
+  const total = counts.reduce((a,b)=>a+b,0) + noMonth;
+  document.getElementById("chartNote").textContent =
+    `${total} book${total===1?"":"s"} in ${year}` + (noMonth ? ` · ${noMonth} with no month set (not shown in bars)` : "");
 }
 
+function renderTagChart(){
+  const counts = state.tags.map(t=>({t, c:state.books.filter(b=>b.tags.includes(t)).length}));
+  const untagged = state.books.filter(b=>!b.tags.some(t=>state.tags.includes(t))).length;
+  if(untagged) counts.push({t:"Untagged", c:untagged, none:true});
+  const el = document.getElementById("tagChart");
+  if(!counts.length){ el.innerHTML = '<div class="chart-note">No tags yet.</div>'; return; }
+  const max = Math.max(1, ...counts.map(x=>x.c));
+  el.innerHTML = counts.map(x=>`
+    <div class="tcol ${x.none?'none':''}">
+      <div class="tcount">${x.c||""}</div>
+      <div class="tbarwrap"><div class="tbar" style="height:${x.c?Math.round(x.c/max*100):0}%"></div></div>
+      <div class="tlabel" title="${escapeHtml(x.t)}">${escapeHtml(x.t)}</div>
+    </div>`).join("");
+}
 /* ---------- Init ---------- */
 function renderAll(){
-  renderSummary();
-  renderYearSelect();
-  renderChart();
-  renderTagFilters();
-  renderList();
+  renderSummary(); renderYearSelect(); renderChart(); renderTagChart(); renderTagFilters(); renderList();
 }
 populateDateSelects();
-setFormDate(todayISO(),false);
-renderTagChips();
-renderStars();
+resetForm();
 renderAll();
+save();
 </script>
 </body>
 </html>
