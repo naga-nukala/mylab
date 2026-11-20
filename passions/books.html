@@ -132,7 +132,7 @@
     <svg id="chart" class="bars" viewBox="0 0 340 120" width="100%" height="120"></svg>
     <div class="chart-note" id="chartNote"></div>
     <div class="chart-sep"></div>
-    <div class="chart-head"><span style="font-size:12px;color:var(--text-dim)">By tag · all years</span></div>
+    <div class="chart-head"><span style="font-size:12px;color:var(--text-dim)" id="tagChartLabel">By tag</span></div>
     <div class="tagchart" id="tagChart"></div>
   </div>
 
@@ -186,7 +186,7 @@
     </div>
   </div>
 
-  <h2>Library</h2>
+  <h2 id="libHead">Library</h2>
   <div class="filters">
     <input type="text" id="search" placeholder="Search title or author" autocomplete="off">
     <select class="sortsel" id="sortSel">
@@ -325,6 +325,9 @@ document.getElementById("fSubmit").addEventListener("click", ()=>{
   save();
   resetForm();
   document.getElementById("formCard").classList.remove("open");
+  renderYearSelect();
+  const ys = document.getElementById("yearSel");
+  if(ys.value!=="all") ys.value = String(year);
   renderAll();
 });
 
@@ -410,7 +413,9 @@ document.getElementById("sortSel").addEventListener("change", renderList);
 function getFiltered(){
   const q = document.getElementById("search").value.trim().toLowerCase();
   const sort = document.getElementById("sortSel").value;
+  const yr = selectedYear();
   const books = state.books.filter(b=>{
+    if(yr!==null && b.year!==yr) return false;
     if(q && !(b.title.toLowerCase().includes(q) || (b.author||"").toLowerCase().includes(q))) return false;
     if(activeTagFilters.size && ![...activeTagFilters].every(t=>b.tags.includes(t))) return false;
     return true;
@@ -429,7 +434,7 @@ function renderList(){
   const el = document.getElementById("list");
   const books = getFiltered();
   if(!books.length){
-    el.innerHTML = `<div class="empty">${state.books.length ? "No books match." : "No books yet. Tap + to log your first read."}</div>`;
+    el.innerHTML = `<div class="empty">${state.books.length ? (selectedYear()!==null && !activeTagFilters.size && !document.getElementById("search").value.trim() ? "No books logged in "+selectedYear()+"." : "No books match.") : "No books yet. Tap + to log your first read."}</div>`;
     return;
   }
   const grouped = ["new","old"].includes(document.getElementById("sortSel").value);
@@ -513,22 +518,32 @@ function renderYearSelect(){
   years.add(new Date().getFullYear());
   const sorted = [...years].sort((a,b)=>b-a);
   const cur = sel.value || String(new Date().getFullYear());
-  sel.innerHTML = sorted.map(y=>`<option value="${y}">${y}</option>`).join("");
-  sel.value = sorted.includes(Number(cur)) ? cur : String(sorted[0]);
+  sel.innerHTML = '<option value="all">All years</option>' + sorted.map(y=>`<option value="${y}">${y}</option>`).join("");
+  sel.value = (cur==="all" || sorted.includes(Number(cur))) ? cur : String(sorted[0]);
 }
-document.getElementById("yearSel").addEventListener("change", renderChart);
+function selectedYear(){
+  const v = document.getElementById("yearSel").value;
+  return v==="all" ? null : Number(v);
+}
+function renderYearViews(){
+  const y = selectedYear();
+  document.getElementById("tagChartLabel").textContent = "By tag · " + (y===null ? "all years" : y);
+  document.getElementById("libHead").textContent = y===null ? "Library" : "Library · " + y;
+  renderChart(); renderTagChart(); renderList();
+}
+document.getElementById("yearSel").addEventListener("change", renderYearViews);
 function renderChart(){
-  const year = Number(document.getElementById("yearSel").value);
+  const year = selectedYear();
   const counts = new Array(12).fill(0);
   let noMonth = 0;
   state.books.forEach(b=>{
-    if(b.year!==year) return;
+    if(year!==null && b.year!==year) return;
     if(b.month) counts[b.month-1]++; else noMonth++;
   });
   const max = Math.max(1, ...counts);
   const labels = ["J","F","M","A","M","J","J","A","S","O","N","D"];
   const now = new Date();
-  const curMonth = year===now.getFullYear() ? now.getMonth() : -1;
+  const curMonth = (year!==null && year===now.getFullYear()) ? now.getMonth() : -1;
   const w=340, pad=8, barW=20, gap=(w-pad*2-barW*12)/11;
   let svg = "";
   counts.forEach((c,i)=>{
@@ -542,12 +557,14 @@ function renderChart(){
   document.getElementById("chart").innerHTML = svg;
   const total = counts.reduce((a,b)=>a+b,0) + noMonth;
   document.getElementById("chartNote").textContent =
-    `${total} book${total===1?"":"s"} in ${year}` + (noMonth ? ` · ${noMonth} with no month set (not shown in bars)` : "");
+    `${total} book${total===1?"":"s"} in ${year===null?"all years":year}` + (noMonth ? ` · ${noMonth} with no month set (not shown in bars)` : "");
 }
 
 function renderTagChart(){
-  const counts = state.tags.map(t=>({t, c:state.books.filter(b=>b.tags.includes(t)).length}));
-  const untagged = state.books.filter(b=>!b.tags.some(t=>state.tags.includes(t))).length;
+  const yr = selectedYear();
+  const books = yr===null ? state.books : state.books.filter(b=>b.year===yr);
+  const counts = state.tags.map(t=>({t, c:books.filter(b=>b.tags.includes(t)).length}));
+  const untagged = books.filter(b=>!b.tags.some(t=>state.tags.includes(t))).length;
   if(untagged) counts.push({t:"Untagged", c:untagged, none:true});
   const el = document.getElementById("tagChart");
   if(!counts.length){ el.innerHTML = '<div class="chart-note">No tags yet.</div>'; return; }
@@ -561,7 +578,7 @@ function renderTagChart(){
 }
 /* ---------- Init ---------- */
 function renderAll(){
-  renderSummary(); renderYearSelect(); renderChart(); renderTagChart(); renderTagFilters(); renderList();
+  renderSummary(); renderYearSelect(); renderTagFilters(); renderYearViews();
 }
 populateDateSelects();
 resetForm();
