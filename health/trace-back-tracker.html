@@ -133,6 +133,16 @@
 
   .empty{text-align:center; color:var(--muted); font-size:0.85rem; padding:30px 0;}
 
+  .recent-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .recent-head h2{margin:0;}
+  .recent-head .btn{padding:6px 9px; font-size:0.72rem;}
+  .recent-day{padding:10px 0; border-bottom:1px solid var(--border);}
+  .recent-day:last-child{border-bottom:0; padding-bottom:0;}
+  .recent-date{font-size:0.8rem; color:var(--mint); font-weight:600; margin-bottom:5px;}
+  .recent-value{font-size:0.78rem; line-height:1.5; overflow-wrap:anywhere;}
+  .recent-kind{color:var(--muted); margin-right:4px;}
+  .recent-empty{color:var(--muted); font-size:0.82rem; padding-top:10px;}
+
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
     background:var(--card2); border:1px solid var(--mint); color:var(--text);
@@ -181,12 +191,21 @@
   <button class="btn btn-primary" id="saveBtn">Add & start 21-day tracking</button>
 </div>
 
+<div class="card">
+  <div class="recent-head">
+    <h2>Last 14 days from Time Zone</h2>
+    <button class="btn btn-ghost" id="refreshRecent">Refresh</button>
+  </div>
+  <div class="recent-empty" id="recentTimeZone">Loading saved entries…</div>
+</div>
+
 <div id="entriesList"></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 const STORAGE_KEY = 'as_tracebacktracker_v1';
+const TIME_ZONE_STORAGE_KEY = 'tz_v1';
 let state = load();
 let editingId = null;
 let selectedTriggers = {}; // { "Food": "toast and coffee", ... }
@@ -243,6 +262,58 @@ function showToast(msg){
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function renderRecentTimeZone(){
+  const container = document.getElementById('recentTimeZone');
+  let timeZoneState;
+  try{
+    const raw = localStorage.getItem(TIME_ZONE_STORAGE_KEY);
+    timeZoneState = raw ? JSON.parse(raw) : null;
+  }catch(e){
+    container.className = 'recent-empty';
+    container.textContent = 'Could not read saved Time Zone entries.';
+    return;
+  }
+
+  const logs = timeZoneState && timeZoneState.log;
+  const reviewNames = timeZoneState && Array.isArray(timeZoneState.rvf)
+    ? timeZoneState.rvf.map(item=>item && item.n).filter(Boolean)
+    : [];
+  const categories = [
+    {name:'Food', matches:/breakfast|lunch|dinner|snax|snack|food|meal/i},
+    {name:'Water', matches:/water/i},
+    {name:'Sleep', matches:/sleep/i}
+  ];
+  const rows = [];
+
+  for(let offset=0;offset<14;offset++){
+    const date = addDays(todayISO(), -offset);
+    const dayLog = logs && logs[date];
+    const review = dayLog && dayLog.rv;
+    if(!review || typeof review!=='object') continue;
+
+    const names = [...new Set([...reviewNames, ...Object.keys(review)])];
+    const values = [];
+    categories.forEach(category=>{
+      names.forEach(name=>{
+        if(!category.matches.test(name)) return;
+        const value = String(review[name] == null ? '' : review[name]).trim();
+        if(value) values.push({category:category.name, name, value});
+      });
+    });
+    if(values.length) rows.push({date, values});
+  }
+
+  container.className = rows.length ? '' : 'recent-empty';
+  container.innerHTML = rows.length
+    ? rows.map(row=>`
+      <div class="recent-day">
+        <div class="recent-date">${formatDate(row.date)}</div>
+        ${row.values.map(item=>`<div class="recent-value"><span class="recent-kind">${escapeHtml(item.category)} ·</span><strong>${escapeHtml(item.name)}</strong>: ${escapeHtml(item.value)}</div>`).join('')}
+      </div>
+    `).join('')
+    : 'No meal, water, or sleep review values saved in Time Zone for the last 14 days.';
 }
 
 // ---- Triggers chip selection ----
@@ -327,6 +398,12 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   renderEntries();
   renderSummary();
 });
+
+document.getElementById('refreshRecent').addEventListener('click', renderRecentTimeZone);
+window.addEventListener('storage', event=>{
+  if(event.key === TIME_ZONE_STORAGE_KEY || event.key === null) renderRecentTimeZone();
+});
+window.addEventListener('focus', renderRecentTimeZone);
 
 function renderSummary(){
   const active = state.entries.filter(e=>!e.recheck || e.recheck==='same');
@@ -496,6 +573,7 @@ function updateEntryInPlace(entry){
 
 // init
 document.getElementById('fDate').value = todayISO();
+renderRecentTimeZone();
 renderEntries();
 renderSummary();
 </script>

@@ -333,6 +333,59 @@ function renderBrowserTabs(){
     nav.appendChild(wrap);
   });
 }
+function installPullToRefresh(doc){
+  const view = doc.defaultView;
+  const style = doc.createElement('style');
+  style.textContent = 'html,body{overscroll-behavior-y:contain}';
+  doc.head.appendChild(style);
+
+  let startX = 0, startY = 0, pullDistance = 0, eligible = false;
+  const threshold = 72;
+  function isAtTop(target){
+    let element = target && target.nodeType === 1 ? target : target && target.parentElement;
+    while(element && element !== doc.documentElement){
+      if(element.scrollTop > 0) return false;
+      element = element.parentElement;
+    }
+    const scroller = doc.scrollingElement || doc.documentElement;
+    return scroller.scrollTop <= 0 && view.scrollY <= 0;
+  }
+  doc.addEventListener('touchstart', event => {
+    if(event.touches.length !== 1){ eligible = false; return; }
+    const target = event.target.nodeType === 1 ? event.target : event.target.parentElement;
+    if(!target || target.closest('input,textarea,select,button,a,[contenteditable="true"],[role="slider"],[data-no-pull-refresh]')){
+      eligible = false;
+      return;
+    }
+    startX = event.touches[0].clientX;
+    startY = event.touches[0].clientY;
+    pullDistance = 0;
+    eligible = isAtTop(target);
+  }, { passive: true });
+  doc.addEventListener('touchmove', event => {
+    if(!eligible || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const deltaY = touch.clientY - startY;
+    if(deltaY <= 0 || Math.abs(touch.clientX - startX) > Math.abs(deltaY) || !isAtTop(event.target)){
+      eligible = false;
+      return;
+    }
+    pullDistance = deltaY;
+    if(event.cancelable) event.preventDefault();
+  }, { passive: false });
+  doc.addEventListener('touchend', () => {
+    if(eligible && pullDistance >= threshold){
+      toast('Refreshing page…');
+      view.location.reload();
+    }
+    eligible = false;
+    pullDistance = 0;
+  });
+  doc.addEventListener('touchcancel', () => {
+    eligible = false;
+    pullDistance = 0;
+  });
+}
 function openPageTab(url, title){
   const pageUrl = new URL(url, location.href);
   if(pageUrl.origin !== location.origin || !/\.html?$/i.test(pageUrl.pathname)) return;
@@ -345,6 +398,7 @@ function openPageTab(url, title){
   frame.addEventListener('load', () => {
     const doc = frame.contentDocument;
     if(!doc) return;
+    installPullToRefresh(doc);
     doc.addEventListener('click', event => {
       const link = event.target.closest('a[href]');
       if(!link || link.hasAttribute('download')) return;
