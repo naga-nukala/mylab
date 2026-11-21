@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1412">
+<title>Flat &amp; Plot Rates</title>
+<style>
+:root{
+  --bg:#0f1412; --card:#171e1b; --card2:#1e2723; --line:#2a3631;
+  --text:#e8f0ec; --muted:#8fa39a; --mint:#a7e8c5; --coral:#ff8c70;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom))}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.sec{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600}
+
+/* summary */
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sum div{background:var(--card2);border-radius:10px;padding:10px}
+.sum b{display:block;font-size:18px;color:var(--mint)}
+.sum span{font-size:12px;color:var(--muted)}
+
+/* form */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.seg button{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--mint);color:#0f1412;border-color:var(--mint)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;min-height:42px}
+input:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:1px}
+input[type=month]{color-scheme:dark}
+.calc{margin-top:10px;font-size:13px;color:var(--muted);min-height:20px}
+.calc b{color:var(--mint)}
+.row{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:12px;border-radius:10px;border:0;font:inherit;font-weight:700;cursor:pointer;background:var(--mint);color:#0f1412}
+.btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--line);flex:0 0 auto}
+.err{color:var(--coral);font-size:13px;margin-top:8px;min-height:18px}
+
+/* chips */
+.chips{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.chip{padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.chip.on{border-color:var(--mint);color:var(--mint)}
+
+/* area metrics */
+.area{background:var(--card2);border-radius:12px;padding:12px;margin-bottom:10px}
+.area h3{margin:0 0 8px;font-size:16px}
+.seg-row{padding:8px 0;border-top:1px solid var(--line)}
+.seg-row:first-of-type{border-top:0}
+.seg-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px}
+.tag.Plot{background:rgba(167,232,197,.15);color:var(--mint)}
+.tag.Flat{background:rgba(255,140,112,.15);color:var(--coral)}
+.cnt{font-size:12px;color:var(--muted)}
+.mets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.mets div b{display:block;font-size:14px}
+.mets div span{font-size:11px;color:var(--muted)}
+.trend{margin-top:6px;font-size:12px;color:var(--muted)}
+.up{color:var(--coral)} .down{color:var(--mint)}
+
+/* entries */
+.item{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .l{min-width:0}
+.item .t{font-weight:600;overflow-wrap:anywhere}
+.item .d{font-size:12px;color:var(--muted)}
+.item .r{text-align:right;white-space:nowrap}
+.item .r b{color:var(--mint)}
+.acts{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
+.sm{padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;font-size:12px;cursor:pointer}
+.sm.del.arm{background:var(--coral);color:#0f1412;border-color:var(--coral)}
+@media (hover:hover) and (pointer:fine){
+  .sm:hover,.chip:hover,.seg button:not(.on):hover{border-color:var(--mint)}
+  .btn:hover{filter:brightness(1.08)}
+}
+.empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+@media (max-width:420px){.mets{grid-template-columns:repeat(2,1fr);row-gap:8px}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Flat &amp; Plot Rates</h1>
+  <p class="sub">Log rates you come across and compare them area by area. Stays on this device.</p>
+
+  <div class="card"><div class="sum" id="sum"></div></div>
+
+  <div class="card">
+    <p class="sec" id="formTitle">Add a rate</p>
+    <div class="seg" id="typeSeg">
+      <button type="button" data-type="Plot" class="on">Plot</button>
+      <button type="button" data-type="Flat">Flat</button>
+    </div>
+    <div class="grid">
+      <div class="full"><label for="place">Place</label><input id="place" list="places" placeholder="e.g. Gajwel" autocomplete="off"><datalist id="places"></datalist></div>
+      <div><label for="month">Month - Year</label><input id="month" type="month"></div>
+      <div><label for="yards">Yards (sq yd)</label><input id="yards" type="number" inputmode="decimal" min="0" step="any" placeholder="200"></div>
+      <div><label for="rate">Rate per sq yd (₹)</label><input id="rate" type="number" inputmode="decimal" min="0" step="any" placeholder="15000"></div>
+      <div id="priceWrap" hidden><label for="price">Flat price (₹)</label><input id="price" type="number" inputmode="decimal" min="0" step="any" placeholder="4500000"></div>
+    </div>
+    <div class="calc" id="calc"></div>
+    <div class="err" id="err"></div>
+    <div class="row">
+      <button class="btn" id="save" type="button">Save rate</button>
+      <button class="btn ghost" id="cancel" type="button" hidden>Cancel edit</button>
+    </div>
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip on" data-f="All">All</button>
+    <button class="chip" data-f="Plot">Plot</button>
+    <button class="chip" data-f="Flat">Flat</button>
+  </div>
+
+  <div class="card"><p class="sec">Area-wise metrics</p><div id="areas"></div></div>
+  <div class="card"><p class="sec">All entries</p><div id="list"></div></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var KEY='flat_plot_rates_v1';
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var state={items:[],filter:'All'};
+  var form={type:'Plot',editId:null};
+  var armTimer=null, armId=null;
+
+  function $(id){return document.getElementById(id)}
+  function num(v){var n=parseFloat(v);return isFinite(n)?n:0}
+  function inr(n){return Number(n).toLocaleString('en-IN',{maximumFractionDigits:2})}
+  function rs(n){return '₹'+inr(Math.round(n))}
+  function monthLabel(m){var p=(m||'').split('-');return p.length===2?MON[+p[1]-1]+' '+p[0]:'-'}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
+  function load(){
+    try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items;state.filter=s.filter||'All'}}catch(e){}
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+
+  function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show')},1800)}
+
+  /* effective numbers for an entry */
+  function calc(it){
+    var y=+it.yards||0, r=+it.rate||0, p=+it.price||0;
+    var rate=r, total=0;
+    if(it.type==='Flat'){
+      total=p||(y&&r?y*r:0);
+      if(!rate&&y&&p)rate=p/y;
+    }else{
+      total=y&&r?y*r:0;
+    }
+    return {rate:rate,total:total};
+  }
+
+  /* form */
+  function setType(t){
+    form.type=t;
+    var bs=$('typeSeg').querySelectorAll('button');
+    for(var i=0;i<bs.length;i++)bs[i].classList.toggle('on',bs[i].dataset.type===t);
+    $('priceWrap').hidden=(t!=='Flat');
+    liveCalc();
+  }
+  function readForm(){
+    return {type:form.type,place:$('place').value.trim(),month:$('month').value,
+      yards:num($('yards').value),rate:num($('rate').value),price:form.type==='Flat'?num($('price').value):0};
+  }
+  function liveCalc(){
+    var it=readForm(),c=calc(it),out=[];
+    if(c.total)out.push('Total value: <b>'+rs(c.total)+'</b>');
+    if(it.type==='Flat'&&!it.rate&&c.rate)out.push('Rate: <b>'+rs(c.rate)+'</b>/sq yd');
+    if(it.type==='Flat'&&it.price&&it.yards&&it.rate){
+      var diff=it.price-it.yards*it.rate;
+      if(Math.abs(diff)>1)out.push('Price vs yards × rate: <b>'+(diff>0?'+':'-')+rs(Math.abs(diff))+'</b>');
+    }
+    $('calc').innerHTML=out.join(' &nbsp;·&nbsp; ');
+  }
+  function resetForm(){
+    form.editId=null;
+    $('place').value='';$('yards').value='';$('rate').value='';$('price').value='';
+    $('formTitle').textContent='Add a rate';
+    $('save').textContent='Save rate';
+    $('cancel').hidden=true;$('err').textContent='';
+    var d=new Date();
+    $('month').value=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);
+    liveCalc();
+  }
+  function submit(){
+    var it=readForm(),c=calc(it);
+    if(!it.place){$('err').textContent='Enter the place.';return}
+    if(!it.month){$('err').textContent='Pick the month and year.';return}
+    if(!it.yards){$('err').textContent='Enter the yards.';return}
+    if(!c.rate){$('err').textContent=it.type==='Flat'?'Enter the rate per sq yd or the flat price.':'Enter the rate per sq yd.';return}
+    $('err').textContent='';
+    if(form.editId){
+      for(var i=0;i<state.items.length;i++)if(state.items[i].id===form.editId){it.id=form.editId;state.items[i]=it}
+      toast('Updated');
+    }else{
+      it.id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      state.items.push(it);toast('Saved');
+    }
+    save();resetForm();renderAll();
+  }
+  function startEdit(id){
+    var it=state.items.filter(function(x){return x.id===id})[0];if(!it)return;
+    form.editId=id;setType(it.type);
+    $('place').value=it.place;$('month').value=it.month;
+    $('yards').value=it.yards||'';$('rate').value=it.rate||'';$('price').value=it.price||'';
+    $('formTitle').textContent='Edit rate';$('save').textContent='Update rate';$('cancel').hidden=false;
+    liveCalc();window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function del(id,btn){
+    if(armId===id){
+      state.items=state.items.filter(function(x){return x.id!==id});
+      armId=null;clearTimeout(armTimer);
+      if(form.editId===id)resetForm();
+      save();renderAll();toast('Deleted');return;
+    }
+    armId=id;btn.textContent='Tap again';btn.classList.add('arm');
+    clearTimeout(armTimer);
+    armTimer=setTimeout(function(){armId=null;btn.textContent='Delete';btn.classList.remove('arm')},2500);
+  }
+
+  /* metrics */
+  function filtered(){return state.items.filter(function(x){return state.filter==='All'||x.type===state.filter})}
+
+  function renderSummary(){
+    var items=filtered(),rates=items.map(function(x){return calc(x).rate}).filter(Boolean);
+    var places={};items.forEach(function(x){places[x.place.toLowerCase()]=1});
+    var avg=rates.length?rates.reduce(function(a,b){return a+b},0)/rates.length:0;
+    $('sum').innerHTML=
+      '<div><b>'+items.length+'</b><span>Entries</span></div>'+
+      '<div><b>'+Object.keys(places).length+'</b><span>Areas</span></div>'+
+      '<div><b>'+(avg?rs(avg):'-')+'</b><span>Avg rate / sq yd</span></div>';
+  }
+
+  function renderAreas(){
+    var items=filtered(),groups={};
+    items.forEach(function(x){
+      var pk=x.place.toLowerCase();
+      var g=groups[pk]||(groups[pk]={name:x.place,segs:{}});
+      var s=g.segs[x.type]||(g.segs[x.type]=[]);
+      s.push(x);
+    });
+    var names=Object.keys(groups).sort(function(a,b){return groups[a].name.localeCompare(groups[b].name)});
+    if(!names.length){$('areas').innerHTML='<div class="empty">Add a rate to see area-wise metrics.</div>';return}
+    var h='';
+    names.forEach(function(k){
+      var g=groups[k];h+='<div class="area"><h3>'+esc(g.name)+'</h3>';
+      ['Plot','Flat'].forEach(function(t){
+        var arr=g.segs[t];if(!arr)return;
+        var rows=arr.map(function(x){return {m:x.month,r:calc(x).rate}}).filter(function(x){return x.r});
+        if(!rows.length)return;
+        var rs_=rows.map(function(x){return x.r});
+        var avg=rs_.reduce(function(a,b){return a+b},0)/rs_.length;
+        var min=Math.min.apply(null,rs_),max=Math.max.apply(null,rs_);
+        var byM={};rows.forEach(function(x){(byM[x.m]=byM[x.m]||[]).push(x.r)});
+        var ms=Object.keys(byM).sort();
+        var mAvg=ms.map(function(m){var a=byM[m];return a.reduce(function(p,q){return p+q},0)/a.length});
+        var latest=mAvg[mAvg.length-1];
+        var trend='';
+        if(ms.length>1){
+          var ch=(latest-mAvg[0])/mAvg[0]*100;
+          trend='From '+monthLabel(ms[0])+' to '+monthLabel(ms[ms.length-1])+': <span class="'+(ch>=0?'up':'down')+'">'+(ch>=0?'▲ +':'▼ ')+ch.toFixed(1)+'%</span> ('+rs(mAvg[0])+' → '+rs(latest)+')';
+        }else{trend='Only '+monthLabel(ms[0])+' so far, add another month to see the trend.'}
+        h+='<div class="seg-row"><div class="seg-head"><span class="tag '+t+'">'+t+'</span><span class="cnt">'+rows.length+(rows.length===1?' entry':' entries')+'</span></div>'+
+          '<div class="mets"><div><b>'+rs(avg)+'</b><span>Average</span></div><div><b>'+rs(min)+'</b><span>Lowest</span></div><div><b>'+rs(max)+'</b><span>Highest</span></div><div><b>'+rs(latest)+'</b><span>Latest ('+monthLabel(ms[ms.length-1])+')</span></div></div>'+
+          '<div class="trend">'+trend+'</div></div>';
+      });
+      h+='</div>';
+    });
+    $('areas').innerHTML=h;
+  }
+
+  function renderList(){
+    var items=filtered().slice().sort(function(a,b){return a.month<b.month?1:a.month>b.month?-1:0});
+    if(!items.length){$('list').innerHTML='<div class="empty">No rates yet. Add your first one above.</div>';return}
+    $('list').innerHTML=items.map(function(x){
+      var c=calc(x);
+      return '<div class="item"><div class="l"><div class="t"><span class="tag '+x.type+'">'+x.type+'</span> '+esc(x.place)+'</div>'+
+        '<div class="d">'+monthLabel(x.month)+' · '+inr(x.yards)+' sq yd'+(x.type==='Flat'&&x.price?' · Flat '+rs(x.price):'')+'</div></div>'+
+        '<div class="r"><b>'+rs(c.rate)+'</b>/sq yd<div class="d">Total '+(c.total?rs(c.total):'-')+'</div>'+
+        '<div class="acts"><button class="sm" data-act="edit" data-id="'+x.id+'">Edit</button><button class="sm del" data-act="del" data-id="'+x.id+'">Delete</button></div></div></div>';
+    }).join('');
+  }
+
+  function renderPlaces(){
+    var seen={},o='';
+    state.items.forEach(function(x){var k=x.place.toLowerCase();if(!seen[k]){seen[k]=1;o+='<option value="'+esc(x.place)+'">'}});
+    $('places').innerHTML=o;
+  }
+
+  function renderAll(){
+    var cs=$('chips').querySelectorAll('.chip');
+    for(var i=0;i<cs.length;i++)cs[i].classList.toggle('on',cs[i].dataset.f===state.filter);
+    renderSummary();renderAreas();renderList();renderPlaces();
+  }
+
+  /* events */
+  $('typeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setType(b.dataset.type)});
+  $('chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;state.filter=b.dataset.f;save();renderAll()});
+  ['yards','rate','price','place','month'].forEach(function(id){$(id).addEventListener('input',liveCalc)});
+  $('save').addEventListener('click',submit);
+  $('cancel').addEventListener('click',function(){resetForm();toast('Edit cancelled')});
+  $('list').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-act]');if(!b)return;
+    if(b.dataset.act==='edit')startEdit(b.dataset.id);else del(b.dataset.id,b);
+  });
+
+  load();resetForm();renderAll();
+})();
+</script>
+</body>
+</html>
