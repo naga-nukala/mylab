@@ -80,6 +80,16 @@ input[type=month]{color-scheme:dark}
   .sm:hover,.chip:hover,.seg button:not(.on):hover{border-color:var(--mint)}
   .btn:hover{filter:brightness(1.08)}
 }
+.photos{margin-top:12px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.th{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--card2);padding:0;cursor:pointer}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .x{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(15,20,18,.85);color:var(--coral);font-size:14px;line-height:22px;padding:0;cursor:pointer}
+.item .thumbs{justify-content:flex-end;margin-top:6px}
+.item .th{width:44px;height:44px;border-radius:8px}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:10;padding:16px;cursor:zoom-out}
+#lb.show{display:flex}
+#lb img{max-width:100%;max-height:100%;border-radius:8px}
 .empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:1}
@@ -107,6 +117,12 @@ input[type=month]{color-scheme:dark}
       <div><label for="rate">Rate per sq yd (₹)</label><input id="rate" type="number" inputmode="decimal" min="0" step="any" placeholder="15000"></div>
       <div id="priceWrap" hidden><label for="price">Flat price (₹)</label><input id="price" type="number" inputmode="decimal" min="0" step="any" placeholder="4500000"></div>
     </div>
+    <div class="photos">
+      <label>Photos (layout, brochure, board)</label>
+      <button class="sm" id="addImg" type="button">+ Add photo</button>
+      <input id="imgInput" type="file" accept="image/*" multiple hidden>
+      <div class="thumbs" id="formImgs"></div>
+    </div>
     <div class="calc" id="calc"></div>
     <div class="err" id="err"></div>
     <div class="row">
@@ -124,6 +140,7 @@ input[type=month]{color-scheme:dark}
   <div class="card"><p class="sec">Area-wise metrics</p><div id="areas"></div></div>
   <div class="card"><p class="sec">All entries</p><div id="list"></div></div>
 </div>
+<div id="lb"><img alt="Photo"></div>
 <div id="toast"></div>
 
 <script>
@@ -131,7 +148,7 @@ input[type=month]{color-scheme:dark}
   var KEY='flat_plot_rates_v1';
   var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var state={items:[],filter:'All'};
-  var form={type:'Plot',editId:null};
+  var form={type:'Plot',editId:null,images:[]};
   var armTimer=null, armId=null;
 
   function $(id){return document.getElementById(id)}
@@ -144,7 +161,7 @@ input[type=month]{color-scheme:dark}
   function load(){
     try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items;state.filter=s.filter||'All'}}catch(e){}
   }
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){toast('Storage full. Remove some photos.');return false}}
 
   function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show')},1800)}
 
@@ -171,7 +188,7 @@ input[type=month]{color-scheme:dark}
   }
   function readForm(){
     return {type:form.type,place:$('place').value.trim(),month:$('month').value,
-      yards:num($('yards').value),rate:num($('rate').value),price:form.type==='Flat'?num($('price').value):0};
+      yards:num($('yards').value),rate:num($('rate').value),price:form.type==='Flat'?num($('price').value):0,images:form.images.slice()};
   }
   function liveCalc(){
     var it=readForm(),c=calc(it),out=[];
@@ -184,7 +201,7 @@ input[type=month]{color-scheme:dark}
     $('calc').innerHTML=out.join(' &nbsp;·&nbsp; ');
   }
   function resetForm(){
-    form.editId=null;
+    form.editId=null;form.images=[];renderFormImgs();
     $('place').value='';$('yards').value='';$('rate').value='';$('price').value='';
     $('formTitle').textContent='Add a rate';
     $('save').textContent='Save rate';
@@ -200,20 +217,23 @@ input[type=month]{color-scheme:dark}
     if(!it.yards){$('err').textContent='Enter the yards.';return}
     if(!c.rate){$('err').textContent=it.type==='Flat'?'Enter the rate per sq yd or the flat price.':'Enter the rate per sq yd.';return}
     $('err').textContent='';
-    if(form.editId){
+    var prev=state.items.slice(),wasEdit=!!form.editId;
+    if(wasEdit){
       for(var i=0;i<state.items.length;i++)if(state.items[i].id===form.editId){it.id=form.editId;state.items[i]=it}
-      toast('Updated');
     }else{
       it.id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-      state.items.push(it);toast('Saved');
+      state.items.push(it);
     }
-    save();resetForm();renderAll();
+    if(!save()){state.items=prev;return}
+    toast(wasEdit?'Updated':'Saved');
+    resetForm();renderAll();
   }
   function startEdit(id){
     var it=state.items.filter(function(x){return x.id===id})[0];if(!it)return;
     form.editId=id;setType(it.type);
     $('place').value=it.place;$('month').value=it.month;
     $('yards').value=it.yards||'';$('rate').value=it.rate||'';$('price').value=it.price||'';
+    form.images=(it.images||[]).slice();renderFormImgs();
     $('formTitle').textContent='Edit rate';$('save').textContent='Update rate';$('cancel').hidden=false;
     liveCalc();window.scrollTo({top:0,behavior:'smooth'});
   }
@@ -288,6 +308,7 @@ input[type=month]{color-scheme:dark}
       return '<div class="item"><div class="l"><div class="t"><span class="tag '+x.type+'">'+x.type+'</span> '+esc(x.place)+'</div>'+
         '<div class="d">'+monthLabel(x.month)+' · '+inr(x.yards)+' sq yd'+(x.type==='Flat'&&x.price?' · Flat '+rs(x.price):'')+'</div></div>'+
         '<div class="r"><b>'+rs(c.rate)+'</b>/sq yd<div class="d">Total '+(c.total?rs(c.total):'-')+'</div>'+
+        thumbsHtml(x.images||[],x.id,false)+
         '<div class="acts"><button class="sm" data-act="edit" data-id="'+x.id+'">Edit</button><button class="sm del" data-act="del" data-id="'+x.id+'">Delete</button></div></div></div>';
     }).join('');
   }
@@ -304,15 +325,68 @@ input[type=month]{color-scheme:dark}
     renderSummary();renderAreas();renderList();renderPlaces();
   }
 
+  /* images */
+  function thumbsHtml(imgs,id,removable){
+    if(!imgs.length)return '';
+    var inner=imgs.map(function(src,i){
+      return '<div class="th" '+(removable?'':'data-act="view" data-id="'+id+'" data-i="'+i+'"')+'>'+
+        '<img src="'+src+'" alt="Photo '+(i+1)+'" '+(removable?'data-act="view-form" data-i="'+i+'"':'')+'>'+
+        (removable?'<button class="x" type="button" data-act="rm-img" data-i="'+i+'" aria-label="Remove photo">×</button>':'')+'</div>';
+    }).join('');
+    return removable?inner:'<div class="thumbs">'+inner+'</div>';
+  }
+  function renderFormImgs(){$('formImgs').innerHTML=thumbsHtml(form.images,'',true)}
+  function shrink(file){
+    return new Promise(function(res,rej){
+      var fr=new FileReader();
+      fr.onerror=rej;
+      fr.onload=function(){
+        var im=new Image();
+        im.onerror=rej;
+        im.onload=function(){
+          var M=1000,w=im.width,h=im.height,k=Math.min(1,M/Math.max(w,h));
+          var c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
+          c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+          res(c.toDataURL('image/jpeg',0.7));
+        };
+        im.src=fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  function addFiles(files){
+    var list=Array.prototype.slice.call(files);
+    Promise.all(list.map(function(f){return shrink(f).catch(function(){return null})})).then(function(arr){
+      var ok=arr.filter(Boolean);
+      if(ok.length<list.length)toast('Some files could not be read');
+      form.images=form.images.concat(ok);renderFormImgs();
+    });
+  }
+  function showImg(src){var lb=$('lb');lb.querySelector('img').src=src;lb.classList.add('show')}
+
   /* events */
   $('typeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setType(b.dataset.type)});
   $('chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;state.filter=b.dataset.f;save();renderAll()});
   ['yards','rate','price','place','month'].forEach(function(id){$(id).addEventListener('input',liveCalc)});
+  $('addImg').addEventListener('click',function(){$('imgInput').click()});
+  $('imgInput').addEventListener('change',function(e){if(e.target.files.length)addFiles(e.target.files);e.target.value=''});
+  $('formImgs').addEventListener('click',function(e){
+    var b=e.target.closest('[data-act]');if(!b)return;
+    var i=+b.dataset.i;
+    if(b.dataset.act==='rm-img'){form.images.splice(i,1);renderFormImgs()}
+    else if(b.dataset.act==='view-form')showImg(form.images[i]);
+  });
+  $('lb').addEventListener('click',function(){this.classList.remove('show')});
   $('save').addEventListener('click',submit);
   $('cancel').addEventListener('click',function(){resetForm();toast('Edit cancelled')});
   $('list').addEventListener('click',function(e){
-    var b=e.target.closest('button[data-act]');if(!b)return;
-    if(b.dataset.act==='edit')startEdit(b.dataset.id);else del(b.dataset.id,b);
+    var b=e.target.closest('[data-act]');if(!b)return;
+    if(b.dataset.act==='edit')startEdit(b.dataset.id);
+    else if(b.dataset.act==='del')del(b.dataset.id,b);
+    else if(b.dataset.act==='view'){
+      var it=state.items.filter(function(x){return x.id===b.dataset.id})[0];
+      if(it&&it.images)showImg(it.images[+b.dataset.i]);
+    }
   });
 
   load();resetForm();renderAll();
