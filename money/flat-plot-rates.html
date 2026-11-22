@@ -52,11 +52,17 @@ input[type=month]{color-scheme:dark}
 .chip.on{border-color:var(--mint);color:var(--mint)}
 
 /* area metrics */
-.area{background:var(--card2);border-radius:12px;padding:12px;margin-bottom:10px}
-.area h3{margin:0 0 8px;font-size:16px}
-.seg-row{padding:8px 0;border-top:1px solid var(--line)}
-.seg-row:first-of-type{border-top:0}
-.seg-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.sg{background:var(--card2);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.sg-h{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);font:inherit;padding:10px 12px;cursor:pointer}
+.sg-l1{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap}
+.sg-l1 .nm{font-weight:600;overflow-wrap:anywhere}
+.sg-l1 .rg{margin-left:auto;color:var(--muted);font-size:12px}
+.chev{font-size:10px;color:var(--muted);transition:transform .15s}
+.sg.open .chev{transform:rotate(90deg)}
+.sg-l2{font-size:12px;color:var(--muted);margin-top:4px}
+.sg-b{display:none;padding:10px 12px 12px;border-top:1px solid var(--line)}
+.sg.open .sg-b{display:block}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
 .tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px}
 .tag.Plot{background:rgba(167,232,197,.15);color:var(--mint)}
 .tag.Field{background:rgba(232,213,143,.15);color:#e8d58f}
@@ -93,6 +99,10 @@ input[type=month]{color-scheme:dark}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:10;padding:16px;cursor:zoom-out}
 #lb.show{display:flex}
 #lb img{max-width:100%;max-height:100%;border-radius:8px}
+.chartbox{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chartbox svg{display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:99px;margin-right:5px;vertical-align:-1px}
 .empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--mint);color:#0f1412;padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:1}
@@ -145,6 +155,17 @@ input[type=month]{color-scheme:dark}
     <button class="chip" data-f="Field">Field</button>
   </div>
 
+  <div class="card">
+    <p class="sec">Lowest rate by place</p>
+    <div class="chips" id="cchips">
+      <button class="chip on" data-c="All">All</button>
+      <button class="chip" data-c="Plot">Plot</button>
+      <button class="chip" data-c="Flat">Flat</button>
+      <button class="chip" data-c="Field">Field</button>
+    </div>
+    <div class="chartbox" id="chart"></div>
+    <div class="legend" id="legend"></div>
+  </div>
   <div class="card"><p class="sec">Area-wise metrics</p><div id="areas"></div></div>
   <div class="card"><p class="sec">All entries</p><div id="list"></div></div>
 </div>
@@ -155,7 +176,7 @@ input[type=month]{color-scheme:dark}
 (function(){
   var KEY='flat_plot_rates_v1';
   var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var state={items:[],filter:'All'};
+  var state={items:[],filter:'All',chartFilter:'All'};
   var form={type:'Plot',editId:null,images:[]};
   var armTimer=null, armId=null;
 
@@ -167,7 +188,7 @@ input[type=month]{color-scheme:dark}
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 
   function load(){
-    try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items;state.filter=s.filter||'All'}}catch(e){}
+    try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items;state.filter=s.filter||'All';state.chartFilter=s.chartFilter||'All'}}catch(e){}
   }
   function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){toast('Storage full. Remove some photos.');return false}}
 
@@ -285,19 +306,19 @@ input[type=month]{color-scheme:dark}
     var sum=function(a){return a.reduce(function(p,q){return p+q},0)};
     return '<div class="trend">Rental yield: avg <b>'+(sum(ys)/ys.length).toFixed(2)+'%</b> · best '+Math.max.apply(null,ys).toFixed(2)+'% · avg rent '+rs(sum(rents)/rents.length)+'/mo ('+ys.length+(ys.length===1?' entry':' entries')+')</div>';
   }
+  var openSeg={};
   function renderAreas(){
     var items=filtered(),groups={};
     items.forEach(function(x){
       var pk=x.place.toLowerCase();
       var g=groups[pk]||(groups[pk]={name:x.place,segs:{}});
-      var s=g.segs[x.type]||(g.segs[x.type]=[]);
-      s.push(x);
+      (g.segs[x.type]||(g.segs[x.type]=[])).push(x);
     });
     var names=Object.keys(groups).sort(function(a,b){return groups[a].name.localeCompare(groups[b].name)});
     if(!names.length){$('areas').innerHTML='<div class="empty">Add a rate to see area-wise metrics.</div>';return}
     var h='';
     names.forEach(function(k){
-      var g=groups[k];h+='<div class="area"><h3>'+esc(g.name)+'</h3>';
+      var g=groups[k];
       ['Plot','Flat','Field'].forEach(function(t){
         var arr=g.segs[t];if(!arr)return;
         var rows=arr.map(function(x){return {m:x.month,r:calc(x).rate}}).filter(function(x){return x.r});
@@ -309,16 +330,21 @@ input[type=month]{color-scheme:dark}
         var ms=Object.keys(byM).sort();
         var mAvg=ms.map(function(m){var a=byM[m];return a.reduce(function(p,q){return p+q},0)/a.length});
         var latest=mAvg[mAvg.length-1];
-        var trend='';
+        var trend;
         if(ms.length>1){
           var ch=(latest-mAvg[0])/mAvg[0]*100;
           trend='From '+monthLabel(ms[0])+' to '+monthLabel(ms[ms.length-1])+': <span class="'+(ch>=0?'up':'down')+'">'+(ch>=0?'▲ +':'▼ ')+ch.toFixed(1)+'%</span> ('+rs(mAvg[0])+' → '+rs(latest)+')';
         }else{trend='Only '+monthLabel(ms[0])+' so far, add another month to see the trend.'}
-        h+='<div class="seg-row"><div class="seg-head"><span class="tag '+t+'">'+t+'</span><span class="cnt">'+rows.length+(rows.length===1?' entry':' entries')+' · per '+(t==='Field'?'acre':'sq yd')+'</span></div>'+
-          '<div class="mets"><div><b>'+rs(avg)+'</b><span>Average</span></div><div><b>'+rs(min)+'</b><span>Lowest</span></div><div><b>'+rs(max)+'</b><span>Highest</span></div><div><b>'+rs(latest)+'</b><span>Latest ('+monthLabel(ms[ms.length-1])+')</span></div></div>'+
-          '<div class="trend">'+trend+'</div>'+yieldHtml(t,arr)+'</div>';
+        var key=t+'|'+k,open=!!openSeg[key];
+        h+='<div class="sg'+(open?' open':'')+'" data-key="'+esc(key)+'">'+
+          '<button type="button" class="sg-h" data-act="seg" aria-expanded="'+open+'">'+
+          '<div class="sg-l1"><span class="tag '+t+'">'+t+'</span><span class="nm">'+esc(g.name)+'</span>'+
+          '<span class="rg">Lowest '+amt(min)+' · Highest '+amt(max)+'</span><span class="chev">▶</span></div>'+
+          '<div class="sg-l2">'+trend+'</div></button>'+
+          '<div class="sg-b"><div class="mets"><div><b>'+rs(avg)+'</b><span>Average</span></div><div><b>'+rs(min)+'</b><span>Lowest</span></div><div><b>'+rs(max)+'</b><span>Highest</span></div><div><b>'+rs(latest)+'</b><span>Latest ('+monthLabel(ms[ms.length-1])+')</span></div></div>'+
+          '<div class="trend">'+rows.length+(rows.length===1?' entry':' entries')+' · per '+(t==='Field'?'acre':'sq yd')+'</div>'+
+          yieldHtml(t,arr)+'</div></div>';
       });
-      h+='</div>';
     });
     $('areas').innerHTML=h;
   }
@@ -346,7 +372,7 @@ input[type=month]{color-scheme:dark}
   function renderAll(){
     var cs=$('chips').querySelectorAll('.chip');
     for(var i=0;i<cs.length;i++)cs[i].classList.toggle('on',cs[i].dataset.f===state.filter);
-    renderSummary();renderAreas();renderList();renderPlaces();
+    renderSummary();renderAreas();renderList();renderPlaces();renderChart();
   }
 
   /* images */
@@ -388,6 +414,82 @@ input[type=month]{color-scheme:dark}
   }
   function showImg(src){var lb=$('lb');lb.querySelector('img').src=src;lb.classList.add('show')}
 
+  /* chart */
+  function amt(n){
+    if(n>=1e7)return '₹'+(n/1e7).toFixed(2).replace(/\.?0+$/,'')+' Cr';
+    if(n>=1e5)return '₹'+(n/1e5).toFixed(2).replace(/\.?0+$/,'')+' L';
+    return '₹'+inr(Math.round(n));
+  }
+  function niceMax(v){
+    if(v<=0)return 1;
+    var p=Math.pow(10,Math.floor(Math.log(v)/Math.LN10)),m=v/p;
+    return (m<=1?1:m<=2?2:m<=5?5:10)*p;
+  }
+  var COL={Plot:'var(--mint)',Flat:'var(--coral)',Field:'#e8d58f'};
+  function renderChart(){
+    var cf=state.chartFilter||'All';
+    var cs=$('cchips').querySelectorAll('.chip');
+    for(var i=0;i<cs.length;i++)cs[i].classList.toggle('on',cs[i].dataset.c===cf);
+    var types=cf==='All'?['Plot','Flat','Field']:[cf];
+    var map={};
+    state.items.forEach(function(x){
+      if(types.indexOf(x.type)<0)return;
+      var r=calc(x).rate;if(!r)return;
+      var k=x.place.toLowerCase(),g=map[k]||(map[k]={name:x.place});
+      if(g[x.type]===undefined||r<g[x.type])g[x.type]=r;
+    });
+    var places=Object.keys(map).map(function(k){return map[k]});
+    if(!places.length){$('chart').innerHTML='<div class="empty">No rates to plot yet.</div>';$('legend').innerHTML='';return}
+    if(cf==='All')places.sort(function(a,b){return a.name.localeCompare(b.name)});
+    else places.sort(function(a,b){return a[cf]-b[cf]});
+    var series=types.filter(function(t){return places.some(function(p){return p[t]!==undefined})});
+    var hasField=series.indexOf('Field')>-1,hasOther=series.some(function(t){return t!=='Field'});
+    var right=hasField&&hasOther;
+    function axisOf(t){return right&&t==='Field'?'R':'L'}
+    var maxL=0,maxR=0;
+    series.forEach(function(t){places.forEach(function(p){
+      if(p[t]===undefined)return;
+      if(axisOf(t)==='R')maxR=Math.max(maxR,p[t]);else maxL=Math.max(maxL,p[t]);
+    })});
+    maxL=niceMax(maxL*1.15);maxR=niceMax(maxR*1.15);
+    var ml=64,mr=right?64:18,mt=28,mb=56,H=300,n=places.length;
+    var W=Math.max($('chart').clientWidth||320,ml+mr+n*80);
+    var pw=W-ml-mr,ph=H-mt-mb,slot=pw/n;
+    function X(i){return ml+slot*(i+0.5)}
+    function Y(v,ax){return mt+ph*(1-v/(ax==='R'?maxR:maxL))}
+    var g='';
+    for(var t=0;t<=4;t++){
+      var yy=mt+ph*(1-t/4);
+      g+='<line x1="'+ml+'" x2="'+(W-mr)+'" y1="'+yy+'" y2="'+yy+'" style="stroke:var(--line)"/>';
+      g+='<text x="'+(ml-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" style="fill:var(--muted)">'+amt(maxL*t/4)+'</text>';
+      if(right)g+='<text x="'+(W-mr+8)+'" y="'+(yy+4)+'" font-size="11" style="fill:#e8d58f">'+amt(maxR*t/4)+'</text>';
+    }
+    places.forEach(function(p,i){
+      var nm=p.name.length>12?p.name.slice(0,11)+'…':p.name;
+      g+='<text x="'+X(i)+'" y="'+(mt+ph+22)+'" text-anchor="middle" font-size="12" style="fill:var(--text)"><title>'+esc(p.name)+'</title>'+esc(nm)+'</text>';
+    });
+    series.forEach(function(t){
+      var ax=axisOf(t),d='',run=false;
+      places.forEach(function(p,i){
+        if(p[t]===undefined){run=false;return}
+        d+=(run?'L':'M')+X(i).toFixed(1)+' '+Y(p[t],ax).toFixed(1)+' ';run=true;
+      });
+      g+='<path d="'+d+'" fill="none" stroke-width="2" style="stroke:'+COL[t]+'"/>';
+      places.forEach(function(p,i){
+        if(p[t]===undefined)return;
+        var cx=X(i),cy=Y(p[t],ax),below=(t==='Flat'&&cf==='All');
+        g+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="4.5" style="fill:'+COL[t]+';stroke:var(--card)" stroke-width="1.5"/>';
+        g+='<text x="'+cx.toFixed(1)+'" y="'+(below?cy+18:cy-10).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="600" style="fill:var(--text);stroke:var(--card);stroke-width:3px;paint-order:stroke">'+amt(p[t])+'</text>';
+      });
+    });
+    $('chart').innerHTML='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Lowest rate by place">'+g+'</svg>';
+    var lg='';
+    series.forEach(function(t){
+      lg+='<span><i style="background:'+COL[t]+'"></i>'+t+' (₹ per '+(t==='Field'?'acre':'sq yd')+(right&&t==='Field'?', right axis':'')+')</span>';
+    });
+    $('legend').innerHTML=lg;
+  }
+
   /* events */
   $('typeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setType(b.dataset.type)});
   $('chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;state.filter=b.dataset.f;save();renderAll()});
@@ -401,6 +503,14 @@ input[type=month]{color-scheme:dark}
     else if(b.dataset.act==='view-form')showImg(form.images[i]);
   });
   $('lb').addEventListener('click',function(){this.classList.remove('show')});
+  $('cchips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;state.chartFilter=b.dataset.c;save();renderChart()});
+  var rzT;window.addEventListener('resize',function(){clearTimeout(rzT);rzT=setTimeout(renderChart,150)});
+  $('areas').addEventListener('click',function(e){
+    var b=e.target.closest('[data-act="seg"]');if(!b)return;
+    var box=b.parentNode,k=box.dataset.key,on=!box.classList.contains('open');
+    box.classList.toggle('open',on);b.setAttribute('aria-expanded',on);
+    if(on)openSeg[k]=1;else delete openSeg[k];
+  });
   $('save').addEventListener('click',submit);
   $('cancel').addEventListener('click',function(){resetForm();toast('Edit cancelled')});
   $('list').addEventListener('click',function(e){
