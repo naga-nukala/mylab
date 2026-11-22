@@ -12,7 +12,7 @@ button.g{background:var(--bg);color:var(--m);border:1px solid #2c3a33}button.x.a
 :focus-visible{outline:2px solid var(--o)}
 @media(hover:hover) and (pointer:fine){button:hover{filter:brightness(1.12)}}
 table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6px 8px;border-bottom:1px solid #22302a;text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--c)}.sc{overflow-x:auto}
-.row{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid #22302a;align-items:center}.row .tx{flex:1;min-width:0}.r2{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:28px}.r2 input[type=time]{width:112px}.r2 select{flex:1;min-width:110px}input[type=checkbox]{width:20px;height:20px;accent-color:var(--m)}#tabs{margin:8px 0}#tn{width:100%;font-weight:600}.h{color:var(--d);font-size:13px;margin:-4px 0 8px}.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}.rvs{display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-left:28px}.rvc{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid #2c3a33;border-radius:8px;padding:2px 4px;font-size:13px}.rvc input{width:80px;padding:4px}.rvc button{padding:0 6px}.bk{display:inline-block;font-size:14px;text-decoration:none;padding:4px 0}.dt{font-size:17px;font-weight:600;margin:6px 0}.tb{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tb a{padding:7px 14px;border-radius:8px;border:1px solid #2c3a33;color:var(--m);text-decoration:none;font-weight:600}.tb a.on{background:var(--m);color:var(--bg)}</style></head><body>
+.row{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid #22302a;align-items:center}.row .tx{flex:1;min-width:0}.r2{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:28px}.r2 input[type=time]{width:112px}.r2 select{flex:1;min-width:110px}input[type=checkbox]{width:20px;height:20px;accent-color:var(--m)}#tabs{margin:8px 0}#tn{width:100%;font-weight:600}.h{color:var(--d);font-size:13px;margin:-4px 0 8px}.rl{display:flex;flex-direction:column;font-size:13px;color:var(--d);margin-bottom:6px}.rl input{width:100%}.rvs{display:flex;flex-wrap:wrap;gap:6px;width:100%;padding-left:28px}.rvc{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid #2c3a33;border-radius:8px;padding:2px 4px;font-size:13px}.rvc input{width:80px;padding:4px}.rvc button{padding:0 6px}.bk{display:inline-block;font-size:14px;text-decoration:none;padding:4px 0}button[data-ins]{background:var(--o);color:var(--bg);border:0}.dt{font-size:17px;font-weight:600;margin:6px 0}.tb{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tb a{padding:7px 14px;border-radius:8px;border:1px solid #2c3a33;color:var(--m);text-decoration:none;font-weight:600}.tb a.on{background:var(--m);color:var(--bg)}</style></head><body>
 <a href="../index.html" class="bk">← Home</a>
 <h1>Time Zone</h1>
 <nav class="tb" id="nav"><a href="#planner" data-v="today">Planner</a><a href="#contributions" data-v="main">Contributions</a><a href="#month" data-v="rep">Reports</a></nav>
@@ -21,7 +21,7 @@ table{border-collapse:collapse;font-size:13px;white-space:nowrap}td,th{padding:6
 <div class="fl" id="tabs"></div>
 <div class="card" id="tinfo"></div>
 <div class="card"><h2>Day total <span id="sum"></span></h2><div id="chips"></div></div>
-<div class="card"><div id="scope"></div><div id="list"></div><div class="fl" style="margin-top:10px"><button id="add">+ Add at end</button></div></div>
+<div class="card"><div id="scope"></div><div id="list"></div></div>
 <div class="card"><h2>DS Review</h2><p class="h">Fills from ticked blocks that have a review field. You can also type here.</p><div id="rv"></div><details style="margin:8px 0"><summary>Manage review tags</summary><div id="rvm"></div><div class="fl" style="margin-top:8px"><input id="nr" placeholder="e.g. Meditation (min)"><button id="nra">Add</button></div></details><a href="#day">All day-wise reviews</a></div>
 <div class="card"><h2>Backup &amp; share</h2><div class="fl"><button class="g" id="ex">Export JSON</button><button class="g" id="im">Import &amp; merge</button><button class="g x" id="ir">Import &amp; replace</button></div><input type="file" id="fi" accept=".json,application/json" hidden></div>
 </section>
@@ -63,13 +63,16 @@ const kf=d=>{const t=(D.log[d]||{}).tpl;if(t&&D.tm[t])return t;const[y,m,dd]=d.s
 const cur=()=>kf(day);
 const blocksFor=d=>{const L=D.log[d],k=kf(d);return L&&L.ov&&L.ovk==k?L.ov:D.tpl[k]};
 const used=L=>!!L&&!!((L.done&&Object.keys(L.done).length)||L.ed);
-function mkDay(){const L=lg(),k=cur(),[y,m,dd]=day.split('-'),ids=Object.keys(L.done||{});let src=null,key=k;
-for(let n=1;n<=30&&!src;n++){const P=D.log[iso(new Date(y,m-1,+dd-n))];if(P&&P.ov&&P.ovk==k)src=P.ov}
+function mkDay(){const L=lg(),k=cur(),[y,m,dd]=day.split('-'),ids=Object.keys(L.done||{});let src=carry(k),key=k;
 if(ids.length){const sc=a=>a?a.filter(b=>ids.includes(b.id)).length:-1;let best=src,bk=k,bs=sc(src);for(const t in D.tpl){const s2=sc(D.tpl[t]);if(s2>bs){best=D.tpl[t];bk=t;bs=s2}}if(best&&bs>0){src=best;key=bk;L.tpl=bk}}
 L.ov=(src||D.tpl[k]).map(b=>({...b,r:[...rl(b)]}));L.ovk=key;
-const pd=iso(new Date(y,m-1,+dd-1)),P=D.log[pd];
-if(used(P)){const pb=fixB(P.ov||blocksFor(pd)),last=pb[pb.length-1],f=fixB(L.ov)[0];if(last&&f&&mn(f.e)<mn(f.s)&&f.s!=last.e){f.s=last.e;toast('Sleep starts at '+last.e+', where the previous day ended')}}
-save()}
+chainSleep();save()}
+function carry(k){const[y,m,dd]=day.split('-');for(let n=1;n<=30;n++){const P=D.log[iso(new Date(y,m-1,+dd-n))];if(P&&P.ov&&P.ovk==k)return P.ov}return null}
+function chainSleep(){const L=lg(),[y,m,dd]=day.split('-'),pd=iso(new Date(y,m-1,+dd-1)),P=D.log[pd];if(!L.ov||!used(P))return;
+const pb=fixB(P.ov||blocksFor(pd)),last=pb[pb.length-1],f=fixB(L.ov)[0];if(!last||!f||!(mn(f.e)<mn(f.s)))return;
+if(f.s==last.e){L.ch=last.e;return}
+if(L.ch==null?used(L):f.s!=L.ch)return;
+f.s=last.e;L.ch=last.e;save();toast('Sleep starts at '+last.e+', where the previous day ended')}
 const mn=s=>{const[h,m]=(s||'').split(':');return h*60+ +m},dur=b=>{let d=mn(b.e)-mn(b.s);if(isNaN(d))return 0;if(d<0)d+=1440;return d/60};
 const rl=b=>Array.isArray(b.r)?b.r:(b.r?[b.r]:[]);
 const rn=(b,L)=>{const v=((L.bv||{})[b.id])||{};return[...new Set([...rl(b),...Object.keys(v).filter(k=>String(v[k]||'').trim()&&RVn().includes(k))])]};
@@ -90,6 +93,7 @@ const shiftB=(b,d)=>{b.s=hm(mn(b.s)+d);b.e=hm(mn(b.e)+d);const L=D.log[day];if(L
 function resnap(){const L=D.log[day];if(!L||!L.done||!L.ov)return;const by={};L.ov.forEach(b=>by[b.id]=b);let n=0;
 for(const id in L.done){const b=by[id];if(b)L.done[id]=snap(b);else{delete L.done[id];n++}}
 if(n){syncRv();save();toast(n+' old tick(s) with no matching block removed')}else save()}
+const sortB=B=>{let sl=null,m=0;for(const b of B){const s=mn(b.s),e=mn(b.e);if(e<s){const d=e+1440-s;if(d>=240&&d>m){m=d;sl=b}}}const k=b=>b===sl?mn(b.s)-1440:mn(b.s);return B.sort((a,b)=>k(a)-k(b))};
 const fixB=B=>{for(let n=0;n<B.length;n++){const f=B[0];if(f&&B.length>1&&mn(f.e)<mn(f.s)&&dur(f)<4)B.push(B.shift());else break}return B};
 const blocks=()=>{const L=lg();if(!L.ov)mkDay();return L.ov};
 const opts=g=>[...new Set([...D.tags,g])].map(t=>`<option ${t==g?'selected':''}>${esc(t)}</option>`).join('');
@@ -97,13 +101,13 @@ const DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 function stat(){resnap();const B=blocks(),h=H(day),dn=Object.values(h).reduce((a,x)=>a+x,0);
 $('#sum').textContent=f(dn)+' logged';
 $('#chips').innerHTML=Object.entries(h).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`<span class="chip">#${esc(t)} ${f(v)}</span>`).join('')||'<span style="color:var(--d)">Tick a block to add its hours.</span>'}
-function draw(){const k=cur(),B=fixB(blocks()),m=D.tm[k],L=D.log[day]||{};$('#hd').textContent=DN[dow]+', '+fd(day);$('#dp').value=day;
+function draw(){blocks();chainSleep();const k=cur(),B=fixB(blocks()),m=D.tm[k],L=D.log[day]||{};$('#hd').textContent=DN[dow]+', '+fd(day);$('#dp').value=day;
 $('#tabs').innerHTML=Object.keys(D.tm).map(x=>`<button class="${x==k?'':'g'}" data-tab="${x}">${esc(D.tm[x].n)}</button>`).join('')+'<button class="g" data-new>+ New</button>';
-$('#tinfo').innerHTML=`<input id="tn" value="${esc(m.n)}" aria-label="Template name"><div class="fl" style="margin-top:8px">${DS.map((n,i)=>`<button class="${m.d.includes(i)?'':'g'}" data-day="${i}">${n}</button>`).join('')}</div><div style="color:var(--d);font-size:13px;margin:6px 0">Loads on the selected days. A tab loads that template into this day.</div><div class="fl"><button class="g" data-dup>Duplicate</button><button class="g x" data-rm>Delete template</button></div>`;
+$('#tinfo').innerHTML=`<input id="tn" value="${esc(m.n)}" aria-label="Template name"><div class="fl" style="margin-top:8px">${DS.map((n,i)=>`<button class="${m.d.includes(i)?'':'g'}" data-day="${i}">${n}</button>`).join('')}</div><div style="color:var(--d);font-size:13px;margin:6px 0">Loads on the selected days. A tab loads your latest day on that template.</div><div class="fl"><button class="g" data-dup>Duplicate</button><button class="g x" data-rm>Delete template</button></div>`;
 $('#list').innerHTML=B.map((b,i)=>`<div class="row" data-i="${i}"><input type="checkbox" data-f="done" aria-label="Done" ${L.done&&L.done[b.id]?'checked':''}><input class="tx" data-f="t" value="${esc(b.t)}"><div class="r2"><input type="time" data-f="s" data-p="${b.s}" value="${b.s}"><input type="time" data-f="e" data-p="${b.e}" value="${b.e}"><select data-f="g">${opts(b.g)}</select><button class="g" data-ins="${i}" aria-label="Add block after this">＋</button><button class="g x" data-del="${i}" aria-label="Delete">✕</button></div>${rvh(b,L)}</div>`).join('');
-$('#scope').innerHTML=`<div class="fl"><button class="g x" data-scope="reset">Reset day</button><button class="g x" data-scope="save">Save as default template</button></div><p class="h" style="margin:6px 0 4px">Edits apply to this day only. Reset day reloads the template's blocks. New days start from your latest day.</p>`;
+$('#scope').innerHTML=`<div class="fl"><button class="g x" data-scope="reset">Reset day</button><button class="g x" data-scope="save">Save as default template</button></div><p class="h" style="margin:6px 0 4px">Edits apply to this day only. Reset day reloads the template's blocks. New days start from your latest day on the same template.</p>`;
 stat();fillRv()}
-$('#tabs').onclick=e=>{const d=e.target.dataset;if(d.tab){const L=lg(),x=d.tab;if(x==cur())return;const go=()=>{L.tpl=x;L.ov=D.tpl[x].map(b=>({...b,r:[...rl(b)]}));L.ovk=x;L.ed=0;syncRv();save();draw()};used(L)?twice('ut'+x,go):go()}else if('new' in d){const k='t'+uid(),L=lg();D.tpl[k]=blocks().map(b=>({...b,r:[...rl(b)]}));D.tm[k]={n:'New template',d:[]};L.tpl=k;L.ovk=k;save();draw();toast('Template created from this day')}};
+$('#tabs').onclick=e=>{const d=e.target.dataset;if(d.tab){const L=lg(),x=d.tab;if(x==cur())return;const go=()=>{L.tpl=x;L.ov=(carry(x)||D.tpl[x]).map(b=>({...b,r:[...rl(b)]}));L.ovk=x;L.ed=0;chainSleep();syncRv();save();draw()};used(L)?twice('ut'+x,go):go()}else if('new' in d){const k='t'+uid(),L=lg();D.tpl[k]=blocks().map(b=>({...b,r:[...rl(b)]}));D.tm[k]={n:'New template',d:[]};L.tpl=k;L.ovk=k;save();draw();toast('Template created from this day')}};
 $('#tinfo').oninput=e=>{if(e.target.id!='tn')return;const k=cur();D.tm[k].n=e.target.value;const b=$('[data-tab="'+k+'"]');if(b)b.textContent=e.target.value;save()};
 $('#tinfo').onclick=e=>{const d=e.target.dataset,k=cur(),m=D.tm[k];
 if(d.day!=null){const i=+d.day;m.d=m.d.includes(i)?m.d.filter(x=>x!=i):[...m.d,i];save();draw()}
@@ -114,7 +118,7 @@ if(fl=='done'){if(e.target.checked)L.done[b.id]=snap(b);else delete L.done[b.id]
 syncRv();save();if(fl=='radd')draw();else stat()};
 $('#list').onchange=e=>{const r=e.target.closest('.row'),fl=e.target.dataset.f;if(!r||(fl!='s'&&fl!='e'))return;const B=blocks(),i=+r.dataset.i,b=B[i],o=e.target.dataset.p,n=e.target.value;if(!n){e.target.value=o;return}
 let d=mn(n)-mn(o);d=((d+720)%1440+1440)%1440-720;if(!d)return;
-if(fl=='s')b.s=n;else{b.e=n;for(let j=i+1;j<B.length;j++)shiftB(B[j],d)}
+if(fl=='s'){b.s=n;sortB(B)}else{b.e=n;for(let j=i+1;j<B.length;j++)shiftB(B[j],d)}
 const L=lg();L.ed=1;if(L.done&&L.done[b.id])L.done[b.id]=snap(b);syncRv();save();draw();toast(fl=='s'?'Start changed, hours updated':'Later blocks moved '+Math.abs(d)+' min '+(d>0?'later':'earlier'))};
 function ins(i){const B=blocks(),a=B[i],d=15;lg().ed=1;for(let j=i+1;j<B.length;j++)shiftB(B[j],d);B.splice(i+1,0,{id:uid(),s:a.e,e:hm(mn(a.e)+d),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added, later blocks moved 15 min')}
 $('#scope').onclick=e=>{const c=e.target.dataset.scope;if(!c)return;const L=lg(),k=cur();
@@ -122,7 +126,6 @@ if(c=='reset')twice('so',()=>{L.ov=D.tpl[k].map(b=>({...b,r:[...rl(b)]}));L.ovk=
 else if(c=='save')twice('sv',()=>{D.tpl[k]=blocks().map(b=>({...b,r:[...rl(b)]}));save();draw();toast('Saved as the default template')});
 if(arm)e.target.classList.add('arm')};
 $('#list').onclick=e=>{const B=blocks(),rk=e.target.dataset.rrm;if(rk!=null){const b=B[e.target.closest('.row').dataset.i];setR(b,rl(b).filter(x=>x!=rk));{const L=lg();L.ed=1;if(L.bv&&L.bv[b.id])delete L.bv[b.id][rk]}syncRv();save();draw();return}if(e.target.dataset.ins!=null)return ins(+e.target.dataset.ins);const i=e.target.dataset.del;if(i==null)return;const b=B[i];twice('d'+b.id,()=>{const L=lg();L.ed=1;if(L.done)delete L.done[b.id];B.splice(i,1);save();draw();toast('Deleted')});if(arm)e.target.classList.add('arm')};
-$('#add').onclick=()=>{lg().ed=1;const B=blocks(),a=B[B.length-1],st=a?a.e:'09:00';B.push({id:uid(),s:st,e:hm(mn(st)+30),t:'New block',g:D.tags[0]||''});save();draw();toast('Block added')};
 function syncRv(){const L=lg(),B=blocks(),a={},mp=new Set,F={};D.rvf.forEach(x=>F[x.n]=x);L.rv=L.rv||{};L.au=L.au||{};
 for(const b of B)for(const n of rn(b,L)){const x=F[n];if(!x)continue;mp.add(n);if(!(L.done&&L.done[b.id]))continue;let v=String((((L.bv||{})[b.id])||{})[n]||'').trim();if(!v&&x.a)v=x.u?(/\(min/i.test(x.n)?Math.round(dur(b)*60):dur(b)):f(dur(b));if(v!=='')(a[n]=a[n]||[]).push(v)}
 for(const k of mp){if(a[k]){L.rv[k]=F[k].u?String(Math.round(a[k].reduce((p,q)=>p+(+q||0),0)*100)/100):a[k].join(', ');L.au[k]=1}else if(L.au[k]){delete L.rv[k];delete L.au[k]}}
