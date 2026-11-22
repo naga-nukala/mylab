@@ -127,10 +127,11 @@ input[type=month]{color-scheme:dark}
     <div class="grid">
       <div class="full"><label for="place">Place</label><input id="place" list="places" placeholder="e.g. Gajwel" autocomplete="off"><datalist id="places"></datalist></div>
       <div><label for="month">Month - Year</label><input id="month" type="month"></div>
-      <div id="yardsWrap"><label for="yards">Yards (sq yd)</label><input id="yards" type="number" inputmode="decimal" min="0" step="any" placeholder="200"></div>
+      <div id="yardsWrap"><label for="yards" id="yardsLbl">Yards (sq yd)</label><input id="yards" type="number" inputmode="decimal" min="0" step="any" placeholder="200"></div>
       <div id="acresWrap" hidden><label for="acres">No. of acres</label><input id="acres" type="number" inputmode="decimal" min="0" step="any" placeholder="2.5"></div>
-      <div><label for="rate" id="rateLbl">Rate per sq yd (₹)</label><input id="rate" type="number" inputmode="decimal" min="0" step="any" placeholder="15000"></div>
       <div id="priceWrap" hidden><label for="price">Flat price (₹)</label><input id="price" type="number" inputmode="decimal" min="0" step="any" placeholder="4500000"></div>
+      <div><label for="rate" id="rateLbl">Rate per sq yd (₹)</label><input id="rate" type="number" inputmode="decimal" min="0" step="any" placeholder="15000"></div>
+      <div id="udsWrap" hidden><label for="uds">UDS (sq yd, optional)</label><input id="uds" type="number" inputmode="decimal" min="0" step="any" placeholder="40"></div>
       <div id="rentWrap" hidden><label for="rent">Monthly rent (₹)</label><input id="rent" type="number" inputmode="decimal" min="0" step="any" placeholder="18000"></div>
       <div class="full"><label for="notes">Notes</label><textarea id="notes" rows="2" placeholder="Facing, road width, owner contact, anything to remember"></textarea></div>
     </div>
@@ -187,8 +188,22 @@ input[type=month]{color-scheme:dark}
   function monthLabel(m){var p=(m||'').split('-');return p.length===2?MON[+p[1]-1]+' '+p[0]:'-'}
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 
+  /* Flat: the "yards" field has always held the area in sq ft, so it stays as is.
+     Entries saved by the short-lived sq ft build (field `sqft`) are folded back in. */
+  function migrate(){
+    state.items.forEach(function(x){
+      if(x.type==='Field')return;
+      if(!(+x.yards)&&+x.sqft)x.yards=(x.type==='Plot')?x.sqft/9:+x.sqft;
+      delete x.sqft;
+    });
+  }
+  function unitName(t){return t==='Field'?'acre':t==='Flat'?'sq ft':'sq yd'}
+  function areaTxt(x){
+    if(x.type==='Field')return inr(x.acres)+' acres';
+    return inr(x.yards)+(x.type==='Flat'?' sq ft':' sq yd');
+  }
   function load(){
-    try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items;state.filter=s.filter||'All';state.chartFilter=s.chartFilter||'All'}}catch(e){}
+    try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items;state.filter=s.filter||'All';state.chartFilter=s.chartFilter||'All';migrate()}}catch(e){}
   }
   function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){toast('Storage full. Remove some photos.');return false}}
 
@@ -196,18 +211,15 @@ input[type=month]{color-scheme:dark}
 
   /* effective numbers for an entry */
   function calc(it){
-    var y=+it.yards||0, r=+it.rate||0, p=+it.price||0;
-    if(it.type==='Field')return {rate:r,total:(+it.acres||0)*r,yld:0};
-    var rate=r, total=0;
+    var r=+it.rate||0,p=+it.price||0,y=+it.yards||0;
+    if(it.type==='Field')return {rate:r,total:(+it.acres||0)*r,yld:0,land:0};
     if(it.type==='Flat'){
-      total=p||(y&&r?y*r:0);
-      if(!rate&&y&&p)rate=p/y;
-    }else{
-      total=y&&r?y*r:0;
+      var total=p||(y&&r?y*r:0);
+      var land=(+it.uds>0&&r>0)?(+it.uds)*r:0;
+      var yld=(+it.rent>0&&total>0)?(+it.rent*12)/total*100:0;
+      return {rate:(y&&total?total/y:0),total:total,yld:yld,land:land};
     }
-    var yld=0;
-    if(it.type==='Flat'&&+it.rent>0&&total>0)yld=(+it.rent*12)/total*100;
-    return {rate:rate,total:total,yld:yld};
+    return {rate:r,total:(y&&r?y*r:0),yld:0,land:0};
   }
 
   /* form */
@@ -217,27 +229,30 @@ input[type=month]{color-scheme:dark}
     for(var i=0;i<bs.length;i++)bs[i].classList.toggle('on',bs[i].dataset.type===t);
     $('priceWrap').hidden=(t!=='Flat');$('rentWrap').hidden=(t!=='Flat');
     $('yardsWrap').hidden=(t==='Field');$('acresWrap').hidden=(t!=='Field');
-    $('rateLbl').textContent=t==='Field'?'Price per acre (₹)':'Rate per sq yd (₹)';
+    $('udsWrap').hidden=(t!=='Flat');
+    $('yardsLbl').textContent=t==='Flat'?'Flat area (sq ft)':'Yards (sq yd)';
+    $('yards').placeholder=t==='Flat'?'1250':'200';
+    $('rateLbl').textContent=t==='Field'?'Price per acre (₹)':t==='Flat'?'Land rate per sq yd (₹, optional)':'Rate per sq yd (₹)';
     liveCalc();
   }
   function readForm(){
     return {type:form.type,place:$('place').value.trim(),month:$('month').value,
-      yards:form.type==='Field'?0:num($('yards').value),acres:form.type==='Field'?num($('acres').value):0,rate:num($('rate').value),price:form.type==='Flat'?num($('price').value):0,rent:form.type==='Flat'?num($('rent').value):0,notes:$('notes').value.trim(),images:form.images.slice()};
+      yards:form.type==='Field'?0:num($('yards').value),uds:form.type==='Flat'?num($('uds').value):0,acres:form.type==='Field'?num($('acres').value):0,rate:num($('rate').value),price:form.type==='Flat'?num($('price').value):0,rent:form.type==='Flat'?num($('rent').value):0,notes:$('notes').value.trim(),images:form.images.slice()};
   }
   function liveCalc(){
     var it=readForm(),c=calc(it),out=[];
-    if(c.total)out.push('Total value: <b>'+rs(c.total)+'</b>');
-    if(c.yld)out.push('Rental yield: <b>'+c.yld.toFixed(2)+'%</b> a year');
-    if(it.type==='Flat'&&!it.rate&&c.rate)out.push('Rate: <b>'+rs(c.rate)+'</b>/sq yd');
-    if(it.type==='Flat'&&it.price&&it.yards&&it.rate){
-      var diff=it.price-it.yards*it.rate;
-      if(Math.abs(diff)>1)out.push('Price vs yards × rate: <b>'+(diff>0?'+':'-')+rs(Math.abs(diff))+'</b>');
+    if(it.type==='Flat'){
+      if(c.rate)out.push('Price per sq ft: <b>'+rs(c.rate)+'</b>');
+      if(c.land)out.push('Land price: <b>'+rs(c.land)+'</b>'+(c.total?' ('+(c.land/c.total*100).toFixed(1)+'% of price)':''));
+      if(c.yld)out.push('Rental yield: <b>'+c.yld.toFixed(2)+'%</b> a year');
+    }else if(c.total){
+      out.push('Total value: <b>'+rs(c.total)+'</b>');
     }
     $('calc').innerHTML=out.join(' &nbsp;·&nbsp; ');
   }
   function resetForm(){
     form.editId=null;form.images=[];renderFormImgs();
-    $('place').value='';$('yards').value='';$('rate').value='';$('price').value='';$('rent').value='';$('acres').value='';$('notes').value='';
+    $('place').value='';$('yards').value='';$('uds').value='';$('rate').value='';$('price').value='';$('rent').value='';$('acres').value='';$('notes').value='';
     $('formTitle').textContent='Add a rate';
     $('save').textContent='Save rate';
     $('cancel').hidden=true;$('err').textContent='';
@@ -249,8 +264,8 @@ input[type=month]{color-scheme:dark}
     var it=readForm(),c=calc(it);
     if(!it.place){$('err').textContent='Enter the place.';return}
     if(!it.month){$('err').textContent='Pick the month and year.';return}
-    if(it.type==='Field'?!it.acres:!it.yards){$('err').textContent=it.type==='Field'?'Enter the number of acres.':'Enter the yards.';return}
-    if(!c.rate){$('err').textContent=it.type==='Flat'?'Enter the rate per sq yd or the flat price.':it.type==='Field'?'Enter the price per acre.':'Enter the rate per sq yd.';return}
+    if(it.type==='Field'?!it.acres:!it.yards){$('err').textContent=it.type==='Field'?'Enter the number of acres.':it.type==='Flat'?'Enter the area in sq ft.':'Enter the yards.';return}
+    if(it.type==='Flat'?!it.price:!c.rate){$('err').textContent=it.type==='Flat'?'Enter the flat price.':it.type==='Field'?'Enter the price per acre.':'Enter the rate per sq yd.';return}
     $('err').textContent='';
     var prev=state.items.slice(),wasEdit=!!form.editId;
     if(wasEdit){
@@ -267,7 +282,7 @@ input[type=month]{color-scheme:dark}
     var it=state.items.filter(function(x){return x.id===id})[0];if(!it)return;
     form.editId=id;setType(it.type);
     $('place').value=it.place;$('month').value=it.month;
-    $('yards').value=it.yards||'';$('rate').value=it.rate||'';$('price').value=it.price||'';$('rent').value=it.rent||'';$('acres').value=it.acres||'';$('notes').value=it.notes||'';
+    $('yards').value=it.yards||'';$('uds').value=it.uds||'';$('rate').value=it.rate||'';$('price').value=it.price||(it.type==='Flat'&&calc(it).total?calc(it).total:'');$('rent').value=it.rent||'';$('acres').value=it.acres||'';$('notes').value=it.notes||'';
     form.images=(it.images||[]).slice();renderFormImgs();
     $('formTitle').textContent='Edit rate';$('save').textContent='Update rate';$('cancel').hidden=false;
     liveCalc();window.scrollTo({top:0,behavior:'smooth'});
@@ -288,14 +303,14 @@ input[type=month]{color-scheme:dark}
   function filtered(){return state.items.filter(function(x){return state.filter==='All'||x.type===state.filter})}
 
   function renderSummary(){
-    var items=filtered(),isF=state.filter==='Field';
-    var rates=items.filter(function(x){return (x.type==='Field')===isF}).map(function(x){return calc(x).rate}).filter(Boolean);
+    var items=filtered(),rt=state.filter==='All'?'Plot':state.filter;
+    var rates=items.filter(function(x){return x.type===rt}).map(function(x){return calc(x).rate}).filter(Boolean);
     var places={};items.forEach(function(x){places[x.place.toLowerCase()]=1});
     var avg=rates.length?rates.reduce(function(a,b){return a+b},0)/rates.length:0;
     $('sum').innerHTML=
       '<div><b>'+items.length+'</b><span>Entries</span></div>'+
       '<div><b>'+Object.keys(places).length+'</b><span>Areas</span></div>'+
-      '<div><b>'+(avg?rs(avg):'-')+'</b><span>'+(isF?'Avg price / acre':'Avg rate / sq yd')+'</span></div>';
+      '<div><b>'+(avg?rs(avg):'-')+'</b><span>'+(rt==='Field'?'Avg price / acre':rt==='Flat'?'Avg flat rate / sq ft':state.filter==='All'?'Avg plot rate / sq yd':'Avg rate / sq yd')+'</span></div>';
   }
 
   function yieldHtml(t,arr){
@@ -305,6 +320,13 @@ input[type=month]{color-scheme:dark}
     if(!ys.length)return '';
     var sum=function(a){return a.reduce(function(p,q){return p+q},0)};
     return '<div class="trend">Rental yield: avg <b>'+(sum(ys)/ys.length).toFixed(2)+'%</b> · best '+Math.max.apply(null,ys).toFixed(2)+'% · avg rent '+rs(sum(rents)/rents.length)+'/mo ('+ys.length+(ys.length===1?' entry':' entries')+')</div>';
+  }
+  function landHtml(t,arr){
+    if(t!=='Flat')return '';
+    var ls=[];arr.forEach(function(x){var c=calc(x);if(c.land)ls.push(c.land)});
+    if(!ls.length)return '';
+    var a=ls.reduce(function(p,q){return p+q},0)/ls.length;
+    return '<div class="trend">Land price (UDS × rate): avg <b>'+rs(a)+'</b> · lowest '+rs(Math.min.apply(null,ls))+' · highest '+rs(Math.max.apply(null,ls))+'</div>';
   }
   var openSeg={};
   function renderAreas(){
@@ -342,8 +364,8 @@ input[type=month]{color-scheme:dark}
           '<span class="rg">Lowest '+amt(min)+' · Highest '+amt(max)+'</span><span class="chev">▶</span></div>'+
           '<div class="sg-l2">'+trend+'</div></button>'+
           '<div class="sg-b"><div class="mets"><div><b>'+rs(avg)+'</b><span>Average</span></div><div><b>'+rs(min)+'</b><span>Lowest</span></div><div><b>'+rs(max)+'</b><span>Highest</span></div><div><b>'+rs(latest)+'</b><span>Latest ('+monthLabel(ms[ms.length-1])+')</span></div></div>'+
-          '<div class="trend">'+rows.length+(rows.length===1?' entry':' entries')+' · per '+(t==='Field'?'acre':'sq yd')+'</div>'+
-          yieldHtml(t,arr)+'</div></div>';
+          '<div class="trend">'+rows.length+(rows.length===1?' entry':' entries')+' · per '+unitName(t)+'</div>'+
+          yieldHtml(t,arr)+landHtml(t,arr)+'</div></div>';
       });
     });
     $('areas').innerHTML=h;
@@ -355,8 +377,9 @@ input[type=month]{color-scheme:dark}
     $('list').innerHTML=items.map(function(x){
       var c=calc(x);
       return '<div class="item"><div class="l"><div class="t"><span class="tag '+x.type+'">'+x.type+'</span> '+esc(x.place)+'</div>'+
-        '<div class="d">'+monthLabel(x.month)+' · '+(x.type==='Field'?inr(x.acres)+' acres':inr(x.yards)+' sq yd')+(x.type==='Flat'&&x.price?' · Flat '+rs(x.price):'')+(x.type==='Flat'&&x.rent?' · Rent '+rs(x.rent)+'/mo':'')+'</div>'+(x.notes?'<div class="note">'+esc(x.notes)+'</div>':'')+'</div>'+
-        '<div class="r"><b>'+rs(c.rate)+'</b>'+(x.type==='Field'?'/acre':'/sq yd')+'<div class="d">Total '+(c.total?rs(c.total):'-')+'</div>'+
+        '<div class="d">'+monthLabel(x.month)+' · '+areaTxt(x)+(x.type==='Flat'&&x.price?' · Flat '+rs(x.price):'')+(x.type==='Flat'&&x.uds?' · UDS '+inr(x.uds)+' sq yd':'')+(x.type==='Flat'&&x.rent?' · Rent '+rs(x.rent)+'/mo':'')+'</div>'+(x.notes?'<div class="note">'+esc(x.notes)+'</div>':'')+'</div>'+
+        '<div class="r"><b>'+rs(c.rate)+'</b>'+'/'+unitName(x.type)+'<div class="d">Total '+(c.total?rs(c.total):'-')+'</div>'+
+        (c.land?'<div class="d">Land <b>'+rs(c.land)+'</b></div>':'')+
         (c.yld?'<div class="d">Yield <b>'+c.yld.toFixed(2)+'%</b></div>':'')+
         thumbsHtml(x.images||[],x.id,false)+
         '<div class="acts"><button class="sm" data-act="edit" data-id="'+x.id+'">Edit</button><button class="sm del" data-act="del" data-id="'+x.id+'">Delete</button></div></div></div>';
@@ -435,6 +458,7 @@ input[type=month]{color-scheme:dark}
     state.items.forEach(function(x){
       if(types.indexOf(x.type)<0)return;
       var r=calc(x).rate;if(!r)return;
+      if(cf==='All'&&x.type==='Plot')r=r/9;
       var k=x.place.toLowerCase(),g=map[k]||(map[k]={name:x.place});
       if(g[x.type]===undefined||r<g[x.type])g[x.type]=r;
     });
@@ -485,7 +509,7 @@ input[type=month]{color-scheme:dark}
     $('chart').innerHTML='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Lowest rate by place">'+g+'</svg>';
     var lg='';
     series.forEach(function(t){
-      lg+='<span><i style="background:'+COL[t]+'"></i>'+t+' (₹ per '+(t==='Field'?'acre':'sq yd')+(right&&t==='Field'?', right axis':'')+')</span>';
+      lg+='<span><i style="background:'+COL[t]+'"></i>'+t+' (₹ per '+(t==='Field'?'acre':(t==='Flat'||cf==='All')?'sq ft':'sq yd')+(cf==='All'&&t==='Plot'?', converted from sq yd':'')+(right&&t==='Field'?', right axis':'')+')</span>';
     });
     $('legend').innerHTML=lg;
   }
@@ -493,7 +517,7 @@ input[type=month]{color-scheme:dark}
   /* events */
   $('typeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(b)setType(b.dataset.type)});
   $('chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;state.filter=b.dataset.f;save();renderAll()});
-  ['yards','acres','rate','price','rent','place','month'].forEach(function(id){$(id).addEventListener('input',liveCalc)});
+  ['yards','uds','acres','rate','price','rent','place','month'].forEach(function(id){$(id).addEventListener('input',liveCalc)});
   $('addImg').addEventListener('click',function(){$('imgInput').click()});
   $('imgInput').addEventListener('change',function(e){if(e.target.files.length)addFiles(e.target.files);e.target.value=''});
   $('formImgs').addEventListener('click',function(e){
