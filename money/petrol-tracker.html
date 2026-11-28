@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1311">
+<title>Petrol Tracker · Little Lab</title>
+<style>
+:root{
+  --bg:#0e1311;--card:#161d1a;--card2:#1c2521;--line:#26322d;
+  --text:#e8f0ec;--muted:#8b9b93;--mint:#a7e8c5;--coral:#ff8c70;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:max(14px,env(safe-area-inset-top)) 14px max(40px,env(safe-area-inset-bottom))}
+.wrap{max-width:720px;margin:0 auto}
+a{color:var(--mint);text-decoration:none}
+h1{font-size:22px;margin:6px 0 2px;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--mint)}
+
+/* summary */
+.sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:520px){.sum{grid-template-columns:repeat(3,1fr)}}
+.stat{background:var(--card2);border-radius:10px;padding:10px}
+.stat .v{font-size:18px;font-weight:650}
+.stat .l{font-size:12px;color:var(--muted)}
+.stat.hl .v{color:var(--mint)}
+
+/* form */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+label.f{display:block;font-size:12px;color:var(--muted)}
+label.f input{display:block;width:100%;margin-top:4px}
+input[type=text],input[type=number],input[type=date]{
+  background:var(--card2);border:1px solid var(--line);border-radius:10px;color:var(--text);
+  padding:10px;font:inherit;min-height:42px;color-scheme:dark}
+input:focus{outline:2px solid var(--mint);outline-offset:1px}
+input[readonly]{color:var(--mint);font-weight:600}
+.hint{font-size:12px;color:var(--muted);margin-top:3px;min-height:16px}
+.hint.warn{color:var(--coral)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:13px;margin-top:2px;cursor:pointer}
+.chk input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--coral);flex:none}
+.chk small{display:block;color:var(--muted)}
+.btns{display:flex;gap:8px;margin-top:12px}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;min-height:42px;cursor:pointer;
+  background:var(--card2);color:var(--text);border:1px solid var(--line)}
+button.pri{background:var(--mint);color:#0b1511;border-color:var(--mint);font-weight:650;flex:1}
+button.dng.armed{background:var(--coral);color:#1a0d09;border-color:var(--coral)}
+button.sm{min-height:34px;padding:6px 12px;font-size:13px}
+@media (hover:hover) and (pointer:fine){
+  button:hover{border-color:var(--mint)}
+  button.pri:hover{filter:brightness(1.08)}
+}
+.banner{background:rgba(255,140,112,.12);border:1px solid var(--coral);color:var(--coral);
+  border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+.banner.info{background:rgba(167,232,197,.1);border-color:var(--mint);color:var(--mint)}
+.hide{display:none!important}
+
+/* metrics */
+details{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
+summary{list-style:none;cursor:pointer;padding:13px 14px;display:flex;justify-content:space-between;gap:10px;font-weight:600;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"▸";color:var(--mint);transition:transform .15s;margin-left:6px}
+details[open]>summary::after{transform:rotate(90deg)}
+summary .sv{margin-left:auto;color:var(--mint);font-weight:500;font-size:13px;text-align:right}
+.mbody{padding:0 14px 14px}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.mini div{background:var(--card2);border-radius:8px;padding:6px 8px;text-align:center}
+.mini b{display:block;font-size:14px}
+.mini span{font-size:11px;color:var(--muted)}
+.mrow{display:grid;grid-template-columns:78px 1fr auto;gap:8px;align-items:center;padding:5px 0;font-size:13px}
+.mrow .bar{height:8px;background:var(--card2);border-radius:4px;overflow:hidden}
+.mrow .bar i{display:block;height:100%;background:var(--mint);border-radius:4px}
+.mrow .val{text-align:right;font-variant-numeric:tabular-nums}
+.mrow.gap{color:var(--coral)}
+.mrow.gap .gt{grid-column:2/-1;font-size:12px}
+.mrow .warn{color:var(--coral);font-size:11px}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+
+/* list */
+.row{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:8px}
+.row.flag{border-color:var(--coral)}
+.r1{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.r1 .amt{color:var(--mint)}
+.r2{color:var(--muted);font-size:13px;margin-top:3px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{font-size:12px;border-radius:20px;padding:2px 9px;background:var(--card2);color:var(--text)}
+.tag.m{background:rgba(167,232,197,.14);color:var(--mint)}
+.tag.c{background:rgba(255,140,112,.14);color:var(--coral)}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.empty{text-align:center;color:var(--muted);padding:26px 10px}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--text);color:#0b1511;padding:9px 16px;border-radius:24px;font-size:13px;font-weight:600;
+  opacity:0;pointer-events:none;transition:.2s;z-index:9;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../index.html" style="font-size:13px">← Little Lab</a>
+  <h1>Petrol Tracker</h1>
+  <div class="sub">Fill-ups, mileage and monthly spend. Stays on this device.</div>
+
+  <!-- Summary -->
+  <div class="card"><div class="sum" id="summary"></div></div>
+
+  <!-- Form -->
+  <div class="card" id="formCard">
+    <h2 id="formTitle">Add fill-up</h2>
+    <div class="banner hide" id="formBanner"></div>
+    <div class="grid">
+      <label class="f">Date
+        <input type="date" id="f-date">
+        <div class="hint" id="h-date"></div>
+      </label>
+      <label class="f">Bike reading (km)
+        <input type="number" id="f-read" inputmode="decimal" min="0" step="any" placeholder="e.g. 12450">
+      </label>
+      <label class="f">Litre price (₹)
+        <input type="number" id="f-price" inputmode="decimal" min="0" step="any" placeholder="e.g. 107.46">
+      </label>
+      <label class="f">No of litres
+        <input type="number" id="f-lit" inputmode="decimal" min="0" step="any" placeholder="e.g. 5.2">
+      </label>
+      <label class="f">Amount (₹)
+        <input type="number" id="f-amt" inputmode="decimal" min="0" step="any" placeholder="auto">
+      </label>
+      <label class="f">Petrol density (kg/m³)
+        <input type="number" id="f-den" inputmode="decimal" min="0" step="any" placeholder="optional">
+      </label>
+      <label class="f">No. of kms (reading − last reading)
+        <input type="text" id="f-kms" readonly placeholder="auto">
+      </label>
+      <label class="f">Petrol dealer (optional)
+        <input type="text" id="f-dealer" maxlength="60" placeholder="e.g. HP Banjara Hills">
+      </label>
+      <div class="full hint" id="h-calc"></div>
+      <label class="chk full" for="f-missed">
+        <input type="checkbox" id="f-missed">
+        <span>I missed logging a fill-up before this one
+          <small>Kms still count. This fill is left out of mileage because its kms covers more than one fill-up.</small></span>
+      </label>
+    </div>
+    <div class="btns">
+      <button class="pri" id="btnSave" data-action="save">Add fill-up</button>
+      <button id="btnCancel" class="hide" data-action="cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <details id="m-mil"><summary>Mileage <span class="sv" id="sv-mil"></span></summary><div class="mbody" id="b-mil"></div></details>
+  <details id="m-kms"><summary>Kms travelled per month <span class="sv" id="sv-kms"></span></summary><div class="mbody" id="b-kms"></div></details>
+  <details id="m-amt"><summary>Amount spent per month <span class="sv" id="sv-amt"></span></summary><div class="mbody" id="b-amt"></div></details>
+  <details id="m-lit"><summary>Litres per month <span class="sv" id="sv-lit"></span></summary><div class="mbody" id="b-lit"></div></details>
+
+  <h2 style="font-size:15px;margin:18px 2px 8px;color:var(--mint)">Fill-ups</h2>
+  <div id="list"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='petrol_v1';
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var entries=[];
+var editId=null;
+var pendingDel=null;
+var $=function(s){return document.querySelector(s)};
+
+/* ---------- storage ---------- */
+function load(){
+  try{var r=JSON.parse(localStorage.getItem(KEY));if(r&&Array.isArray(r.entries))entries=r.entries}catch(e){}
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify({entries:entries}))}catch(e){toast('Could not save on this device')}
+}
+
+/* ---------- helpers ---------- */
+function pad(n){return n<10?'0'+n:''+n}
+function todayISO(){var t=new Date();return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())}
+function fmtDate(iso){if(!iso)return '';var p=iso.split('-');return p[2]+'th '+MON[+p[1]-1]+' '+p[0]}
+function monthLabel(k){var p=k.split('-');return MON[+p[1]-1]+' '+p[0]}
+function fmt(n,d){return (+n).toLocaleString('en-IN',{maximumFractionDigits:d==null?2:d})}
+function rs(n,d){return '₹'+fmt(n,d)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function num(sel){var v=parseFloat($(sel).value);return isNaN(v)?NaN:v}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function dayNum(iso){return Math.round(Date.parse(iso+'T00:00:00Z')/86400000)}
+function fromDayNum(n){var d=new Date(n*86400000);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())}
+function r2(n){return Math.round(n*100)/100}
+var toastT;
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('on')},2400)}
+function sortedRaw(list){
+  return list.slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.reading-b.reading});
+}
+
+/* ---------- compute derived values ---------- */
+function compute(){
+  var s=sortedRaw(entries).map(function(e){return Object.assign({},e)});
+  s.forEach(function(e,i){
+    var p=s[i-1];
+    e._kms=p?e.reading-p.reading:null;
+    e._bad=!!p&&e._kms<=0;
+    e._mil=(p&&e._kms>0&&e.litres>0&&!e.missed)?e._kms/e.litres:null;
+    e._susp=false;e._use=false;
+  });
+  var mils=s.map(function(e){return e._mil}).filter(function(x){return x!=null}).sort(function(a,b){return a-b});
+  var med=mils.length>=3?mils[Math.floor(mils.length/2)]:null;
+  s.forEach(function(e){
+    if(e._mil!=null&&med&&e._mil>med*1.45)e._susp=true; /* kms for ~2 fills, litres for 1 */
+    e._use=e._mil!=null&&!e._susp;
+  });
+  return s;
+}
+
+function monthly(rows){
+  var m={},keys=[];
+  rows.forEach(function(e){
+    var k=e.date.slice(0,7);
+    var o=m[k]||(m[k]={n:0,kms:0,amt:0,lit:0,mk:0,ml:0,flag:false});
+    o.n++;o.amt+=e.amount;o.lit+=e.litres;
+    if(e._kms>0)o.kms+=e._kms;
+    if(e._use){o.mk+=e._kms;o.ml+=e.litres}
+    if(e.missed||e._susp)o.flag=true;
+  });
+  if(!rows.length)return [];
+  var first=rows[0].date.slice(0,7).split('-'),last=rows[rows.length-1].date.slice(0,7).split('-');
+  var y=+first[0],mo=+first[1],ly=+last[0],lm=+last[1];
+  while(y<ly||(y===ly&&mo<=lm)){
+    var k=y+'-'+pad(mo);
+    keys.push({k:k,d:m[k]||null});
+    mo++;if(mo>12){mo=1;y++}
+  }
+  return keys;
+}
+
+/* ---------- render: summary ---------- */
+function renderSummary(rows){
+  var el=$('#summary');
+  if(!rows.length){el.innerHTML=stat('0','Fill-ups')+stat('₹0','Total spent')+stat('0','Litres')+stat('–','Avg mileage','hl')+stat('0','Kms')+stat('–','Cost per km');return}
+  var amt=0,lit=0,mk=0,ml=0;
+  rows.forEach(function(e){amt+=e.amount;lit+=e.litres;if(e._use){mk+=e._kms;ml+=e.litres}});
+  var kms=rows[rows.length-1].reading-rows[0].reading;
+  /* spend on the first fill-up covers km before the baseline, so cost/km skips it */
+  var amt2=amt-rows[0].amount;
+  el.innerHTML=
+    stat(fmt(rows.length,0),'Fill-ups')+
+    stat(rs(amt),'Total spent')+
+    stat(fmt(lit)+' L','Litres filled')+
+    stat(ml?fmt(mk/ml,1)+' km/l':'–','Avg mileage','hl')+
+    stat(fmt(kms,1)+' km','Kms tracked')+
+    stat(kms>0&&rows.length>1?rs(amt2/kms):'–','Cost per km');
+}
+function stat(v,l,c){return '<div class="stat '+(c||'')+'"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'}
+
+/* ---------- render: metrics ---------- */
+function bars(months,getter,fmtFn,gapText){
+  var max=0;
+  months.forEach(function(x){if(x.d){var v=getter(x.d);if(v>max)max=v}});
+  return months.slice().reverse().map(function(x){
+    if(!x.d)return '<div class="mrow gap"><span>'+monthLabel(x.k)+'</span><span class="gt">'+gapText+'</span></div>';
+    var v=getter(x.d),w=max>0?Math.max(2,v/max*100):0;
+    return '<div class="mrow"><span>'+monthLabel(x.k)+(x.d.flag?' <span class="warn" title="Missed entry">⚠</span>':'')+'</span>'+
+      '<div class="bar"><i style="width:'+w+'%"></i></div><span class="val">'+fmtFn(v)+'</span></div>';
+  }).join('');
+}
+function renderMetrics(rows){
+  var ms=monthly(rows);
+  var gapText='No entry this month — missed?';
+  var nodata='<div class="note">Add fill-ups to see this.</div>';
+  var note='<div class="note">⚠ marks a month with a missed fill-up. Kms and spend are counted in the month of the fill-up.</div>';
+
+  /* mileage */
+  var use=rows.filter(function(e){return e._use});
+  if(!use.length){
+    $('#sv-mil').textContent='–';
+    $('#b-mil').innerHTML=rows.length<2?'<div class="note">Mileage appears from your second fill-up (the first is the baseline).</div>':'<div class="note">No usable fill-up pairs yet.</div>';
+  }else{
+    var mk=0,ml=0,best=-1,worst=1e9;
+    use.forEach(function(e){mk+=e._kms;ml+=e.litres;if(e._mil>best)best=e._mil;if(e._mil<worst)worst=e._mil});
+    var last=use[use.length-1]._mil;
+    $('#sv-mil').textContent=fmt(mk/ml,1)+' km/l avg';
+    $('#b-mil').innerHTML=
+      '<div class="mini"><div><b>'+fmt(mk/ml,1)+'</b><span>Average</span></div><div><b>'+fmt(last,1)+'</b><span>Last</span></div><div><b>'+fmt(best,1)+'</b><span>Best</span></div><div><b>'+fmt(worst,1)+'</b><span>Lowest</span></div></div>'+
+      bars(ms,function(d){return d.ml>0?d.mk/d.ml:0},function(v){return v>0?fmt(v,1)+' km/l':'–'},gapText)+
+      '<div class="note">Mileage = kms since last fill ÷ litres filled now (fill the tank to the brim each time). Fill-ups marked as missed or looking too high are left out.</div>'+note;
+  }
+  /* kms */
+  var lastM=ms.length?ms[ms.length-1]:null;
+  function sv(id,getter,f){$(id).textContent=lastM&&lastM.d?monthLabel(lastM.k)+': '+f(getter(lastM.d)):'–'}
+  if(!ms.length){['#b-kms','#b-amt','#b-lit'].forEach(function(i){$(i).innerHTML=nodata});['#sv-kms','#sv-amt','#sv-lit'].forEach(function(i){$(i).textContent='–'});return}
+  sv('#sv-kms',function(d){return d.kms},function(v){return fmt(v,1)+' km'});
+  $('#b-kms').innerHTML=bars(ms,function(d){return d.kms},function(v){return fmt(v,1)+' km'},gapText)+note;
+  sv('#sv-amt',function(d){return d.amt},rs);
+  $('#b-amt').innerHTML=bars(ms,function(d){return d.amt},rs,gapText)+note;
+  sv('#sv-lit',function(d){return d.lit},function(v){return fmt(v)+' L'});
+  $('#b-lit').innerHTML=bars(ms,function(d){return d.lit},function(v){return fmt(v)+' L'},gapText)+note;
+}
+
+/* ---------- render: list ---------- */
+function renderList(rows){
+  var el=$('#list');
+  if(!rows.length){el.innerHTML='<div class="empty">No fill-ups yet. Add your first one above — it becomes the starting reading.</div>';return}
+  el.innerHTML=rows.slice().reverse().map(function(e){
+    var tags='';
+    if(e._mil!=null&&!e._susp)tags+='<span class="tag m">'+fmt(e._mil,1)+' km/l</span>';
+    if(e.dealer)tags+='<span class="tag">'+esc(e.dealer)+'</span>';
+    if(e.density)tags+='<span class="tag">Density '+fmt(e.density)+'</span>';
+    if(e.missed)tags+='<span class="tag c">Missed entry before this — not in mileage</span>';
+    if(e._bad)tags+='<span class="tag c">Reading not higher than previous</span>';
+    var flag=e._susp||e._bad;
+    var susp='';
+    if(e._susp){
+      susp='<div class="banner" style="margin:8px 0 0">'+fmt(e._mil,1)+' km/l looks too high — a fill-up may be missing before this one.'+
+        '<div class="acts"><button class="sm" data-action="addmissed" data-id="'+e.id+'">Add the missed entry</button>'+
+        '<button class="sm" data-action="ignore" data-id="'+e.id+'">Skip it in mileage</button></div></div>';
+    }
+    var kmsTxt=e._kms==null?'baseline':(e._kms>0?'+'+fmt(e._kms,1)+' km':fmt(e._kms,1)+' km');
+    return '<div class="row'+(flag?' flag':'')+'" data-id="'+e.id+'">'+
+      '<div class="r1"><span>'+fmtDate(e.date)+'</span><span class="amt">'+rs(e.amount)+'</span></div>'+
+      '<div class="r2">'+fmt(e.reading,1)+' km · '+kmsTxt+' · '+fmt(e.litres)+' L @ '+rs(e.price)+'</div>'+
+      (tags?'<div class="tags">'+tags+'</div>':'')+susp+
+      '<div class="acts"><button class="sm" data-action="edit" data-id="'+e.id+'">Edit</button>'+
+      '<button class="sm dng" data-action="del" data-id="'+e.id+'">Delete</button></div></div>';
+  }).join('');
+}
+
+var cache=[];
+function renderAll(){
+  cache=compute();
+  renderSummary(cache);renderMetrics(cache);renderList(cache);preview();
+}
+
+/* ---------- form ---------- */
+function banner(msg,info){
+  var b=$('#formBanner');
+  if(!msg){b.classList.add('hide');return}
+  b.textContent=msg;b.className='banner'+(info?' info':'');
+}
+function resetForm(){
+  editId=null;
+  var last=cache.length?cache[cache.length-1]:null;
+  $('#f-date').value=todayISO();
+  $('#f-read').value='';$('#f-lit').value='';$('#f-amt').value='';
+  $('#f-price').value=last?last.price:'';
+  $('#f-den').value=last&&last.density?last.density:'';
+  $('#f-dealer').value=last&&last.dealer?last.dealer:'';
+  $('#f-missed').checked=false;
+  $('#formTitle').textContent='Add fill-up';
+  $('#btnSave').textContent='Add fill-up';
+  $('#btnCancel').classList.add('hide');
+  banner('');
+  preview();
+}
+function neighbours(date,reading){
+  var others=sortedRaw(entries.filter(function(e){return e.id!==editId}));
+  var prev=null,next=null;
+  others.forEach(function(e){
+    if(e.date<date||(e.date===date&&e.reading<reading))prev=e;
+    else if(!next)next=e;
+  });
+  return {prev:prev,next:next};
+}
+function preview(){
+  var d=$('#f-date').value,r=num('#f-read'),l=num('#f-lit');
+  $('#h-date').textContent=d?fmtDate(d):'';
+  var kms=$('#f-kms'),h=$('#h-calc');
+  h.className='full hint';h.textContent='';
+  if(!d||isNaN(r)){kms.value='';if(!entries.length||(editId&&entries.length===1))h.textContent='First fill-up is the baseline — kms and mileage start from the next one.';return}
+  var nb=neighbours(d,r);
+  if(!nb.prev){kms.value='';h.textContent='No earlier fill-up — this will be the baseline.';return}
+  var k=r-nb.prev.reading;
+  kms.value=fmt(k,1)+' km';
+  if(k<=0){h.className='full hint warn';h.textContent='Reading must be higher than '+fmt(nb.prev.reading,1)+' km ('+fmtDate(nb.prev.date)+').';return}
+  if(nb.next&&r>=nb.next.reading){h.className='full hint warn';h.textContent='Reading must be lower than '+fmt(nb.next.reading,1)+' km ('+fmtDate(nb.next.date)+').';return}
+  if(l>0&&!$('#f-missed').checked){
+    var m=k/l,mils=cache.filter(function(e){return e._use&&e.id!==editId}).map(function(e){return e._mil}).sort(function(a,b){return a-b});
+    if(mils.length>=3&&m>mils[Math.floor(mils.length/2)]*1.45){
+      h.className='full hint warn';h.textContent=fmt(m,1)+' km/l is unusually high — did you miss a fill-up? Tick the box below to leave this one out of mileage.';
+    }else h.textContent='Mileage for this fill: '+fmt(m,1)+' km/l';
+  }
+}
+function onPriceLit(){
+  var p=num('#f-price'),l=num('#f-lit');
+  if(p>0&&l>0)$('#f-amt').value=r2(p*l);
+  preview();
+}
+function onAmt(){
+  var a=num('#f-amt'),p=num('#f-price'),l=num('#f-lit');
+  if(a>0&&p>0)$('#f-lit').value=r2(a/p);
+  else if(a>0&&l>0)$('#f-price').value=r2(a/l);
+  preview();
+}
+function saveEntry(){
+  var d=$('#f-date').value,r=num('#f-read'),p=num('#f-price'),l=num('#f-lit'),a=num('#f-amt');
+  if(!d)return toast('Pick a date');
+  if(isNaN(r)||r<0)return toast('Enter the bike reading');
+  if(!(l>0)&&a>0&&p>0){l=r2(a/p)}
+  if(!(p>0)&&a>0&&l>0){p=r2(a/l)}
+  if(!(a>0)&&p>0&&l>0){a=r2(p*l)}
+  if(!(p>0))return toast('Enter the litre price');
+  if(!(l>0))return toast('Enter the number of litres');
+  if(!(a>0))return toast('Enter the amount');
+  var nb=neighbours(d,r);
+  if(nb.prev&&r<=nb.prev.reading)return toast('Reading must be higher than '+fmt(nb.prev.reading,1)+' km');
+  if(nb.next&&r>=nb.next.reading)return toast('Reading must be lower than '+fmt(nb.next.reading,1)+' km');
+  var den=num('#f-den');
+  var obj={id:editId||uid(),date:d,reading:r,price:p,litres:l,amount:a,
+    density:den>0?den:null,dealer:$('#f-dealer').value.trim(),missed:$('#f-missed').checked};
+  if(editId){entries=entries.map(function(e){return e.id===editId?obj:e});toast('Updated')}
+  else{entries.push(obj);toast('Added')}
+  save();editId=null;renderAll();resetForm();
+}
+function startEdit(id){
+  var e=entries.filter(function(x){return x.id===id})[0];if(!e)return;
+  editId=id;
+  $('#f-date').value=e.date;$('#f-read').value=e.reading;$('#f-price').value=e.price;
+  $('#f-lit').value=e.litres;$('#f-amt').value=e.amount;$('#f-den').value=e.density||'';
+  $('#f-dealer').value=e.dealer||'';$('#f-missed').checked=!!e.missed;
+  $('#formTitle').textContent='Edit fill-up';
+  $('#btnSave').textContent='Update fill-up';
+  $('#btnCancel').classList.remove('hide');
+  banner('Editing the fill-up of '+fmtDate(e.date),true);
+  preview();
+  $('#formCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function startMissed(id){
+  var i=-1;cache.forEach(function(e,ix){if(e.id===id)i=ix});
+  var cur=cache[i],prev=cache[i-1];if(!cur||!prev)return;
+  editId=null;
+  var mid=fromDayNum(Math.round((dayNum(prev.date)+dayNum(cur.date))/2));
+  $('#f-date').value=mid;
+  $('#f-read').value=Math.round((prev.reading+cur.reading)/2);
+  $('#f-price').value=prev.price;$('#f-lit').value='';$('#f-amt').value='';
+  $('#f-den').value=prev.density||'';$('#f-dealer').value=prev.dealer||'';
+  $('#f-missed').checked=false;
+  $('#formTitle').textContent='Add missed fill-up';
+  $('#btnSave').textContent='Add fill-up';
+  $('#btnCancel').classList.remove('hide');
+  banner('Between '+fmtDate(prev.date)+' and '+fmtDate(cur.date)+'. Date and reading are estimates — correct them from your memory or bill, then add litres.',true);
+  preview();
+  $('#formCard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ---------- events (delegated) ---------- */
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-action]');if(!b)return;
+  var a=b.getAttribute('data-action'),id=b.getAttribute('data-id');
+  if(a==='save')saveEntry();
+  else if(a==='cancel')resetForm();
+  else if(a==='edit')startEdit(id);
+  else if(a==='addmissed')startMissed(id);
+  else if(a==='ignore'){
+    entries=entries.map(function(e){if(e.id===id)e.missed=true;return e});
+    save();renderAll();toast('Left out of mileage');
+  }else if(a==='del'){
+    if(pendingDel&&pendingDel.id===id){
+      clearTimeout(pendingDel.t);pendingDel=null;
+      entries=entries.filter(function(e){return e.id!==id});
+      if(editId===id)editId=null;
+      save();renderAll();if(!editId)resetForm();toast('Deleted');
+    }else{
+      if(pendingDel){clearTimeout(pendingDel.t);pendingDel.reset()}
+      b.textContent='Tap again';b.classList.add('armed');
+      pendingDel={id:id,reset:function(){b.textContent='Delete';b.classList.remove('armed')}};
+      pendingDel.t=setTimeout(function(){if(pendingDel){pendingDel.reset();pendingDel=null}},3000);
+      toast('Tap Delete again to confirm');
+    }
+  }
+});
+['#f-date','#f-read','#f-missed'].forEach(function(s){$(s).addEventListener('input',preview);$(s).addEventListener('change',preview)});
+['#f-price','#f-lit'].forEach(function(s){$(s).addEventListener('input',onPriceLit)});
+$('#f-amt').addEventListener('input',onAmt);
+
+/* ---------- init ---------- */
+load();
+cache=compute();
+renderAll();
+resetForm();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1311">
+<title>Important Dates · Little Lab</title>
+<style>
+:root{
+  --bg:#0e1311; --card:#161d1a; --card2:#1d2622; --line:#2a352f;
+  --text:#e8f1ec; --muted:#8fa399; --mint:#a7e8c5; --coral:#ff8c70;
+  --blue:#9ec5ff; --amber:#ffd37a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:max(14px,env(safe-area-inset-top)) 14px max(40px,env(safe-area-inset-bottom))}
+.wrap{max-width:860px;margin:0 auto}
+a{color:var(--mint)}
+h1{font-size:22px;margin:6px 0 2px;letter-spacing:.2px}
+.sub{color:var(--muted);margin:0 0 14px;font-size:13px}
+.back{display:inline-block;font-size:13px;text-decoration:none;color:var(--muted);margin-top:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+
+/* summary */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--card2);border-radius:12px;padding:10px 12px;min-width:0}
+.stat b{display:block;font-size:20px;color:var(--mint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.next b{font-size:15px;color:var(--coral);white-space:normal}
+
+/* form */
+.form{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:640px){.form{grid-template-columns:150px 1fr 200px}}
+label.f{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input[type=text],select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit;outline:none}
+input[type=text]:focus,select:focus{border-color:var(--mint)}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:10px;padding:10px 14px}
+button.primary{background:var(--mint);color:#0b1612;border-color:var(--mint);font-weight:600}
+button.danger.armed{background:var(--coral);color:#1b0c07;border-color:var(--coral);font-weight:600}
+button:focus-visible,.day:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){
+  button:hover{border-color:var(--mint)}
+  .day:hover{border-color:var(--mint)}
+}
+
+/* calendar */
+.nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.nav .title{flex:1;text-align:center;font-weight:600;font-size:17px}
+.nav button{min-width:44px;padding:10px 0}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow div{text-align:center;font-size:11px;color:var(--muted);padding:2px 0 4px}
+.day{position:relative;min-height:50px;border:1px solid transparent;background:var(--card2);border-radius:10px;padding:4px;text-align:left;color:var(--text);overflow:hidden;display:flex;flex-direction:column}
+.day.blank{background:transparent;border-color:transparent;pointer-events:none}
+.day .n{font-size:13px;font-weight:600}
+.day.today{border-color:var(--mint)}
+.day.today .n{color:var(--mint)}
+.day.sel{border-color:var(--coral);background:#2a1f1b}
+.dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:auto}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.dot.done{background:transparent;box-shadow:inset 0 0 0 1.5px var(--c);opacity:.7}
+.chips{display:none}
+@media(min-width:640px){
+  .day{min-height:88px;padding:6px}
+  .dots{display:none}
+  .chips{display:flex;flex-direction:column;gap:2px;margin-top:4px;min-width:0}
+  .chip{font-size:11px;line-height:1.25;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip.done{text-decoration:line-through;opacity:.6}
+  .more{font-size:11px;color:var(--muted)}
+}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:5px}
+
+/* list */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:7px 12px;font-size:13px}
+.seg button.on{background:var(--mint);color:#0b1612;font-weight:600}
+.lh{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.lh h2{margin:0}
+ul.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:12px;padding:10px;border-left:4px solid var(--c)}
+.row.done .nm{text-decoration:line-through;color:var(--muted)}
+.row .chk{flex:none;display:flex;align-items:center;justify-content:center;width:34px;height:34px;cursor:pointer}
+.row input[type=checkbox]{width:22px;height:22px;accent-color:var(--mint);cursor:pointer}
+.info{flex:1;min-width:0}
+.nm{font-weight:600;overflow-wrap:anywhere}
+.meta{font-size:12.5px;color:var(--muted)}
+.meta .tg{color:var(--c)}
+.acts{display:flex;gap:6px;flex:none}
+.acts button{padding:7px 10px;font-size:13px}
+@media(max-width:480px){.row{flex-wrap:wrap}.acts{width:100%;justify-content:flex-end}}
+.empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
+
+/* data */
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+input[type=file]{display:none}
+
+#toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#0b1612;border:1px solid var(--mint);color:var(--text);padding:10px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:10;max-width:92vw;text-align:center;font-size:14px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← Little Lab</a>
+  <h1>Important Dates</h1>
+  <p class="sub">Birthdays, anniversaries and dates you don't want to miss. Stays in this browser.</p>
+
+  <div class="card" id="summary"></div>
+
+  <div class="card" id="formCard">
+    <h2 id="formTitle">Add a date</h2>
+    <div class="form">
+      <div>
+        <label class="f" for="fDate">Date</label>
+        <input type="text" id="fDate" inputmode="numeric" placeholder="DD-MM-YYYY" maxlength="10" autocomplete="off">
+      </div>
+      <div>
+        <label class="f" for="fName">Name</label>
+        <input type="text" id="fName" placeholder="e.g. Amma, Ravi &amp; Sita, Joined Acme" autocomplete="off">
+      </div>
+      <div>
+        <label class="f" for="fType">Type</label>
+        <select id="fType"></select>
+      </div>
+    </div>
+    <div class="hint">Year is optional: type DD-MM to skip it. With a year, age or years completed is shown.</div>
+    <div class="btns">
+      <button class="primary" id="btnSave" data-action="save">Add</button>
+      <button id="btnCancel" data-action="cancel" hidden>Cancel edit</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="nav">
+      <button data-action="prev" aria-label="Previous month">‹</button>
+      <div class="title" id="calTitle"></div>
+      <button data-action="next" aria-label="Next month">›</button>
+      <button data-action="today">Today</button>
+    </div>
+    <div class="dow" id="dow"></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend" id="legend"></div>
+    <div class="hint">Tap a date to see its entries. Filled dot = not wished yet, hollow = wished.</div>
+  </div>
+
+  <div class="card">
+    <div class="lh">
+      <h2 id="listTitle"></h2>
+      <div class="seg">
+        <button data-action="mode" data-mode="month" id="mMonth">This month</button>
+        <button data-action="mode" data-mode="all" id="mAll">All dates</button>
+      </div>
+    </div>
+    <ul class="list" id="list"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Backup &amp; share</h2>
+    <div class="tools">
+      <button data-action="export-json">Download JSON</button>
+      <button data-action="export-md">Download .md</button>
+      <button data-action="import">Upload JSON</button>
+      <input type="file" id="fileIn" accept=".json,application/json">
+    </div>
+    <div class="hint">Upload adds new entries and skips ones you already have.</div>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+const KEY='dates_v1';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const TYPES={
+  bday:{label:'Birthday',color:'#a7e8c5'},
+  wed:{label:'Marriage Anniversary',color:'#ff8c70'},
+  work:{label:'Company Anniversary',color:'#9ec5ff'},
+  imp:{label:'Important Date',color:'#ffd37a'}
+};
+
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isLeap=y=>(y%4===0&&y%100!==0)||y%400===0;
+const dim=(y,m)=>new Date(y,m,0).getDate(); // m is 1-12
+const fmt=(d,m,y)=>pad(d)+'th '+MON[m-1]+' '+y;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+/* ---------- state ---------- */
+let state={items:[]};
+const now=new Date();
+const today={y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate()};
+let view={y:today.y,m:today.m};
+let sel=null;          // selected day number in viewed month
+let mode='month';
+let editId=null;
+let armedId=null, armTimer=null;
+let toastTimer=null;
+
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){
+      const o=JSON.parse(raw);
+      if(o&&Array.isArray(o.items)) state.items=o.items.filter(valid);
+    }
+  }catch(e){}
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify({version:1,items:state.items}));}catch(e){toast('Could not save in this browser');}
+}
+function valid(it){return it&&typeof it.name==='string'&&parseDate(it.date)}
+
+/* ---------- date helpers ---------- */
+// returns {d,m,y|null,str} or null
+function parseDate(s){
+  if(typeof s!=='string')return null;
+  const p=s.trim().split(/[-\/.,\s]+/).filter(Boolean);
+  if(p.length<2||p.length>3)return null;
+  if(!p.every(x=>/^\d+$/.test(x)))return null;
+  const d=+p[0],m=+p[1];
+  let y=null;
+  if(p.length===3){
+    if(p[2].length!==4)return null;
+    y=+p[2];
+    if(y<1800||y>2200)return null;
+  }
+  if(m<1||m>12||d<1)return null;
+  if(d>dim(y||2000,m))return null;
+  return {d,m,y,str:pad(d)+'-'+pad(m)+(y?'-'+y:'')};
+}
+function occDay(it,y){ // day-of-month the entry falls on in year y
+  const p=parseDate(it.date);
+  if(p.m===2&&p.d===29&&!isLeap(y))return 28;
+  return p.d;
+}
+function isWished(it,y){return !!(it.wished&&it.wished[y])}
+function yearsFor(it,y){
+  const p=parseDate(it.date);
+  if(!p.y||y<p.y)return null;
+  return y-p.y;
+}
+function ageText(it,y){
+  const n=yearsFor(it,y);
+  if(n===null)return '';
+  if(n===0)return it.type==='bday'?'Born this year':'Started this year';
+  return it.type==='bday'?'turns '+n:n+' yr'+(n>1?'s':'');
+}
+function ageNow(it){ // completed years as of today (birthday: current age)
+  const p=parseDate(it.date);
+  if(!p.y)return null;
+  let n=today.y-p.y;
+  const dayThisYear=occDay(it,today.y);
+  if(p.m>today.m||(p.m===today.m&&dayThisYear>today.d))n--;
+  return n<0?null:n;
+}
+function eventsIn(y,m){
+  const out=[];
+  state.items.forEach(it=>{
+    const p=parseDate(it.date);
+    if(p.m===m)out.push({it,day:occDay(it,y),y});
+  });
+  out.sort((a,b)=>a.day-b.day||a.it.name.localeCompare(b.it.name));
+  return out;
+}
+function nextUp(){
+  let best=null;
+  const t0=new Date(today.y,today.m-1,today.d).getTime();
+  state.items.forEach(it=>{
+    const p=parseDate(it.date);
+    for(const y of [today.y,today.y+1]){
+      const d=occDay(it,y);
+      const t=new Date(y,p.m-1,d).getTime();
+      if(t>=t0){
+        const days=Math.round((t-t0)/864e5);
+        if(!best||days<best.days)best={it,days,y,d,m:p.m};
+        break;
+      }
+    }
+  });
+  return best;
+}
+
+/* ---------- render ---------- */
+function renderSummary(){
+  const ev=eventsIn(view.y,view.m);
+  const wished=ev.filter(e=>isWished(e.it,view.y)).length;
+  const nx=nextUp();
+  let nextHtml='<b>—</b><span>Next up</span>';
+  if(nx){
+    const when=nx.days===0?'today':nx.days===1?'tomorrow':'in '+nx.days+' days';
+    nextHtml='<b>'+esc(nx.it.name)+'</b><span>'+fmt(nx.d,nx.m,nx.y)+' · '+when+'</span>';
+  }
+  $('summary').innerHTML=
+    '<div class="stats">'+
+    '<div class="stat"><b>'+state.items.length+'</b><span>Total dates</span></div>'+
+    '<div class="stat"><b>'+ev.length+'</b><span>In '+MONFULL[view.m-1]+' '+view.y+'</span></div>'+
+    '<div class="stat"><b>'+wished+' / '+ev.length+'</b><span>Wished this month</span></div>'+
+    '<div class="stat next">'+nextHtml+'</div>'+
+    '</div>';
+}
+
+function renderCalendar(){
+  $('calTitle').textContent=MONFULL[view.m-1]+' '+view.y;
+  const first=new Date(view.y,view.m-1,1).getDay();
+  const days=dim(view.y,view.m);
+  const ev=eventsIn(view.y,view.m);
+  const byDay={};
+  ev.forEach(e=>{(byDay[e.day]=byDay[e.day]||[]).push(e)});
+  let h='';
+  for(let i=0;i<first;i++)h+='<div class="day blank"></div>';
+  for(let d=1;d<=days;d++){
+    const list=byDay[d]||[];
+    const isToday=view.y===today.y&&view.m===today.m&&d===today.d;
+    const cls='day'+(isToday?' today':'')+(sel===d?' sel':'');
+    const label=fmt(d,view.m,view.y)+(list.length?', '+list.length+' entr'+(list.length>1?'ies':'y'):'');
+    h+='<button class="'+cls+'" data-action="day" data-day="'+d+'" aria-label="'+label+'">'+
+       '<span class="n">'+d+'</span>';
+    if(list.length){
+      h+='<span class="dots">'+list.slice(0,6).map(e=>'<i class="dot'+(isWished(e.it,view.y)?' done':'')+'" style="--c:'+TYPES[e.it.type].color+'"></i>').join('')+'</span>';
+      h+='<span class="chips">'+list.slice(0,2).map(e=>'<span class="chip'+(isWished(e.it,view.y)?' done':'')+'" style="--c:'+TYPES[e.it.type].color+'">'+esc(e.it.name)+'</span>').join('')+
+         (list.length>2?'<span class="more">+'+(list.length-2)+' more</span>':'')+'</span>';
+    }
+    h+='</button>';
+  }
+  $('grid').innerHTML=h;
+}
+
+function rowHtml(e,showYearAge){
+  const it=e.it,p=parseDate(it.date),t=TYPES[it.type];
+  const wished=isWished(it,e.y);
+  const age=ageText(it,e.y);
+  let meta='<span class="tg">'+t.label+'</span> · '+fmt(e.day,p.m,e.y);
+  if(age)meta+=' · '+age;
+  if(showYearAge&&it.type==='bday'){
+    const an=ageNow(it);
+    if(an!==null)meta+=' · now '+an;
+  }
+  const armed=armedId===it.id;
+  return '<li class="row'+(wished?' done':'')+'" style="--c:'+t.color+'" data-id="'+it.id+'">'+
+    '<label class="chk" title="Wished in '+e.y+'"><input type="checkbox" data-action="wish" data-id="'+it.id+'" data-year="'+e.y+'"'+(wished?' checked':'')+' aria-label="Wished '+esc(it.name)+' in '+e.y+'"></label>'+
+    '<div class="info"><div class="nm">'+esc(it.name)+'</div><div class="meta">'+meta+'</div></div>'+
+    '<div class="acts"><button data-action="edit" data-id="'+it.id+'">Edit</button>'+
+    '<button class="danger'+(armed?' armed':'')+'" data-action="del" data-id="'+it.id+'">'+(armed?'Sure?':'Delete')+'</button></div>'+
+    '</li>';
+}
+
+function renderList(){
+  $('mMonth').classList.toggle('on',mode==='month');
+  $('mAll').classList.toggle('on',mode==='all');
+  let rows=[],title='';
+  if(mode==='month'){
+    rows=eventsIn(view.y,view.m);
+    if(sel!==null){
+      rows=rows.filter(e=>e.day===sel);
+      title=fmt(sel,view.m,view.y);
+    }else title=MONFULL[view.m-1]+' '+view.y;
+    title+=' · '+rows.length+' '+(rows.length===1?'entry':'entries');
+  }else{
+    for(let m=1;m<=12;m++)rows=rows.concat(eventsIn(today.y,m));
+    title='All dates in '+today.y+' · '+rows.length;
+  }
+  $('listTitle').textContent=title;
+  if(!rows.length){
+    $('list').innerHTML='<li class="empty">'+(state.items.length?(sel!==null?'Nothing on this date. Tap it again to see the whole month.':'Nothing this month.'):'No dates yet. Add your first one above.')+'</li>';
+  }else{
+    $('list').innerHTML=rows.map(e=>rowHtml(e,mode==='all')).join('');
+  }
+}
+
+function render(){renderSummary();renderCalendar();renderList();}
+
+/* ---------- actions ---------- */
+function toast(msg){
+  const t=$('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+function resetForm(){
+  editId=null;
+  $('fDate').value='';$('fName').value='';$('fType').value='bday';
+  $('btnSave').textContent='Add';
+  $('btnCancel').hidden=true;
+  $('formTitle').textContent='Add a date';
+}
+
+function saveEntry(){
+  const p=parseDate($('fDate').value);
+  const name=$('fName').value.trim();
+  const type=$('fType').value;
+  if(!p){toast('Enter a valid date like 23-09-1990 or 23-09');$('fDate').focus();return;}
+  if(!name){toast('Enter a name');$('fName').focus();return;}
+  if(editId){
+    const it=state.items.find(x=>x.id===editId);
+    if(it){it.date=p.str;it.name=name;it.type=type;}
+    toast('Changes saved');
+  }else{
+    state.items.push({id:uid(),date:p.str,name:name,type:type,wished:{}});
+    toast('Added '+name);
+  }
+  view.m=p.m;
+  sel=null;
+  save();
+  resetForm();
+  render();
+}
+
+function startEdit(id){
+  const it=state.items.find(x=>x.id===id);
+  if(!it)return;
+  editId=id;
+  $('fDate').value=it.date;$('fName').value=it.name;$('fType').value=it.type;
+  $('btnSave').textContent='Save changes';
+  $('btnCancel').hidden=false;
+  $('formTitle').textContent='Edit date';
+  $('formCard').scrollIntoView({behavior:'smooth',block:'start'});
+  $('fName').focus({preventScroll:true});
+}
+
+function tapDelete(id){
+  if(armedId===id){
+    clearTimeout(armTimer);armedId=null;
+    const it=state.items.find(x=>x.id===id);
+    state.items=state.items.filter(x=>x.id!==id);
+    if(editId===id)resetForm();
+    save();render();
+    toast('Deleted '+(it?it.name:''));
+    return;
+  }
+  armedId=id;
+  clearTimeout(armTimer);
+  armTimer=setTimeout(()=>{armedId=null;renderList();},3000);
+  renderList();
+  toast('Tap Delete again to confirm');
+}
+
+function shiftMonth(n){
+  view.m+=n;
+  if(view.m<1){view.m=12;view.y--;}
+  if(view.m>12){view.m=1;view.y++;}
+  sel=null;
+  render();
+}
+
+/* ---------- import / export ---------- */
+function download(name,text,mime){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:mime}));
+  a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+const stamp=()=>today.y+'-'+pad(today.m)+'-'+pad(today.d);
+
+function exportJson(){
+  if(!state.items.length){toast('Nothing to download yet');return;}
+  download('important-dates-'+stamp()+'.json',JSON.stringify({app:'little-lab-important-dates',version:1,items:state.items},null,2),'application/json');
+  toast('JSON downloaded');
+}
+
+function exportMd(){
+  if(!state.items.length){toast('Nothing to download yet');return;}
+  const Y=today.y;
+  const sorted=state.items.slice().sort((a,b)=>{
+    const pa=parseDate(a.date),pb=parseDate(b.date);
+    return pa.m-pb.m||pa.d-pb.d||a.name.localeCompare(b.name);
+  });
+  let md='# Important Dates\n\nExported '+fmt(today.d,today.m,today.y)+'\n\n';
+  md+='| Date | Name | Type | Year | In '+Y+' | Wished '+Y+' |\n|---|---|---|---|---|---|\n';
+  sorted.forEach(it=>{
+    const p=parseDate(it.date);
+    md+='| '+pad(occDay(it,Y))+'th '+MON[p.m-1]+' | '+it.name.replace(/\|/g,'\\|')+' | '+TYPES[it.type].label+' | '+(p.y||'')+' | '+ageText(it,Y)+' | '+(isWished(it,Y)?'[x]':'[ ]')+' |\n';
+  });
+  download('important-dates-'+stamp()+'.md',md,'text/markdown');
+  toast('.md downloaded');
+}
+
+function importJson(text){
+  let data;
+  try{data=JSON.parse(text);}catch(e){toast('That file is not valid JSON');return;}
+  const arr=Array.isArray(data)?data:(data&&Array.isArray(data.items)?data.items:null);
+  if(!arr){toast('No dates found in this file');return;}
+  let added=0,skipped=0;
+  arr.forEach(r=>{
+    if(!r||typeof r.name!=='string'){skipped++;return;}
+    const p=parseDate(r.date);
+    if(!p){skipped++;return;}
+    const type=TYPES[r.type]?r.type:'imp';
+    const name=r.name.trim();
+    if(!name){skipped++;return;}
+    const dup=state.items.some(x=>(r.id&&x.id===r.id)||(x.date===p.str&&x.name===name&&x.type===type));
+    if(dup){skipped++;return;}
+    const w={};
+    if(r.wished&&typeof r.wished==='object'){
+      Object.keys(r.wished).forEach(k=>{if(r.wished[k]===true&&/^\d{4}$/.test(k))w[k]=true;});
+    }
+    state.items.push({id:r.id&&typeof r.id==='string'?r.id:uid(),date:p.str,name:name,type:type,wished:w});
+    added++;
+  });
+  save();render();
+  toast('Added '+added+(skipped?', skipped '+skipped:''));
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-action]');
+  if(!el)return;
+  const a=el.dataset.action;
+  if(a==='wish')return; // handled on change
+  switch(a){
+    case 'save':saveEntry();break;
+    case 'cancel':resetForm();break;
+    case 'prev':shiftMonth(-1);break;
+    case 'next':shiftMonth(1);break;
+    case 'today':view={y:today.y,m:today.m};sel=today.d;mode='month';render();break;
+    case 'day':{
+      const d=+el.dataset.day;
+      sel=(sel===d)?null:d;
+      mode='month';
+      render();
+      break;
+    }
+    case 'mode':mode=el.dataset.mode;sel=null;render();break;
+    case 'edit':startEdit(el.dataset.id);break;
+    case 'del':tapDelete(el.dataset.id);break;
+    case 'export-json':exportJson();break;
+    case 'export-md':exportMd();break;
+    case 'import':$('fileIn').click();break;
+  }
+});
+
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.dataset&&el.dataset.action==='wish'){
+    const it=state.items.find(x=>x.id===el.dataset.id);
+    if(!it)return;
+    it.wished=it.wished||{};
+    if(el.checked)it.wished[el.dataset.year]=true;else delete it.wished[el.dataset.year];
+    save();render();
+  }
+});
+
+$('fileIn').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>importJson(String(r.result));
+  r.onerror=()=>toast('Could not read the file');
+  r.readAsText(f);
+  e.target.value='';
+});
+
+// auto-format DD-MM-YYYY while typing digits
+$('fDate').addEventListener('input',e=>{
+  if(e.inputType!=='insertText')return;
+  const dg=e.target.value.replace(/\D/g,'').slice(0,8);
+  let v=dg.slice(0,2);
+  if(dg.length>2)v+='-'+dg.slice(2,4);
+  if(dg.length>4)v+='-'+dg.slice(4,8);
+  e.target.value=v;
+});
+['fDate','fName'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')saveEntry();}));
+
+/* ---------- init ---------- */
+$('fType').innerHTML=Object.keys(TYPES).map(k=>'<option value="'+k+'">'+TYPES[k].label+'</option>').join('');
+$('dow').innerHTML=DOW.map(d=>'<div>'+d+'</div>').join('');
+$('legend').innerHTML=Object.keys(TYPES).map(k=>'<span><i style="--c:'+TYPES[k].color+'"></i>'+TYPES[k].label+'</span>').join('');
+load();
+render();
+})();
+</script>
+</body>
+</html>
